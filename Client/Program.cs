@@ -16,8 +16,8 @@ namespace Client
         {
             //创建实例
             Socket socketClient = new Socket(SocketType.Stream, ProtocolType.Tcp);
-            IPAddress ip = IPAddress.Parse("127.0.0.1");
-            IPEndPoint point = new IPEndPoint(ip, 1000);
+            IPAddress ip = IPAddress.Parse("163.43.82.143");
+            IPEndPoint point = new IPEndPoint(ip, 31998);
             //进行连接
             socketClient.Connect(point);
             //不停的接收服务器端发送的消息

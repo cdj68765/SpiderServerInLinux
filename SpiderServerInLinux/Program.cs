@@ -23,6 +23,50 @@ namespace SpiderServerInLinux
 
         static void Main(string[] args)
         {
+            /*CancellationTokenSource CancelInfo = new CancellationTokenSource();
+            Task.Factory.StartNew(delegate
+            {
+                Socket socket = new Socket(1, 6);
+                IPAddress any = IPAddress.Any;
+                IPEndPoint iPEndPoint = new IPEndPoint(any, 1000);
+                socket.Bind(iPEndPoint);
+                Console.WriteLine("Listen Success");
+                socket.Listen(10);
+                while (true)
+                {
+                    Socket send = socket.Accept();
+                    string arg = send.get_RemoteEndPoint().ToString();
+                    Console.WriteLine(string.Format("{0}Connection", arg));
+                    ThreadPool.QueueUserWorkItem(delegate (object obj)
+                    {
+                        while (true)
+                        {
+                            byte[] array = new byte[2097152];
+                            int num = send.Receive(array);
+                            bool flag = num == 0;
+                            if (flag)
+                            {
+                                break;
+                            }
+                            string @string = Encoding.get_UTF8().GetString(array, 0, num);
+                            Console.WriteLine(@string);
+                            byte[] bytes = Encoding.get_UTF8().GetBytes("Server Return Message");
+                            bool flag2 = @string == "exit";
+                            if (flag2)
+                            {
+                                CancelInfo.Cancel();
+                            }
+                            send.Send(bytes);
+                        }
+                    }, CancelInfo.Token);
+                }
+            }, CancelInfo.Token, 2, TaskScheduler.Default);
+            while (!CancelInfo.IsCancellationRequested)
+            {
+                Thread.Sleep(1000);
+            }*/
+
+
             var CancelInfo = new CancellationTokenSource();
 
 
