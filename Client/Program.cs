@@ -13,7 +13,7 @@ namespace Client
     class Program
     {
         static void Main(string[] args)
-        {/*
+        {
             //创建实例
             Socket socketClient = new Socket(SocketType.Stream, ProtocolType.Tcp);
             //IPAddress ip = IPAddress.Parse("163.43.82.143");
@@ -42,8 +42,9 @@ namespace Client
             {
                 var buffter = Encoding.UTF8.GetBytes(Console.ReadLine());
                 var temp = socketClient.Send(buffter);
-            }*/
-            byte[] data = new byte[1024];
+            }
+            
+         /*   byte[] data = new byte[1024];
             string input, stringData;
 
             //构建TCP 服务器
@@ -78,7 +79,7 @@ namespace Client
                 Console.WriteLine(stringData);
             }
             Console.WriteLine("Stopping Client.");
-            server.Close();
+            server.Close();*/
         }
     }
 }

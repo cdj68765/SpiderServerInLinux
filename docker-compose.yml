@@ -1,0 +1,8 @@
+version: '3'
+
+services:
+  spiderserverinlinux:
+    image: spiderserverinlinux
+    build:
+      context: .
+      dockerfile: SpiderServerInLinux/Dockerfile
