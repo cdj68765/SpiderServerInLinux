@@ -9,6 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.IO;
 
+
 namespace SpiderServerInLinux
 {
     class Program
@@ -18,13 +19,8 @@ namespace SpiderServerInLinux
         {
             var TCPCmd = TCPCommand.Init(1000);
             DataBaseCommand.Init();
-          new   HandlerHtml();
+            var handlerHtml = new GetHtml();
             TCPCmd.StartListener();
-
-
-
-
-
         }
     }
 }

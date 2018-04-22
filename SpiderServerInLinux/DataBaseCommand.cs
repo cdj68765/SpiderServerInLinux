@@ -16,7 +16,7 @@ namespace SpiderServerInLinux
                 var FindAdress = SettingData.FindOne(id => id.Item == "Adress");
                 if(!(FindAdress is GlobalSet))
                 {
-                    setting.Adress = "http://sukebei.nyaa.si/";
+                    setting.Adress = "https://sukebei.nyaa.si/";
                     SettingData.Upsert(new GlobalSet() { Item = "Adress", Value = setting.Adress });
                     SettingData.Upsert(new GlobalSet() { Item = "LastCount", Value = "1" });
                 }
