@@ -1,27 +1,32 @@
 ﻿using System;
 using LiteDB;
+using static SpiderServerInLinux.Setting;
 
 namespace SpiderServerInLinux
 {
     internal class DataBaseCommand
     {
-        public class Setting
-        {
-            public string Url { get; set; }
-        }
-        internal static DataBaseCommand Init()
+        internal static void Init()
         {
             // 打开数据库 (如果不存在自动创建)
             using (var db = new LiteDatabase(@"Nyaa.db"))
             {
-                var col = db.GetCollection<string>("Setting");
-                col.Upsert(1,"pc");
-                var results = col.Find(x => x.StartsWith("Jo"));
-                col.EnsureIndex("Name");
-                // 现在，搜索你的文档
-                var customer = col.Find(x=>x.StartsWith("pc"));
+               setting = new Setting();
+                var SettingData = db.GetCollection<GlobalSet>("Setting");
+                var FindAdress = SettingData.FindOne(id => id.Item == "Adress");
+                if(!(FindAdress is GlobalSet))
+                {
+                    setting.Adress = "http://sukebei.nyaa.si/";
+                    SettingData.Upsert(new GlobalSet() { Item = "Adress", Value = setting.Adress });
+                    SettingData.Upsert(new GlobalSet() { Item = "LastCount", Value = "1" });
+                }
+                else
+                {
+                    setting.Adress = FindAdress.Value;
+                }
+                setting.LastPage=int.Parse(SettingData.FindOne(id => id.Item == "LastCount").Value);
+
             }
-            return new DataBaseCommand();
         }
     }
 }

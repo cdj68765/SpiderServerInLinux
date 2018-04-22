@@ -17,9 +17,9 @@ namespace SpiderServerInLinux
         static void Main(string[] args)
         {
             var TCPCmd = TCPCommand.Init(1000);
-           // TCPCmd.StartListener();
-            var DataBae = DataBaseCommand.Init();
-
+            DataBaseCommand.Init();
+          new   HandlerHtml();
+            TCPCmd.StartListener();
 
 
 
