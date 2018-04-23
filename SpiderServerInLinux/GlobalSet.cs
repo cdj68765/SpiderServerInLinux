@@ -17,7 +17,7 @@ namespace SpiderServerInLinux
     {
         internal static readonly CancellationTokenSource CancelSign;
         internal static Setting setting;
-        internal string Adress;
+        internal string Address;
         internal int LastPage;
 
     }

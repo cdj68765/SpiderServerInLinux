@@ -11,15 +11,15 @@ using static SpiderServerInLinux.Setting;
 
 namespace SpiderServerInLinux
 {
-    internal class GetHtml
+    internal class HandlerHtml
     {
-        public GetHtml()
+        public HandlerHtml()
         {
 
-            var s = "https://sukebei.nyaa.si";
-            var c1 = new WebClientEx.WebClientEx();
-            var sss = c1.DownloadString(s);
-            Console.WriteLine(sss);
+        }
+
+        public HandlerHtml(string result)
+        {
         }
     }
 }

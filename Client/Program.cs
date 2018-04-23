@@ -13,6 +13,8 @@ namespace Client
         [STAThread]
         static void Main(string[] args)
         {
+
+
             //创建实例
             Socket socketClient = new Socket(SocketType.Stream, ProtocolType.Tcp);
            // IPAddress ip = IPAddress.Parse("163.43.82.143");

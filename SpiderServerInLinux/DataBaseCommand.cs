@@ -16,13 +16,13 @@ namespace SpiderServerInLinux
                 var FindAdress = SettingData.FindOne(id => id.Item == "Adress");
                 if(!(FindAdress is GlobalSet))
                 {
-                    setting.Adress = "https://sukebei.nyaa.si/";
-                    SettingData.Upsert(new GlobalSet() { Item = "Adress", Value = setting.Adress });
+                    setting.Address = "https://sukebei.nyaa.si/";
+                    SettingData.Upsert(new GlobalSet() { Item = "Adress", Value = setting.Address });
                     SettingData.Upsert(new GlobalSet() { Item = "LastCount", Value = "1" });
                 }
                 else
                 {
-                    setting.Adress = FindAdress.Value;
+                    setting.Address = FindAdress.Value;
                 }
                 setting.LastPage=int.Parse(SettingData.FindOne(id => id.Item == "LastCount").Value);
 
