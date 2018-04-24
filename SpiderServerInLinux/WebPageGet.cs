@@ -12,11 +12,31 @@ namespace SpiderServerInLinux
         readonly WebClient WebClient = new WebClientEx.WebClientEx();
         readonly CancellationTokenSource CancelInfo = new CancellationTokenSource();
 
-        public WebPageGet()
+        public WebPageGet(string Path="")
         {
+            if (Path != "")
+            {
+                Setting.setting.Address = Path;
+              File.WriteAllText("5000.txt", WebClient.DownloadString(new Uri(Path)));
+                return;
+            }
             Task.Factory.StartNew(() =>
                 {
-                    WebClient.DownloadStringCompleted += (Sender, Object) => { new HandlerHtml(Object.Result); };
+                    WebClient.DownloadStringCompleted += (Sender, Object) =>
+                    {
+                        try
+                        {
+                            new HandlerHtml(Object.Result);
+                        }
+                        catch (Exception e)
+                        {
+                            if (WebClientEx.WebClientEx.ErrorInfo == "Timeout")
+                            {
+
+                            }
+                        }
+                   
+                    };
                     WebClient.DownloadStringAsync(new Uri(Setting.setting.Address));
 
                 }, CancelInfo.Token, TaskCreationOptions.LongRunning,

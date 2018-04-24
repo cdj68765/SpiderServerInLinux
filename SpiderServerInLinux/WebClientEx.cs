@@ -6,6 +6,7 @@ namespace WebClientEx
     public class WebClientEx : WebClient
     {
         public WebResponse webResponse;
+        public static String ErrorInfo;
         public static CookieContainer outboundCookies;
         public static CookieCollection inboundCookies;
 
@@ -66,19 +67,27 @@ namespace WebClientEx
             request.Timeout = _TimeOut;
             request.AllowAutoRedirect = true;
             request.AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
-            if (request != null)
-            {
-                request.CookieContainer = outboundCookies;
-            }
+            request.CookieContainer = outboundCookies;
             return r;
         }
 
         protected override WebResponse GetWebResponse(WebRequest request, IAsyncResult result)
         {
-            WebResponse response = base.GetWebResponse(request, result);
-            webResponse = response;
-            inboundCookies = (response as HttpWebResponse).Cookies ?? inboundCookies;
-            return response;
+            try
+            {
+                WebResponse response = base.GetWebResponse(request, result);
+                webResponse = response;
+                inboundCookies = (response as HttpWebResponse).Cookies ?? inboundCookies;
+                return response;
+            }
+            catch (WebException e)
+            {
+                if (e.Status == WebExceptionStatus.Timeout)
+                {
+                    ErrorInfo = "Timeout";
+                }
+                return null;
+            }
         }
 
         protected override WebResponse GetWebResponse(WebRequest request)

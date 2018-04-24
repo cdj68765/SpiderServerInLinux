@@ -8,7 +8,7 @@ namespace SpiderServerInLinux
     {
         internal static void Init()
         {
-            // 打开数据库 (如果不存在自动创建)
+            // 打开数据库 (如果不存在自动创建) 
             using (var db = new LiteDatabase(@"Nyaa.db"))
             {
                setting = new Setting();

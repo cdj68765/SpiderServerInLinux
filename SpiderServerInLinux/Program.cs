@@ -1,15 +1,4 @@
-﻿using LiteDB;
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Net;
-using System.Net.Sockets;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-using System.IO;
-using System.IO.Pipes;
-
+﻿using System.IO;
 
 namespace SpiderServerInLinux
 {
@@ -18,11 +7,14 @@ namespace SpiderServerInLinux
 
         static void Main(string[] args)
         {
-
-              var TCPCmd = TCPCommand.Init(1000);
-              DataBaseCommand.Init();
-              new WebPageGet();
-              TCPCmd.StartListener();
+            var TCPCmd = TCPCommand.Init(1000);
+            DataBaseCommand.Init();
+            //test
+            //new WebPageGet(@"https://sukebei.nyaa.si/?p=5000");
+            new HandlerHtml(File.ReadAllText("save.txt"));
+           
+            //new WebPageGet();
+            TCPCmd.StartListener();
         }
     }
 }
