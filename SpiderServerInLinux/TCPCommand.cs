@@ -12,7 +12,8 @@ namespace SpiderServerInLinux
     {
         private readonly Socket socket;
         readonly CancellationTokenSource CancelInfo = new CancellationTokenSource();
-        public TCPCommand(Socket socket)
+
+        private TCPCommand(Socket socket)
         {
             this.socket = socket;
         }

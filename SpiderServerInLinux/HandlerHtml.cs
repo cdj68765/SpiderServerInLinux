@@ -14,41 +14,47 @@ namespace SpiderServerInLinux
 {
     internal class HandlerHtml
     {
+        public readonly List<TorrentInfo> AnalysisData = new List<TorrentInfo>();
+
         public HandlerHtml(string result)
         {
             if (result != "")
             {
-                var HtmlDoc = new HtmlAgilityPack.HtmlDocument();
+
+                var HtmlDoc = new HtmlDocument();
                 HtmlDoc.LoadHtml(result);
                 foreach (var item in HtmlDoc.DocumentNode.SelectNodes(@"/html/body/div[1]/div[2]/table/tbody/tr"))
                 {
+                    TorrentInfo TempData = new TorrentInfo();
                     var temp = HtmlNode.CreateNode(item.OuterHtml);
-                    var ItemClass = item.Attributes["class"].Value;
-                    var ImgClass = temp.SelectSingleNode("td[1]/a").Attributes["title"]
+                    TempData.Class = item.Attributes["class"].Value;
+                    TempData.Catagory = temp.SelectSingleNode("td[1]/a").Attributes["title"]
                         .Value;
-                    var Title = temp.SelectSingleNode("td[2]/a").Attributes["title"]
+                    TempData.Title = temp.SelectSingleNode("td[2]/a").Attributes["title"]
                         .Value;
-                    var Torrent = temp.SelectSingleNode("td[3]/a[1]").Attributes["href"].Value;
+                    TempData.Torrent = temp.SelectSingleNode("td[3]/a[1]").Attributes["href"].Value;
                     var Magnet = "";
-                    if (Torrent.StartsWith("magnet"))
+                    if (TempData.Torrent.StartsWith("magnet"))
                     {
-                        Magnet = Torrent;
-                        Torrent = "";
+                        Magnet = TempData.Torrent;
+                        TempData.Torrent = "";
                     }
                     else
                     {
-                        Magnet = temp.SelectSingleNode("td[3]/a[2]").Attributes["href"].Value;
+                        TempData.Magnet = temp.SelectSingleNode("td[3]/a[2]").Attributes["href"].Value;
                     }
 
-                    var Size = temp.SelectSingleNode("td[4]").InnerText;
-                    var TimeStamp = temp.SelectSingleNode("td[5]").Attributes["data-timestamp"].Value;
-                    var Time = temp.SelectSingleNode("td[5]").InnerText;
-                    var UP = temp.SelectSingleNode("td[6]").InnerText;
-                    var Down = temp.SelectSingleNode("td[7]").InnerText;
-                    var Completed = temp.SelectSingleNode("td[8]").InnerText;
+                    TempData.Size = temp.SelectSingleNode("td[4]").InnerText;
+                    TempData.TimeStamp = int.Parse(temp.SelectSingleNode("td[5]").Attributes["data-timestamp"].Value);
+                    TempData.Date = Convert.ToDateTime(temp.SelectSingleNode("td[5]").InnerText);
+                    TempData.Up = temp.SelectSingleNode("td[6]").InnerText;
+                    TempData.Leeches = temp.SelectSingleNode("td[7]").InnerText;
+                    TempData.Complete = temp.SelectSingleNode("td[8]").InnerText;
+                    AnalysisData.Add(TempData);
                 }
 
             }
+
         }
     }
 }
