@@ -23,24 +23,29 @@ namespace SpiderServerInLinux
     }
     internal class TorrentInfo
     {
-        public int _id;
+        public int _id { get; set; }
         public string Class { get; set; }
         public string Catagory { get; set; }
-        public string Address { get; set; }
         public string Title { get; set; }
         public string Torrent { get; set; }
         public string Magnet { get; set; }
         public string Size { get; set; }
         public int TimeStamp { get; set; }
-        public DateTime Date { get; set; }
+        public string Date { get; set; }
         public string Up { get; set; }
         public string Leeches { get; set; }
         public string Complete { get; set; }
+
+        public string RetDate()
+        {
+            return Convert.ToDateTime(Date).ToLongDateString();
+        }
     }
-    public class DateRecord
+    internal abstract class DateRecord
     {
         public int _id;
-        public DateTime Date { get; set; }
+        public String Date { get; set; }
         public bool Status { get; set; }
     }
+
 }

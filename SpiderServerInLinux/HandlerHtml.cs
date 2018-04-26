@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Net;
@@ -9,12 +10,13 @@ using System.Threading.Tasks;
 using System.Web;
 using HtmlAgilityPack;
 using static SpiderServerInLinux.Setting;
+using static SpiderServerInLinux.DataBaseCommand;
 
 namespace SpiderServerInLinux
 {
     internal class HandlerHtml
     {
-        public readonly List<TorrentInfo> AnalysisData = new List<TorrentInfo>();
+        public readonly ConcurrentDictionary<int, TorrentInfo> AnalysisData = new ConcurrentDictionary<int, TorrentInfo>();
 
         public HandlerHtml(string result)
         {
@@ -33,10 +35,9 @@ namespace SpiderServerInLinux
                     TempData.Title = temp.SelectSingleNode("td[2]/a").Attributes["title"]
                         .Value;
                     TempData.Torrent = temp.SelectSingleNode("td[3]/a[1]").Attributes["href"].Value;
-                    var Magnet = "";
                     if (TempData.Torrent.StartsWith("magnet"))
                     {
-                        Magnet = TempData.Torrent;
+                        TempData.Magnet = TempData.Torrent;
                         TempData.Torrent = "";
                     }
                     else
@@ -45,14 +46,15 @@ namespace SpiderServerInLinux
                     }
 
                     TempData.Size = temp.SelectSingleNode("td[4]").InnerText;
+
                     TempData.TimeStamp = int.Parse(temp.SelectSingleNode("td[5]").Attributes["data-timestamp"].Value);
-                    TempData.Date = Convert.ToDateTime(temp.SelectSingleNode("td[5]").InnerText);
+                    TempData.Date = temp.SelectSingleNode("td[5]").InnerText;
                     TempData.Up = temp.SelectSingleNode("td[6]").InnerText;
                     TempData.Leeches = temp.SelectSingleNode("td[7]").InnerText;
                     TempData.Complete = temp.SelectSingleNode("td[8]").InnerText;
-                    AnalysisData.Add(TempData);
+                    AnalysisData.AddOrUpdate(TempData.TimeStamp, TempData, (key, Value) => TempData);
                 }
-
+                //SaveToDataBaseFormList(new List<TorrentInfo>(AnalysisData.Values));
             }
 
         }

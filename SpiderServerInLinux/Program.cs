@@ -1,4 +1,5 @@
 ﻿using System.IO;
+using static SpiderServerInLinux.DataBaseCommand;
 
 namespace SpiderServerInLinux
 {
@@ -11,8 +12,9 @@ namespace SpiderServerInLinux
             DataBaseCommand.Init();
             //test
             //new WebPageGet(@"https://sukebei.nyaa.si/?p=500000");
-            new HandlerHtml(File.ReadAllText("save.txt"));
-           
+            GetDataFormDataBase();
+             new HandlerHtml(File.ReadAllText("save.txt"));
+           new WebPageGet().DownloadControl();
             //new WebPageGet();
             TCPCmd.StartListener();
         }
