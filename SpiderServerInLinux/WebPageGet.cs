@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Pipes;
@@ -11,6 +12,7 @@ namespace SpiderServerInLinux
 {
     internal class WebPageGet
     {
+         int CurrectPageIndex;
         readonly WebClient WebClient = new WebClientEx.WebClientEx();
         readonly CancellationTokenSource CancelInfo = new CancellationTokenSource();
 
@@ -56,7 +58,7 @@ namespace SpiderServerInLinux
         }
 
 
-        public async void DownloadControl()
+        public async void DownloadControl(bool StartNew=false)
         {
             /*思路设想
              1.先获取第一次数据，然后判断数据库内该时间段是否已经完成//分析获得数据第一个和最后一个的时间
@@ -64,24 +66,31 @@ namespace SpiderServerInLinux
              3.检测每次获得的数据时间，如果出现差别就暂停任务，重置数据后进行新一轮下载
              */
             //首先获得一波页面数据分析
-            var TheFirstRet = new List<TorrentInfo>(new HandlerHtml(await WebClient.DownloadStringTaskAsync(
-                new Uri($"{Setting.setting.Address}?p={Setting.setting.LastPage}"))).AnalysisData.Values);
+            CurrectPageIndex = !StartNew ? Setting.setting.LastPageIndex : 1;
+            var TheFirstRet = new HandlerHtml(await WebClient.DownloadStringTaskAsync(
+                new Uri($"{Setting.setting.Address}?p={CurrectPageIndex}"))).AnalysisData;
+            //无论什么情况下，下载完一次就PageIndex自增
+            Interlocked.Increment(ref CurrectPageIndex);
+            if (CurrectPageIndex > Setting.setting.LastPageIndex)
+            {
+                Setting.setting.LastPageIndex = CurrectPageIndex;
+            }
+            var FirstRetList = new List<TorrentInfo>(TheFirstRet.Values);
             //于数据库交流，获得数据库时间状态
             //首先判断首尾是否相同 用来判断同一页是否有日期交替
-            if (TheFirstRet[0].RetDate() == TheFirstRet[TheFirstRet.Count - 1].RetDate())
+            if (FirstRetList[0].Day == FirstRetList[FirstRetList.Count - 1].Day)
             {
-                var StatusNum = PageInDateStatus(TheFirstRet[0].RetDate());
+                var StatusNum = PageInDateStatus(FirstRetList[0].Day);
                 //假如已经存在，则向后追溯
                 if (StatusNum == 1)
                 {
-                    //PageIndex自增
-                    Interlocked.Increment(ref Setting.setting.LastPage);
+                   
                     DownloadControl();
                 }
                 //假如未完成，从第一条开始进入获取状态
                 else if (StatusNum == 0)
                 {
-
+                    StartOneByOneAddLoop(TheFirstRet);
                 }
                 //假如从未开始过，则进入全部重新状态
                 else if (StatusNum == -1)
@@ -94,12 +103,10 @@ namespace SpiderServerInLinux
                 //如果不相同则分别判断首位和尾位的状态
                 //由于数据是不断更新的，所以即便是未完成状态，也不需要往前追溯
                 //对于首尾差异，仅判断首的状态
-                var StatusNum = PageInDateStatus(TheFirstRet[0].RetDate());
+                var StatusNum = PageInDateStatus(TheFirstRet[0].Day);
                 //对于已经完成的，则从上至下判断差异时间，从差异时间开始获取
                 if (StatusNum == 1)
                 {
-                    //PageIndex自增
-                    Interlocked.Increment(ref Setting.setting.LastPage);
                     DownloadControl();
                 }
                 //假如未完成，从当前开始进入获取状态
@@ -107,7 +114,6 @@ namespace SpiderServerInLinux
                 {
 
                 }
-
                 //不可能存在，还没有的情况
             }
 
@@ -118,6 +124,37 @@ namespace SpiderServerInLinux
                 if (Status == null) return -1;
                 return Status.Status == false ? 0 : 1;
             }
+        }
+
+        private void StartOneByOneAddLoop(ConcurrentDictionary<int, TorrentInfo> theFirstRet)
+        {
+            Task.Factory.StartNew(() =>
+            {
+                WebClient.DownloadStringCompleted += (Sender, Object) =>
+                {
+                    try
+                    {
+                        //Setting.setting.WordProcess.Add(new HandlerHtml(Object.Result).AnyData);
+                        /* Interlocked.Increment(ref Setting.setting.LastPage);
+                         WebClient.DownloadStringAsync(
+                             new Uri($"{Setting.setting.Address}?p={Setting.setting.LastPage}"));*/
+                    }
+                    catch (Exception e)
+                    {
+                        if (WebClientEx.WebClientEx.ErrorInfo == "Timeout")
+                        {
+
+                        }
+                        else if ((e as WebException).Status == WebExceptionStatus.UnknownError)
+                        {
+
+                        }
+                    }
+
+                };
+            }, CancelInfo.Token, TaskCreationOptions.None,
+           TaskScheduler.Default);
+
         }
     }
 }

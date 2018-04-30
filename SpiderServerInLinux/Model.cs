@@ -18,7 +18,7 @@ namespace SpiderServerInLinux
         internal static readonly CancellationTokenSource CancelSign;
         internal static Setting setting;
         internal string Address;
-        internal int LastPage;
+        internal int LastPageIndex;
         internal BlockingCollection<TorrentInfo> WordProcess = new BlockingCollection<TorrentInfo>();
     }
     internal class TorrentInfo
@@ -31,15 +31,11 @@ namespace SpiderServerInLinux
         public string Magnet { get; set; }
         public string Size { get; set; }
         public int TimeStamp { get; set; }
+        public string Day => Convert.ToDateTime(Date).ToLongDateString();
         public string Date { get; set; }
         public string Up { get; set; }
         public string Leeches { get; set; }
         public string Complete { get; set; }
-
-        public string RetDate()
-        {
-            return Convert.ToDateTime(Date).ToLongDateString();
-        }
     }
     internal abstract class DateRecord
     {

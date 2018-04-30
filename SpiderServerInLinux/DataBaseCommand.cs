@@ -26,7 +26,7 @@ namespace SpiderServerInLinux
                     setting.Address = FindAdress.Value;
                 }
 
-                setting.LastPage = int.Parse(SettingData.FindOne(id => id.Item == "LastCount").Value);
+                setting.LastPageIndex = int.Parse(SettingData.FindOne(id => id.Item == "LastCount").Value);
             }
         }
 

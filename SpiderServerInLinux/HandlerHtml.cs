@@ -16,10 +16,15 @@ namespace SpiderServerInLinux
 {
     internal class HandlerHtml
     {
-        public readonly ConcurrentDictionary<int, TorrentInfo> AnalysisData = new ConcurrentDictionary<int, TorrentInfo>();
+        public ConcurrentDictionary<int, TorrentInfo> AnalysisData = null;
 
-        public HandlerHtml(string result)
+        public HandlerHtml(string result, ConcurrentDictionary<int, TorrentInfo> PreData = null)
         {
+            if (PreData != null)
+                AnalysisData = PreData;
+            else
+                AnalysisData = new ConcurrentDictionary<int, TorrentInfo>();
+
             if (result != "")
             {
 
