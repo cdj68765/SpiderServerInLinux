@@ -84,7 +84,7 @@ namespace SpiderServerInLinux
                 //假如已经存在，则向后追溯
                 if (StatusNum == 1)
                 {
-                   
+                    if (StartNew) return;//如果是重头开始的，找到已经存在的项目，就当做已经结束
                     DownloadControl();
                 }
                 //假如未完成，从第一条开始进入获取状态
@@ -95,7 +95,7 @@ namespace SpiderServerInLinux
                 //假如从未开始过，则进入全部重新状态
                 else if (StatusNum == -1)
                 {
-
+                    StartAddAddRange()
                 }
             }
             else
