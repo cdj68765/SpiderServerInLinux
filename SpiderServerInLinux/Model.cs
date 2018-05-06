@@ -9,8 +9,7 @@ namespace SpiderServerInLinux
 {
    internal class GlobalSet
     {
-        public int _id { get; set; }
-        public string Item { get; set; }
+        public string _id { get; set; }
         public string Value { get; set; }
 
     }
@@ -41,6 +40,7 @@ namespace SpiderServerInLinux
     {
         public String _id { get; set; }
         public bool Status { get; set; }
+        public int Page { get; set; }
     }
 
 }

@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Pipes;
+using System.Linq;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
@@ -69,7 +70,7 @@ namespace SpiderServerInLinux
         }
 
 
-        public async void DownloadInit(bool StartNew=false)
+        public async void DownloadInit(bool StartNew = false)
         {
             /*思路设想
              1.先获取第一次数据，然后判断数据库内该时间段是否已经完成//分析获得数据第一个和最后一个的时间
@@ -77,68 +78,111 @@ namespace SpiderServerInLinux
              3.检测每次获得的数据时间，如果出现差别就暂停任务，重置数据后进行新一轮下载
              */
             //首先获得一波页面数据分析
-       var WebClient = new WebClientEx.WebClientEx();
+            var WebClient = new WebClientEx.WebClientEx();
             CurrectPageIndex = !StartNew ? Setting.setting.LastPageIndex : 1;
             var TheFirstRet = new HandlerHtml(await WebClient.DownloadStringTaskAsync(
-                new Uri($"{Setting.setting.Address}?p={CurrectPageIndex}"))).AnalysisData;
+                new Uri($"{Setting.setting.Address}?p={CurrectPageIndex}")));
 
-            var FirstRetList = new List<TorrentInfo>(TheFirstRet.Values);
             //于数据库交流，获得数据库时间状态
             //首先判断首尾是否相同 用来判断同一页是否有日期交替
-            if (FirstRetList[0].Day == FirstRetList[FirstRetList.Count - 1].Day)
+            if (!StartNew)
             {
-                var StatusNum = PageInDateStatus(FirstRetList[0].Day);
-                //假如已经存在，则向后追溯
-                if (StatusNum == 1)
+                var FirstDay = TheFirstRet.AnalysisData.Values.ElementAt(0).Day;
+                var FirstDayStatus = PageInDateStatus(FirstDay);
+                if (!TheFirstRet.AddFin)
                 {
-                    if (StartNew) return;//如果是重头开始的，找到已经存在的项目，就当做已经结束
-                    DownloadInit();
+                    //假如已经存在，且已经完成，则向后追溯
+                    if (FirstDayStatus == 1)
+                    {
+                        AddOneDay();
+                        DownloadInit();
+                    }
+                    else
+                    {
+                        DownloadLoop(TheFirstRet.AnalysisData, FirstDay);
+                    }
                 }
-                //假如未完成，从第一条开始进入获取状态
-                else if (StatusNum == 0)
+                else
                 {
-                    StartOneByOneAddLoop(TheFirstRet, FirstRetList[0].Day);
+                    //如果不相同则分别判断首位和尾位的状态
+                    //由于数据是不断更新的，所以即便是未完成状态，也不需要往前追溯
+                    //对于首尾差异，仅判断首的状态
+                    var LastDay = TheFirstRet.NextDayData.Values.ElementAt(0).Day;
+                    var LastDayStatus = PageInDateStatus(LastDay);
+                    //对于已经完成的，则从上至下判断差异时间，从差异时间开始获取
+                    if (FirstDayStatus == 1)
+                    {
+                        if (LastDayStatus == 1)
+                        {
+                            AddOneDay();
+                            DownloadInit();
+                        }
+                        else
+                        {
+                            DownloadLoop(TheFirstRet.NextDayData, LastDay);
+                        }
+                    }
+                    //假如未完成，从当前开始进入获取状态
+                    else
+                    {
+                        DownloadLoop(TheFirstRet.AnalysisData, FirstDay);
+                    }
                 }
-                //假如从未开始过，则进入全部重新状态
-                else if (StatusNum == -1)
-                {
-                    StartAddAddRange(TheFirstRet);
-                }
-            }
-            else
-            {
-                //如果不相同则分别判断首位和尾位的状态
-                //由于数据是不断更新的，所以即便是未完成状态，也不需要往前追溯
-                //对于首尾差异，仅判断首的状态
-                var StatusNum = PageInDateStatus(TheFirstRet[0].Day);
-                //对于已经完成的，则从上至下判断差异时间，从差异时间开始获取
-                if (StatusNum == 1)
-                {
-                    DownloadInit();
-                }
-                //假如未完成，从当前开始进入获取状态
-                else if (StatusNum == 0)
-                {
-
-                }
-                //不可能存在，还没有的情况
-            }
-
-            //判断从数据库返回的历史日期状态 -1代表没有创建过，0代表未完成，1代表已经完成
-            int PageInDateStatus(string Date)
-            {
-                var Status = GetDateInfo(Date);
-                if (Status == null) return -1;
-                return Status.Status == false ? 0 : 1;
             }
         }
-
-        private void StartAddAddRange(ConcurrentDictionary<int, TorrentInfo> theFirstRet)
+        //判断从数据库返回的历史日期状态 -1代表没有创建过，0代表未完成，1代表已经完成
+        int PageInDateStatus(string Date)
         {
-            throw new NotImplementedException();
+            var Status = GetDateInfo(Date);
+            if (Status == null) return -1;
+            return Status.Status == false ? 0 : 1;
+        }
+        private void DownloadLoop(ConcurrentDictionary<int, TorrentInfo> theFirstRet, string Day)
+        {
+            Task.Factory.StartNew(() =>
+            {
+                var Download = new WebClientEx.WebClientEx();
+                Download.DownloadStringCompleted += (Sender, Object) =>
+                {
+                    try
+                    {
+                        var Ret = new HandlerHtml(Object.Result, theFirstRet, Day);
+                        //检查是否遍历到了下一天
+                        if (!Ret.AddFin)
+                        {
+                            //是的话当前页+1，并下载
+                            Download.DownloadStringAsync(AddOneDay());
+                        }
+                        else
+                        {
+                            var StatusNum = PageInDateStatus(Day);
+                            //假如未完成，从第一条开始进入获取状态
+                            if (StatusNum == 0)
+                            {
+                                SaveToDataBaseOneByOne(Ret.AnalysisData.Values, CurrectPageIndex, true);
+                            }
+                            //假如从未开始过，则进入全部重新状态
+                            else if (StatusNum == -1)
+                            {
+                                SaveToDataBaseRange(Ret.AnalysisData.Values, CurrectPageIndex, true);
+                            }
+                            AddOneDay();
+                            var NextData = new ConcurrentDictionary<int, TorrentInfo>(Ret.NextDayData);
+                            Ret.Dispose();
+                            DownloadLoop(NextData, NextData.Values.ElementAt(0).Day);
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        ErrorDealWith(e, Download);
+                    }
+                };
+                Download.DownloadStringAsync(AddOneDay());
+            }, CancelInfo.Token, TaskCreationOptions.None,
+           TaskScheduler.Default);
         }
 
-        private void StartOneByOneAddLoop(ConcurrentDictionary<int, TorrentInfo> theFirstRet,string Day)
+      /*  private void StartOneByOneAddLoop(ConcurrentDictionary<int, TorrentInfo> theFirstRet,string Day)
         {
             Task.Factory.StartNew(() =>
             {
@@ -156,15 +200,14 @@ namespace SpiderServerInLinux
                         }
                         else
                         {
-
                             var FirstRetList = new List<TorrentInfo>(Ret.AnalysisData.Values);
                         }
                         //Setting.setting.WordProcess.Add(new HandlerHtml(Object.Result).AnyData);
                         /* Interlocked.Increment(ref Setting.setting.LastPage);
                          WebClient.DownloadStringAsync(
                              new Uri($"{Setting.setting.Address}?p={Setting.setting.LastPage}"));*/
-                    }
-                    catch (Exception e)
+                 //   }
+                 /*   catch (Exception e)
                     {
                         ErrorDealWith(e, Download);
                     }
@@ -173,7 +216,7 @@ namespace SpiderServerInLinux
             }, CancelInfo.Token, TaskCreationOptions.None,
            TaskScheduler.Default);
 
-        }
+        }*/
 
         private void ErrorDealWith(Exception e, WebClientEx.WebClientEx download)
         {

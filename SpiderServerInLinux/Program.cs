@@ -15,11 +15,11 @@ namespace SpiderServerInLinux
             //test
             //new WebPageGet(@"https://sukebei.nyaa.si/?p=500000");
             GetDataFormDataBase();
-        var ret=     new HandlerHtml(File.ReadAllText("save.txt"));
-            SaveToDataBaseFormList(ret.AnalysisData.Values,"");
-            SaveToDataOneByOne(ret.AnalysisData.Values, "");
+            var ret = new HandlerHtml(File.ReadAllText("save.txt"));
+          // SaveToDataBaseFormList(ret.AnalysisData.Values);
+            //SaveToDataBaseOneByOne(ret.AnalysisData.Values);
             new WebPageGet().DownloadInit();
-            //new WebPageGet();
+            new WebPageGet();
             TCPCmd.StartListener();
         }
     }

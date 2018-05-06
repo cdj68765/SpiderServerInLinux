@@ -14,9 +14,10 @@ using static SpiderServerInLinux.DataBaseCommand;
 
 namespace SpiderServerInLinux
 {
-    internal class HandlerHtml
+    internal class HandlerHtml:IDisposable
     {
         public ConcurrentDictionary<int, TorrentInfo> AnalysisData = null;
+        public ConcurrentDictionary<int, TorrentInfo> NextDayData = null;
         public bool AddFin = true;
         public HandlerHtml(string result, ConcurrentDictionary<int, TorrentInfo> PreData = null,string Day=null)
         {
@@ -24,7 +25,6 @@ namespace SpiderServerInLinux
                 AnalysisData = PreData;
             else
                 AnalysisData = new ConcurrentDictionary<int, TorrentInfo>();
-
             if (result != "")
             {
                 var HtmlDoc = new HtmlDocument();
@@ -59,6 +59,11 @@ namespace SpiderServerInLinux
                     //用来判断是否下载完毕一整天的数据
                     if (Day!=null)
                     {
+                        if(AddFin)
+                        {
+                            NextDayData.AddOrUpdate(TempData.id, TempData, (key, Value) => TempData);
+                            continue;
+                        }
                         if (TempData.Day != Day)
                         {
                             AddFin = true;
@@ -70,6 +75,13 @@ namespace SpiderServerInLinux
                 //SaveToDataBaseFormList(new List<TorrentInfo>(AnalysisData.Values));
             }
 
+        }
+
+        public void Dispose()
+        {
+            this.AnalysisData = null;
+            this.NextDayData = null;
+            GC.Collect();
         }
     }
 }
