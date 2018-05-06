@@ -13,7 +13,7 @@ namespace SpiderServerInLinux
     internal class WebPageGet
     {
          int CurrectPageIndex;
-        readonly WebClient WebClient = new WebClientEx.WebClientEx();
+       
         readonly CancellationTokenSource CancelInfo = new CancellationTokenSource();
 
         internal WebPageGet()
@@ -24,10 +24,21 @@ namespace SpiderServerInLinux
             //由于网页数据是向后更新的，因此如果找到存在数据，但是未完成状态的，那么就以首位为起始，找到不一样的为止，为了防止万一，使用Dic建立索引
         }
 
+        Uri AddOneDay()
+        {
+            //无论什么情况下，下载完一次就PageIndex自增
+            Interlocked.Increment(ref CurrectPageIndex);
+            if (CurrectPageIndex > Setting.setting.LastPageIndex)
+            {
+                Setting.setting.LastPageIndex = CurrectPageIndex;
+            }
+            return new Uri($"{Setting.setting.Address}?p={CurrectPageIndex}");
+        }
         public void GetPage(string Path = "")
         {
             Task.Factory.StartNew(() =>
                 {
+                    WebClientEx.WebClientEx WebClient = new WebClientEx.WebClientEx();
                     WebClient.DownloadStringCompleted += (Sender, Object) =>
                     {
                         try
@@ -39,7 +50,7 @@ namespace SpiderServerInLinux
                         }
                         catch (Exception e)
                         {
-                            if (WebClientEx.WebClientEx.ErrorInfo == "Timeout")
+                            if (WebClient.ErrorInfo == "Timeout")
                             {
 
                             }
@@ -58,7 +69,7 @@ namespace SpiderServerInLinux
         }
 
 
-        public async void DownloadControl(bool StartNew=false)
+        public async void DownloadInit(bool StartNew=false)
         {
             /*思路设想
              1.先获取第一次数据，然后判断数据库内该时间段是否已经完成//分析获得数据第一个和最后一个的时间
@@ -66,15 +77,11 @@ namespace SpiderServerInLinux
              3.检测每次获得的数据时间，如果出现差别就暂停任务，重置数据后进行新一轮下载
              */
             //首先获得一波页面数据分析
+       var WebClient = new WebClientEx.WebClientEx();
             CurrectPageIndex = !StartNew ? Setting.setting.LastPageIndex : 1;
             var TheFirstRet = new HandlerHtml(await WebClient.DownloadStringTaskAsync(
                 new Uri($"{Setting.setting.Address}?p={CurrectPageIndex}"))).AnalysisData;
-            //无论什么情况下，下载完一次就PageIndex自增
-            Interlocked.Increment(ref CurrectPageIndex);
-            if (CurrectPageIndex > Setting.setting.LastPageIndex)
-            {
-                Setting.setting.LastPageIndex = CurrectPageIndex;
-            }
+
             var FirstRetList = new List<TorrentInfo>(TheFirstRet.Values);
             //于数据库交流，获得数据库时间状态
             //首先判断首尾是否相同 用来判断同一页是否有日期交替
@@ -85,17 +92,17 @@ namespace SpiderServerInLinux
                 if (StatusNum == 1)
                 {
                     if (StartNew) return;//如果是重头开始的，找到已经存在的项目，就当做已经结束
-                    DownloadControl();
+                    DownloadInit();
                 }
                 //假如未完成，从第一条开始进入获取状态
                 else if (StatusNum == 0)
                 {
-                    StartOneByOneAddLoop(TheFirstRet);
+                    StartOneByOneAddLoop(TheFirstRet, FirstRetList[0].Day);
                 }
                 //假如从未开始过，则进入全部重新状态
                 else if (StatusNum == -1)
                 {
-                    StartAddAddRange()
+                    StartAddAddRange(TheFirstRet);
                 }
             }
             else
@@ -107,7 +114,7 @@ namespace SpiderServerInLinux
                 //对于已经完成的，则从上至下判断差异时间，从差异时间开始获取
                 if (StatusNum == 1)
                 {
-                    DownloadControl();
+                    DownloadInit();
                 }
                 //假如未完成，从当前开始进入获取状态
                 else if (StatusNum == 0)
@@ -126,14 +133,32 @@ namespace SpiderServerInLinux
             }
         }
 
-        private void StartOneByOneAddLoop(ConcurrentDictionary<int, TorrentInfo> theFirstRet)
+        private void StartAddAddRange(ConcurrentDictionary<int, TorrentInfo> theFirstRet)
+        {
+            throw new NotImplementedException();
+        }
+
+        private void StartOneByOneAddLoop(ConcurrentDictionary<int, TorrentInfo> theFirstRet,string Day)
         {
             Task.Factory.StartNew(() =>
             {
-                WebClient.DownloadStringCompleted += (Sender, Object) =>
+                var Download = new WebClientEx.WebClientEx();
+                Download.DownloadStringCompleted += (Sender, Object) =>
                 {
                     try
                     {
+                        var Ret = new HandlerHtml(Object.Result,theFirstRet, Day);
+                        //检查是否遍历到了下一天
+                        if (!Ret.AddFin)
+                        {
+                            //是的话当前页+1，并下载
+                            Download.DownloadStringAsync(AddOneDay());
+                        }
+                        else
+                        {
+
+                            var FirstRetList = new List<TorrentInfo>(Ret.AnalysisData.Values);
+                        }
                         //Setting.setting.WordProcess.Add(new HandlerHtml(Object.Result).AnyData);
                         /* Interlocked.Increment(ref Setting.setting.LastPage);
                          WebClient.DownloadStringAsync(
@@ -141,20 +166,25 @@ namespace SpiderServerInLinux
                     }
                     catch (Exception e)
                     {
-                        if (WebClientEx.WebClientEx.ErrorInfo == "Timeout")
-                        {
-
-                        }
-                        else if ((e as WebException).Status == WebExceptionStatus.UnknownError)
-                        {
-
-                        }
+                        ErrorDealWith(e, Download);
                     }
-
                 };
+                Download.DownloadStringAsync(AddOneDay());
             }, CancelInfo.Token, TaskCreationOptions.None,
            TaskScheduler.Default);
 
+        }
+
+        private void ErrorDealWith(Exception e, WebClientEx.WebClientEx download)
+        {
+            if (download.ErrorInfo == "Timeout")
+            {
+
+            }
+            else if ((e as WebException).Status == WebExceptionStatus.UnknownError)
+            {
+
+            }
         }
     }
 }

@@ -6,7 +6,7 @@ namespace WebClientEx
     public class WebClientEx : WebClient
     {
         public WebResponse webResponse;
-        public static String ErrorInfo;
+        public  String ErrorInfo;
         public static CookieContainer outboundCookies;
         public static CookieCollection inboundCookies;
 
@@ -44,21 +44,9 @@ namespace WebClientEx
             inboundCookies = new CookieCollection();
         }
 
-        public CookieContainer OutboundCookies
-        {
-            get
-            {
-                return outboundCookies;
-            }
-        }
+        public CookieContainer OutboundCookies => outboundCookies;
 
-        public CookieCollection InboundCookies
-        {
-            get
-            {
-                return inboundCookies;
-            }
-        }
+        public CookieCollection InboundCookies => inboundCookies;
 
         protected override WebRequest GetWebRequest(Uri address)
         {

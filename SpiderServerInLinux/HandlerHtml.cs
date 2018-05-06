@@ -17,8 +17,8 @@ namespace SpiderServerInLinux
     internal class HandlerHtml
     {
         public ConcurrentDictionary<int, TorrentInfo> AnalysisData = null;
-
-        public HandlerHtml(string result, ConcurrentDictionary<int, TorrentInfo> PreData = null)
+        public bool AddFin = true;
+        public HandlerHtml(string result, ConcurrentDictionary<int, TorrentInfo> PreData = null,string Day=null)
         {
             if (PreData != null)
                 AnalysisData = PreData;
@@ -27,7 +27,6 @@ namespace SpiderServerInLinux
 
             if (result != "")
             {
-
                 var HtmlDoc = new HtmlDocument();
                 HtmlDoc.LoadHtml(result);
                 foreach (var item in HtmlDoc.DocumentNode.SelectNodes(@"/html/body/div[1]/div[2]/table/tbody/tr"))
@@ -52,12 +51,21 @@ namespace SpiderServerInLinux
 
                     TempData.Size = temp.SelectSingleNode("td[4]").InnerText;
 
-                    TempData.TimeStamp = int.Parse(temp.SelectSingleNode("td[5]").Attributes["data-timestamp"].Value);
+                    TempData.id = int.Parse(temp.SelectSingleNode("td[5]").Attributes["data-timestamp"].Value);
                     TempData.Date = temp.SelectSingleNode("td[5]").InnerText;
                     TempData.Up = temp.SelectSingleNode("td[6]").InnerText;
                     TempData.Leeches = temp.SelectSingleNode("td[7]").InnerText;
                     TempData.Complete = temp.SelectSingleNode("td[8]").InnerText;
-                    AnalysisData.AddOrUpdate(TempData.TimeStamp, TempData, (key, Value) => TempData);
+                    //用来判断是否下载完毕一整天的数据
+                    if (Day!=null)
+                    {
+                        if (TempData.Day != Day)
+                        {
+                            AddFin = true;
+                            break;
+                        }
+                    }
+                    AnalysisData.AddOrUpdate(TempData.id, TempData, (key, Value) => TempData);
                 }
                 //SaveToDataBaseFormList(new List<TorrentInfo>(AnalysisData.Values));
             }

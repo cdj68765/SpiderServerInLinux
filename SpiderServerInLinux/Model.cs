@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading;
+using LiteDB;
 
 namespace SpiderServerInLinux
 {
@@ -23,24 +24,22 @@ namespace SpiderServerInLinux
     }
     internal class TorrentInfo
     {
-        public int _id { get; set; }
+        public int id { get; set; }
         public string Class { get; set; }
         public string Catagory { get; set; }
         public string Title { get; set; }
         public string Torrent { get; set; }
         public string Magnet { get; set; }
         public string Size { get; set; }
-        public int TimeStamp { get; set; }
         public string Day => Convert.ToDateTime(Date).ToLongDateString();
         public string Date { get; set; }
         public string Up { get; set; }
         public string Leeches { get; set; }
         public string Complete { get; set; }
     }
-    internal abstract class DateRecord
+    internal  class DateRecord
     {
-        public int _id;
-        public String Date { get; set; }
+        public String _id { get; set; }
         public bool Status { get; set; }
     }
 
