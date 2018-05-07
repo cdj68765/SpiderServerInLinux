@@ -15,7 +15,7 @@ namespace SpiderServerInLinux
     }
     internal class Setting
     {
-        internal static readonly CancellationTokenSource CancelSign;
+        internal static readonly CancellationTokenSource CancelSign=new CancellationTokenSource();
         internal static Setting setting;
         internal string Address;
         internal int LastPageIndex;

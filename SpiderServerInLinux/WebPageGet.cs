@@ -13,9 +13,10 @@ namespace SpiderServerInLinux
 {
     internal class WebPageGet
     {
-         int CurrectPageIndex;
-       
+        int CurrectPageIndex;
+
         readonly CancellationTokenSource CancelInfo = new CancellationTokenSource();
+        private bool StartNew = false;
 
         internal WebPageGet()
         {
@@ -33,8 +34,10 @@ namespace SpiderServerInLinux
             {
                 Setting.setting.LastPageIndex = CurrectPageIndex;
             }
+
             return new Uri($"{Setting.setting.Address}?p={CurrectPageIndex}");
         }
+
         public void GetPage(string Path = "")
         {
             Task.Factory.StartNew(() =>
@@ -82,54 +85,53 @@ namespace SpiderServerInLinux
             CurrectPageIndex = !StartNew ? Setting.setting.LastPageIndex : 1;
             var TheFirstRet = new HandlerHtml(await WebClient.DownloadStringTaskAsync(
                 new Uri($"{Setting.setting.Address}?p={CurrectPageIndex}")));
-
+            this.StartNew = StartNew;
             //于数据库交流，获得数据库时间状态
             //首先判断首尾是否相同 用来判断同一页是否有日期交替
-            if (!StartNew)
+
+            var FirstDay = TheFirstRet.AnalysisData.Values.ElementAt(0).Day;
+            var FirstDayStatus = PageInDateStatus(FirstDay);
+            if (!TheFirstRet.AddFin)
             {
-                var FirstDay = TheFirstRet.AnalysisData.Values.ElementAt(0).Day;
-                var FirstDayStatus = PageInDateStatus(FirstDay);
-                if (!TheFirstRet.AddFin)
+                //假如已经存在，且已经完成，则向后追溯
+                if (FirstDayStatus == 1)
                 {
-                    //假如已经存在，且已经完成，则向后追溯
-                    if (FirstDayStatus == 1)
+                    AddOneDay();
+                    DownloadInit();
+                }
+                else
+                {
+                    DownloadLoop(TheFirstRet.AnalysisData, FirstDay);
+                }
+            }
+            else
+            {
+                //如果不相同则分别判断首位和尾位的状态
+                //由于数据是不断更新的，所以即便是未完成状态，也不需要往前追溯
+                //对于首尾差异，仅判断首的状态
+                var LastDay = TheFirstRet.NextDayData.Values.ElementAt(0).Day;
+                var LastDayStatus = PageInDateStatus(LastDay);
+                //对于已经完成的，则从上至下判断差异时间，从差异时间开始获取
+                if (FirstDayStatus == 1)
+                {
+                    if (LastDayStatus == 1)
                     {
                         AddOneDay();
                         DownloadInit();
                     }
                     else
                     {
-                        DownloadLoop(TheFirstRet.AnalysisData, FirstDay);
+                        DownloadLoop(TheFirstRet.NextDayData, LastDay);
                     }
                 }
+                //假如未完成，从当前开始进入获取状态
                 else
                 {
-                    //如果不相同则分别判断首位和尾位的状态
-                    //由于数据是不断更新的，所以即便是未完成状态，也不需要往前追溯
-                    //对于首尾差异，仅判断首的状态
-                    var LastDay = TheFirstRet.NextDayData.Values.ElementAt(0).Day;
-                    var LastDayStatus = PageInDateStatus(LastDay);
-                    //对于已经完成的，则从上至下判断差异时间，从差异时间开始获取
-                    if (FirstDayStatus == 1)
-                    {
-                        if (LastDayStatus == 1)
-                        {
-                            AddOneDay();
-                            DownloadInit();
-                        }
-                        else
-                        {
-                            DownloadLoop(TheFirstRet.NextDayData, LastDay);
-                        }
-                    }
-                    //假如未完成，从当前开始进入获取状态
-                    else
-                    {
-                        DownloadLoop(TheFirstRet.AnalysisData, FirstDay);
-                    }
+                    DownloadLoop(TheFirstRet.AnalysisData, FirstDay);
                 }
             }
         }
+
         //判断从数据库返回的历史日期状态 -1代表没有创建过，0代表未完成，1代表已经完成
         int PageInDateStatus(string Date)
         {
@@ -137,89 +139,94 @@ namespace SpiderServerInLinux
             if (Status == null) return -1;
             return Status.Status == false ? 0 : 1;
         }
+
         private void DownloadLoop(ConcurrentDictionary<int, TorrentInfo> theFirstRet, string Day)
         {
             Task.Factory.StartNew(() =>
-            {
-                var Download = new WebClientEx.WebClientEx();
-                Download.DownloadStringCompleted += (Sender, Object) =>
                 {
-                    try
+                    var Download = new WebClientEx.WebClientEx();
+                    Download.DownloadStringCompleted += (Sender, Object) =>
                     {
-                        var Ret = new HandlerHtml(Object.Result, theFirstRet, Day);
-                        //检查是否遍历到了下一天
-                        if (!Ret.AddFin)
+                        try
                         {
-                            //是的话当前页+1，并下载
-                            Download.DownloadStringAsync(AddOneDay());
+                            var Ret = new HandlerHtml(Object.Result, theFirstRet, Day);
+                            //检查是否遍历到了下一天
+                            if (!Ret.AddFin)
+                            {
+                                //是的话当前页+1，并下载
+                                Download.DownloadStringAsync(AddOneDay());
+                            }
+                            else
+                            {
+                                var StatusNum = PageInDateStatus(Day);
+                                //假如未完成，从第一条开始进入获取状态
+                                if (StatusNum == 0)
+                                {
+                                    SaveToDataBaseOneByOne(Ret.AnalysisData.Values, CurrectPageIndex, !StartNew);
+                                }
+                                //假如从未开始过，则进入全部重新状态
+                                else if (StatusNum == -1)
+                                {
+                                    SaveToDataBaseRange(Ret.AnalysisData.Values, CurrectPageIndex, !StartNew);
+                                }
+
+                                StartNew = false;
+                                SaveStatus();
+                                AddOneDay();
+                                var NextData = new ConcurrentDictionary<int, TorrentInfo>(Ret.NextDayData);
+                                Ret.Dispose();
+                                DownloadLoop(NextData, NextData.Values.ElementAt(0).Day);
+                            }
                         }
-                        else
+                        catch (Exception e)
                         {
-                            var StatusNum = PageInDateStatus(Day);
-                            //假如未完成，从第一条开始进入获取状态
-                            if (StatusNum == 0)
-                            {
-                                SaveToDataBaseOneByOne(Ret.AnalysisData.Values, CurrectPageIndex, true);
-                            }
-                            //假如从未开始过，则进入全部重新状态
-                            else if (StatusNum == -1)
-                            {
-                                SaveToDataBaseRange(Ret.AnalysisData.Values, CurrectPageIndex, true);
-                            }
-                            AddOneDay();
-                            var NextData = new ConcurrentDictionary<int, TorrentInfo>(Ret.NextDayData);
-                            Ret.Dispose();
-                            DownloadLoop(NextData, NextData.Values.ElementAt(0).Day);
+                            ErrorDealWith(e, Download);
                         }
-                    }
-                    catch (Exception e)
-                    {
-                        ErrorDealWith(e, Download);
-                    }
-                };
-                Download.DownloadStringAsync(AddOneDay());
-            }, CancelInfo.Token, TaskCreationOptions.None,
-           TaskScheduler.Default);
+                    };
+                    Download.DownloadStringAsync(AddOneDay());
+                }, CancelInfo.Token, TaskCreationOptions.None,
+                TaskScheduler.Default);
         }
 
-      /*  private void StartOneByOneAddLoop(ConcurrentDictionary<int, TorrentInfo> theFirstRet,string Day)
-        {
-            Task.Factory.StartNew(() =>
-            {
-                var Download = new WebClientEx.WebClientEx();
-                Download.DownloadStringCompleted += (Sender, Object) =>
-                {
-                    try
-                    {
-                        var Ret = new HandlerHtml(Object.Result,theFirstRet, Day);
-                        //检查是否遍历到了下一天
-                        if (!Ret.AddFin)
-                        {
-                            //是的话当前页+1，并下载
-                            Download.DownloadStringAsync(AddOneDay());
-                        }
-                        else
-                        {
-                            var FirstRetList = new List<TorrentInfo>(Ret.AnalysisData.Values);
-                        }
-                        //Setting.setting.WordProcess.Add(new HandlerHtml(Object.Result).AnyData);
-                        /* Interlocked.Increment(ref Setting.setting.LastPage);
-                         WebClient.DownloadStringAsync(
-                             new Uri($"{Setting.setting.Address}?p={Setting.setting.LastPage}"));*/
-                 //   }
-                 /*   catch (Exception e)
-                    {
-                        ErrorDealWith(e, Download);
-                    }
-                };
-                Download.DownloadStringAsync(AddOneDay());
-            }, CancelInfo.Token, TaskCreationOptions.None,
-           TaskScheduler.Default);
+        /*  private void StartOneByOneAddLoop(ConcurrentDictionary<int, TorrentInfo> theFirstRet,string Day)
+          {
+              Task.Factory.StartNew(() =>
+              {
+                  var Download = new WebClientEx.WebClientEx();
+                  Download.DownloadStringCompleted += (Sender, Object) =>
+                  {
+                      try
+                      {
+                          var Ret = new HandlerHtml(Object.Result,theFirstRet, Day);
+                          //检查是否遍历到了下一天
+                          if (!Ret.AddFin)
+                          {
+                              //是的话当前页+1，并下载
+                              Download.DownloadStringAsync(AddOneDay());
+                          }
+                          else
+                          {
+                              var FirstRetList = new List<TorrentInfo>(Ret.AnalysisData.Values);
+                          }
+                          //Setting.setting.WordProcess.Add(new HandlerHtml(Object.Result).AnyData);
+                          /* Interlocked.Increment(ref Setting.setting.LastPage);
+                           WebClient.DownloadStringAsync(
+                               new Uri($"{Setting.setting.Address}?p={Setting.setting.LastPage}"));*/
+        //   }
+        /*   catch (Exception e)
+           {
+               ErrorDealWith(e, Download);
+           }
+       };
+       Download.DownloadStringAsync(AddOneDay());
+   }, CancelInfo.Token, TaskCreationOptions.None,
+  TaskScheduler.Default);
 
-        }*/
+}*/
 
         private void ErrorDealWith(Exception e, WebClientEx.WebClientEx download)
         {
+
             if (download.ErrorInfo == "Timeout")
             {
 
@@ -228,6 +235,34 @@ namespace SpiderServerInLinux
             {
 
             }
+
+            CancelInfo.Cancel();
+        }
+    }
+
+   internal class DownWork : WebPageGet
+    {
+        internal DownWork()
+        {
+            DownLoadOldPage();
+            DownLoadNewPage();
+        }
+
+        private void DownLoadOldPage()
+        {
+            DownloadInit();
+        }
+
+        private void DownLoadNewPage()
+        {
+            Task.Factory.StartNew(() =>
+                {
+                    Thread.Sleep(new TimeSpan(1, 0, 0, 0, 0));
+                    var Date = DateTime.Now.ToLongDateString();
+
+                    DownLoadNewPage();
+                }, Setting.CancelSign.Token, TaskCreationOptions.LongRunning,
+                TaskScheduler.Default);
         }
     }
 }

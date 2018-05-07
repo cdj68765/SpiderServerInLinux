@@ -12,14 +12,13 @@ namespace SpiderServerInLinux
         {
             var TCPCmd = TCPCommand.Init(1000);
             DataBaseCommand.Init();
+            new   DownWork();
             //test
             //new WebPageGet(@"https://sukebei.nyaa.si/?p=500000");
-            GetDataFormDataBase();
+            GetDataFromDataBase();
             var ret = new HandlerHtml(File.ReadAllText("save.txt"));
           // SaveToDataBaseFormList(ret.AnalysisData.Values);
             //SaveToDataBaseOneByOne(ret.AnalysisData.Values);
-            new WebPageGet().DownloadInit();
-            new WebPageGet();
             TCPCmd.StartListener();
         }
     }
