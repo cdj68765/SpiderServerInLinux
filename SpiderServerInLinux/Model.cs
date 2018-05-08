@@ -1,26 +1,23 @@
 ﻿using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Text;
 using System.Threading;
-using LiteDB;
 
 namespace SpiderServerInLinux
 {
-   internal class GlobalSet
+    internal class GlobalSet
     {
         public string _id { get; set; }
         public string Value { get; set; }
+    }
 
-    }
-    internal class Setting
+    internal static class Setting
     {
-        internal static readonly CancellationTokenSource CancelSign=new CancellationTokenSource();
-        internal static Setting setting;
-        internal string Address;
-        internal int LastPageIndex;
-        internal BlockingCollection<TorrentInfo> WordProcess = new BlockingCollection<TorrentInfo>();
+        internal static readonly CancellationTokenSource CancelSign = new CancellationTokenSource();
+        internal static string Address;
+        internal static int LastPageIndex;
+        internal static BlockingCollection<TorrentInfo> WordProcess = new BlockingCollection<TorrentInfo>();
     }
+
     internal class TorrentInfo
     {
         public int id { get; set; }
@@ -36,11 +33,11 @@ namespace SpiderServerInLinux
         public string Leeches { get; set; }
         public string Complete { get; set; }
     }
-    internal  class DateRecord
+
+    internal class DateRecord
     {
-        public String _id { get; set; }
+        public string _id { get; set; }
         public bool Status { get; set; }
         public int Page { get; set; }
     }
-
 }

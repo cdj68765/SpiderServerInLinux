@@ -5,21 +5,24 @@ namespace WebClientEx
 {
     public class WebClientEx : WebClient
     {
-        public WebResponse webResponse;
-        public  String ErrorInfo;
         public static CookieContainer outboundCookies;
         public static CookieCollection inboundCookies;
 
-        private int _TimeOut = 30000; //milliseconds
-        private string h_Accept = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8";
-        private string h_Accept_Encoding = "gzip, deflate, br";
-        private string h_Accept_Language = "en-US,en;q=0.5";
-        private string h_User_Agent = "Mozilla/5.0 (Windows NT 10.0; WOW64; rv:47.0) Gecko/20100101 Firefox/47.0";
-        private string h_Referer = string.Empty;
+        private readonly int _TimeOut = 30000; //milliseconds
+        public string ErrorInfo;
+        private readonly string h_Accept = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8";
+        private readonly string h_Accept_Encoding = "gzip, deflate, br";
+        private readonly string h_Accept_Language = "en-US,en;q=0.5";
+        private readonly string h_Referer = string.Empty;
+
+        private readonly string h_User_Agent =
+            "Mozilla/5.0 (Windows NT 10.0; WOW64; rv:47.0) Gecko/20100101 Firefox/47.0";
+
+        public WebResponse webResponse;
 
         public WebClientEx(HEADERS headers = null, int TimeOut = 30000)
         {
-            _TimeOut = (Math.Abs(TimeOut) < 0) ? _TimeOut : Math.Abs(TimeOut);
+            _TimeOut = Math.Abs(TimeOut) < 0 ? _TimeOut : Math.Abs(TimeOut);
 
             if (headers != null)
             {
@@ -30,15 +33,12 @@ namespace WebClientEx
                 h_User_Agent = headers.USER_AGENT;
             }
 
-            this.Headers.Add("Accept", h_Accept);
-            this.Headers.Add("Accept-Encoding", h_Accept_Encoding);
-            this.Headers.Add("Accept-Language", h_Accept_Language);
-            this.Headers.Add("User-Agent", h_User_Agent);
+            Headers.Add("Accept", h_Accept);
+            Headers.Add("Accept-Encoding", h_Accept_Encoding);
+            Headers.Add("Accept-Language", h_Accept_Language);
+            Headers.Add("User-Agent", h_User_Agent);
 
-            if (!string.IsNullOrEmpty(h_Referer))
-            {
-                this.Headers.Add("Referer", h_Referer);
-            }
+            if (!string.IsNullOrEmpty(h_Referer)) Headers.Add("Referer", h_Referer);
 
             outboundCookies = new CookieContainer();
             inboundCookies = new CookieCollection();
@@ -50,8 +50,8 @@ namespace WebClientEx
 
         protected override WebRequest GetWebRequest(Uri address)
         {
-            WebRequest r = base.GetWebRequest(address);
-            HttpWebRequest request = r as HttpWebRequest;
+            var r = base.GetWebRequest(address);
+            var request = r as HttpWebRequest;
             request.Timeout = _TimeOut;
             request.AllowAutoRedirect = true;
             request.AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
@@ -63,17 +63,14 @@ namespace WebClientEx
         {
             try
             {
-                WebResponse response = base.GetWebResponse(request, result);
+                var response = base.GetWebResponse(request, result);
                 webResponse = response;
                 inboundCookies = (response as HttpWebResponse).Cookies ?? inboundCookies;
                 return response;
             }
             catch (WebException e)
             {
-                if (e.Status == WebExceptionStatus.Timeout)
-                {
-                    ErrorInfo = "Timeout";
-                }
+                if (e.Status == WebExceptionStatus.Timeout) ErrorInfo = "Timeout";
                 return null;
             }
         }
@@ -82,7 +79,7 @@ namespace WebClientEx
         {
             try
             {
-                WebResponse response = base.GetWebResponse(request);
+                var response = base.GetWebResponse(request);
                 webResponse = response;
                 inboundCookies = (response as HttpWebResponse).Cookies ?? inboundCookies;
                 return response;
@@ -98,8 +95,8 @@ namespace WebClientEx
             public string ACCEPT;
             public string ACCEPT_ENCODING;
             public string ACCEPT_LANGUAGE;
-            public string USER_AGENT;
             public string REFERER;
+            public string USER_AGENT;
         }
     }
 }

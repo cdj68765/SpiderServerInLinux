@@ -1,25 +1,16 @@
 ﻿using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.IO;
-using System.Net;
-using System.Net.Http;
-using System.Net.Http.Headers;
-using System.Text;
-using System.Threading.Tasks;
-using System.Web;
 using HtmlAgilityPack;
-using static SpiderServerInLinux.Setting;
-using static SpiderServerInLinux.DataBaseCommand;
 
 namespace SpiderServerInLinux
 {
-    internal class HandlerHtml:IDisposable
+    internal class HandlerHtml : IDisposable
     {
-        public ConcurrentDictionary<int, TorrentInfo> AnalysisData = null;
-        public ConcurrentDictionary<int, TorrentInfo> NextDayData = null;
-        public bool AddFin = true;
-        public HandlerHtml(string result, ConcurrentDictionary<int, TorrentInfo> PreData = null,string Day=null)
+        public bool AddFin;
+        public ConcurrentDictionary<int, TorrentInfo> AnalysisData;
+        public ConcurrentDictionary<int, TorrentInfo> NextDayData;
+
+        public HandlerHtml(string result, ConcurrentDictionary<int, TorrentInfo> PreData = null, string Day = null)
         {
             if (PreData != null)
                 AnalysisData = PreData;
@@ -31,7 +22,7 @@ namespace SpiderServerInLinux
                 HtmlDoc.LoadHtml(result);
                 foreach (var item in HtmlDoc.DocumentNode.SelectNodes(@"/html/body/div[1]/div[2]/table/tbody/tr"))
                 {
-                    TorrentInfo TempData = new TorrentInfo();
+                    var TempData = new TorrentInfo();
                     var temp = HtmlNode.CreateNode(item.OuterHtml);
                     TempData.Class = item.Attributes["class"].Value;
                     TempData.Catagory = temp.SelectSingleNode("td[1]/a").Attributes["title"]
@@ -57,30 +48,34 @@ namespace SpiderServerInLinux
                     TempData.Leeches = temp.SelectSingleNode("td[7]").InnerText;
                     TempData.Complete = temp.SelectSingleNode("td[8]").InnerText;
                     //用来判断是否下载完毕一整天的数据
-                    if (Day!=null)
+                    if (Day != null)
                     {
-                        if(AddFin)
+                        if (AddFin)
                         {
                             NextDayData.AddOrUpdate(TempData.id, TempData, (key, Value) => TempData);
                             continue;
                         }
+
                         if (TempData.Day != Day)
                         {
+                            NextDayData = new ConcurrentDictionary<int, TorrentInfo>();
+                            NextDayData.AddOrUpdate(TempData.id, TempData, (key, Value) => TempData);
                             AddFin = true;
-                            break;
+                            continue;
                         }
                     }
+
                     AnalysisData.AddOrUpdate(TempData.id, TempData, (key, Value) => TempData);
                 }
+
                 //SaveToDataBaseFormList(new List<TorrentInfo>(AnalysisData.Values));
             }
-
         }
 
         public void Dispose()
         {
-            this.AnalysisData = null;
-            this.NextDayData = null;
+            AnalysisData = null;
+            NextDayData = null;
             GC.Collect();
         }
     }

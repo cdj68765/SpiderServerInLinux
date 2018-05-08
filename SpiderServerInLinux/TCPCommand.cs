@@ -1,17 +1,14 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
-using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace SpiderServerInLinux
 {
     internal class TCPCommand
     {
+        private readonly CancellationTokenSource CancelInfo = new CancellationTokenSource();
         private readonly Socket socket;
-        readonly CancellationTokenSource CancelInfo = new CancellationTokenSource();
 
         private TCPCommand(Socket socket)
         {
@@ -20,15 +17,15 @@ namespace SpiderServerInLinux
 
         internal static TCPCommand Init(int port)
         {
-            Socket socket = new Socket(SocketType.Stream, ProtocolType.Tcp);//建立流连接
-            socket.Bind(new IPEndPoint(IPAddress.Any, port));//绑定地址
+            var socket = new Socket(SocketType.Stream, ProtocolType.Tcp); //建立流连接
+            socket.Bind(new IPEndPoint(IPAddress.Any, port)); //绑定地址
             socket.Listen(10);
-            return  new TCPCommand(socket);
+            return new TCPCommand(socket);
         }
 
         internal void StartListener()
         {
-            Socket send = socket.Accept();//就让线程卡在这里
+            var send = socket.Accept(); //就让线程卡在这里
             Console.WriteLine($"{send.RemoteEndPoint}Connection");
             WaitCmd(send);
         }
@@ -39,18 +36,15 @@ namespace SpiderServerInLinux
             {
                 while (true)
                 {
-                    byte[] array = new byte[1024];
-                    int DataSize = send.Receive(array);
+                    var array = new byte[1024];
+                    var DataSize = send.Receive(array);
                 }
             }
             catch (SocketException e)
             {
                 if (e.SocketErrorCode == SocketError.ConnectionReset) //假如错误是远程连接断开
-                {
-                    StartListener();//就重启连接
-                }
+                    StartListener(); //就重启连接
             }
-  
         }
     }
 }
