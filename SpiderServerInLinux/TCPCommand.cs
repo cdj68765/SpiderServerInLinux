@@ -43,7 +43,10 @@ namespace SpiderServerInLinux
             catch (SocketException e)
             {
                 if (e.SocketErrorCode == SocketError.ConnectionReset) //假如错误是远程连接断开
+                {
+                    Console.WriteLine("远程连接断开,重启监听");
                     StartListener(); //就重启连接
+                }
             }
         }
     }

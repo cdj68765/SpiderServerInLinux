@@ -27,7 +27,7 @@ namespace SpiderServerInLinux
         public string Torrent { get; set; }
         public string Magnet { get; set; }
         public string Size { get; set; }
-        public string Day => Convert.ToDateTime(Date).ToLongDateString();
+        public string Day => Convert.ToDateTime(Date).ToString("yyyy-MM-dd");
         public string Date { get; set; }
         public string Up { get; set; }
         public string Leeches { get; set; }

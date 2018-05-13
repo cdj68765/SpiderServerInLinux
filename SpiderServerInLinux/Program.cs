@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 
 namespace SpiderServerInLinux
 {
@@ -6,9 +7,10 @@ namespace SpiderServerInLinux
     {
         private static void Main(string[] args)
         {
+           Console.WriteLine(DateTime.Now.ToString("yyyy-MM-dd"));
             var TCPCmd = TCPCommand.Init(1000);
             DataBaseCommand.Init();
-           new DownWork();
+       //    new DownWork();
             //test
             //new WebPageGet(@"https://sukebei.nyaa.si/?p=500000");
             //GetDataFromDataBase();
