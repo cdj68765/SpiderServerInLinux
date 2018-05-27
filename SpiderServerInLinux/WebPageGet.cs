@@ -18,7 +18,6 @@ namespace SpiderServerInLinux
         {
             Interlocked.Increment(ref CurrectPageIndex);
             if (CurrectPageIndex > Setting.LastPageIndex) Setting.LastPageIndex = CurrectPageIndex;
-          
             return new Uri($"{Setting.Address}?p={CurrectPageIndex}");
         }
 
@@ -251,24 +250,18 @@ namespace SpiderServerInLinux
             DownLoadNewPage();
         }
 
-        private void DownLoadOldPage()
-        {
-            Task.Factory.StartNew(DownloadOldInit, Setting.CancelSign.Token, TaskCreationOptions.LongRunning,
+        private void DownLoadOldPage() => Task.Factory.StartNew(DownloadOldInit, Setting.CancelSign.Token, TaskCreationOptions.LongRunning,
                 TaskScheduler.Default);
-        }
 
-        private void DownLoadNewPage()
-        {
-            Task.Factory.StartNew(() =>
-                {
-                    Console.WriteLine("开始获得新数据");
-                    Thread.Sleep(new TimeSpan(0, 0, 60, 0, 0)); //每小时遍历一次吧
-                    if (DateTime.Now.ToString("yyyy-MM-dd") != DayOfToday)
-                        if (PageInDateStatus(DayOfToday) != 1)
-                            DownloadNewInit(DayOfToday);
-                    DownLoadNewPage();
-                }, Setting.CancelSign.Token, TaskCreationOptions.LongRunning,
+        private void DownLoadNewPage() => Task.Factory.StartNew(() =>
+                                            {
+                                                Console.WriteLine("开始获得新数据");
+                                                Thread.Sleep(new TimeSpan(0, 0, 60, 0, 0)); //每小时遍历一次吧
+                                                if (DateTime.Now.ToString("yyyy-MM-dd") != DayOfToday)
+                                                    if (PageInDateStatus(DayOfToday) != 1)
+                                                        DownloadNewInit(DayOfToday);
+                                                DownLoadNewPage();
+                                            }, Setting.CancelSign.Token, TaskCreationOptions.LongRunning,
                 TaskScheduler.Default);
-        }
     }
 }

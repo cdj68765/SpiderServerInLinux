@@ -11,5 +11,18 @@ namespace UnitTestProject1
         {
             Console.WriteLine();
         }
+        [TestMethod]
+        public void Test()
+        {
+            try
+            {
+                int i = 0;
+                Console.WriteLine(5 / i);
+            }
+            catch (Exception e)
+            {
+             // Log.Instance.Debug(e);
+            }
+        }
     }
 }
