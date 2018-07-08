@@ -13,7 +13,7 @@ namespace SpiderServerInLinux
     {
         private readonly CancellationTokenSource CancelInfo = new CancellationTokenSource();
         private int CurrectPageIndex;
-        Stopwatch stopwatch = new Stopwatch();
+        Stopwatch Time = new Stopwatch();
         private Uri AddOneDay()
         {
             Interlocked.Increment(ref CurrectPageIndex);
@@ -30,7 +30,7 @@ namespace SpiderServerInLinux
 
         internal async void DownloadNewInit(string Date)
         {
-            Console.WriteLine("新数据下载初始化");
+            Loger.Instance.Info("新数据下载初始化");
             var WebClient = new WebClientEx.WebClientEx();
             var TheFirstRet = new HandlerHtml(await WebClient.DownloadStringTaskAsync(AddOneDay()), null,
                 DateTime.Now.ToString("yyyy-MM-dd"));
@@ -41,10 +41,12 @@ namespace SpiderServerInLinux
             {
                 if (FirstDay == Date)
                 {
+                    Loger.Instance.Info("数据循环下载");
                     DownloadNewLoop(TheFirstRet.AnalysisData, Date);
                 }
                 else
                 {
+                    Loger.Instance.Info("下载初始化");
                     DownloadNewInit(Date);
                 }
             }
@@ -52,10 +54,12 @@ namespace SpiderServerInLinux
             {
                 if (LastDay == Date)
                 {
+                    Loger.Instance.Info("数据循环下载");
                     DownloadNewLoop(TheFirstRet.NextDayData, Date);
                 }
                 else
                 {
+                    Loger.Instance.Info("下载初始化");
                     DownloadNewInit(Date);
                 }
             }
@@ -63,16 +67,14 @@ namespace SpiderServerInLinux
 
         void DownloadNewLoop(ConcurrentDictionary<int, TorrentInfo> theFirstRet, string Day)
         {
-            stopwatch.Stop();
-            Console.WriteLine($"初始化时间{stopwatch.Elapsed.TotalSeconds}");
             var Download = new WebClientEx.WebClientEx();
-            Console.WriteLine("开始新数据循环获取阶段");
             Download.DownloadStringCompleted += (Sender, Object) =>
             {
                 try
                 {
-                    Console.WriteLine($"新下载当前页{CurrectPageIndex}");
+                    Loger.Instance.WithTimeRestart($"下载完毕", Time);
                     var Ret = new HandlerHtml(Object.Result, theFirstRet, Day);
+                    Loger.Instance.WithTimeRestart($"分析数据", Time);
                     if (!Ret.AddFin)
                     {
                         Download.DownloadStringAsync(AddOneDay());
@@ -82,25 +84,23 @@ namespace SpiderServerInLinux
                         var StatusNum = PageInDateStatus(Day);
                         if (StatusNum == 0)
                         {
-                            stopwatch.Restart();
                             SaveToDataBaseOneByOne(Ret.AnalysisData.Values, CurrectPageIndex,true);
-                            stopwatch.Stop();
-                            Console.WriteLine($"各个添加耗时{stopwatch.Elapsed.TotalSeconds}");
+                           
                         }
                         else if (StatusNum == -1)
                         {
-                            stopwatch.Restart();
                             SaveToDataBaseRange(Ret.AnalysisData.Values, CurrectPageIndex,true);
                         }
 
                         SaveStatus();
                         if (PageInDateStatus(Ret.NextDayData.Values.ElementAt(0).Day) != -1)
                         {
+                            Loger.Instance.WithTimeRestart($"开始集群添加", Time);
                             var NextData = new ConcurrentDictionary<int, TorrentInfo>(Ret.NextDayData);
                             Ret.Dispose();
+                            Loger.Instance.WithTimeRestart($"集群添加完毕，开始新一轮循环", Time);
                             DownloadNewLoop(NextData, NextData.Values.ElementAt(0).Day);
-                            stopwatch.Stop();
-                            Console.WriteLine($"集群添加耗时{stopwatch.Elapsed.TotalSeconds}");
+                         
                         }
                     }
                 }
@@ -109,13 +109,15 @@ namespace SpiderServerInLinux
                     ErrorDealWith(e, Download);
                 }
             };
-            Download.DownloadStringAsync(AddOneDay());
+           
+            var DownloadPage = AddOneDay();
+            Loger.Instance.WithTimeStart($"下载页面:{DownloadPage}", Time);
+            Download.DownloadStringAsync(DownloadPage);
         }
 
         internal async void DownloadOldInit()
         {
-            stopwatch.Start();
-            Console.WriteLine("开始获得旧数据");
+            Loger.Instance.Info("开始获得旧数据");
             /*思路设想
              1.先获取第一次数据，然后判断数据库内该时间段是否已经完成//分析获得数据第一个和最后一个的时间
              2.未完成的情况下，开始不断获取任务，获取一天的时间//获取阶段使用单线程分析
@@ -123,8 +125,8 @@ namespace SpiderServerInLinux
              */
             //首先获得一波页面数据分析
             var WebClient = new WebClientEx.WebClientEx();
-          //  CurrectPageIndex = Setting.LastPageIndex;
-            Console.WriteLine("开始第一次获取初始化");
+            //  CurrectPageIndex = Setting.LastPageIndex;
+            Loger.Instance.Info("开始第一次获取初始化");
             var TheFirstRet = new HandlerHtml(await WebClient.DownloadStringTaskAsync(
                 new Uri($"{Setting.Address}?p={CurrectPageIndex}")));
             //于数据库交流，获得数据库时间状态
@@ -134,27 +136,33 @@ namespace SpiderServerInLinux
             var LastDay = TheFirstRet.AnalysisData.Values.ElementAt(TheFirstRet.AnalysisData.Count - 1).Day;
             if (FirstDay == LastDay)
             {
+                Loger.Instance.WithTimeStart("查询数据库时间差",Time);
                 if (PageInDateStatus(FirstDay) == 1)
                 {
+                    Loger.Instance.WithTimeStop("查询完毕，当前页为第一天", Time);
                     AddOneDay();
                     DownloadOldInit();
                 }
                 else
                 {
+                    Loger.Instance.WithTimeStop("查询完毕，当前页非第一天", Time);
                     DownloadOldLoop(TheFirstRet.AnalysisData, LastDay);
                 }
             }
             else
             {
+                Loger.Instance.WithTimeStart("查询完毕当前页非第一天，再次查询", Time);
                 if (PageInDateStatus(FirstDay) == 1)
                 {
                     if (PageInDateStatus(LastDay) == 1)
                     {
+                        Loger.Instance.WithTimeStop("查询完毕当前页为第一天", Time);
                         AddOneDay();
                         DownloadOldInit();
                     }
                     else
                     {
+                        Loger.Instance.WithTimeStop("查询完毕，当前页非第一天", Time);
                         TheFirstRet.NextDayData = new ConcurrentDictionary<int, TorrentInfo>();
                         foreach (var VARIABLE in TheFirstRet.AnalysisData)
                         {
@@ -166,6 +174,7 @@ namespace SpiderServerInLinux
                 }
                 else
                 {
+                    Loger.Instance.WithTimeStop("查询完毕", Time);
                     DownloadOldLoop(TheFirstRet.AnalysisData, FirstDay);
                 }
             }
@@ -173,48 +182,46 @@ namespace SpiderServerInLinux
 
         private void DownloadOldLoop(ConcurrentDictionary<int, TorrentInfo> theFirstRet, string Day)
         {
-            stopwatch.Stop();
-            Console.WriteLine($"初始化耗时{stopwatch.Elapsed.TotalSeconds}");
             var Download = new WebClientEx.WebClientEx();
             Download.DownloadStringCompleted += (Sender, Object) =>
             {
                 try
                 {
-                    Console.WriteLine($"旧数据当前页{CurrectPageIndex}");
+                    Loger.Instance.WithTimeRestart($"下载完毕", Time);
                     var Ret = new HandlerHtml(Object.Result, theFirstRet, Day);
+                    Loger.Instance.WithTimeRestart($"分析数据", Time);
                     //检查是否遍历到了下一天
                     if (!Ret.AddFin)
                     {
-                        stopwatch.Restart();
                         //是的话当前页+1，并下载
-                        Download.DownloadStringAsync(AddOneDay());
+                        var DownloadTemp = AddOneDay();
+                        Loger.Instance.Info($"当前页增加为{DownloadTemp}，继续下载");
+                        Download.DownloadStringAsync(DownloadTemp);
                     }
                     else
                     {
-                        stopwatch.Stop();
-                        Console.WriteLine($"网页获取耗时{stopwatch.Elapsed.TotalSeconds}");
-                        Console.WriteLine($"当前获取日期{Day}");
+                        Loger.Instance.WithTimeRestart($"查询页面时间", Time);
                         var StatusNum = PageInDateStatus(Day);
+                        Loger.Instance.WithTimeRestart($"查询页面完毕", Time);
                         //假如未完成，从第一条开始进入获取状态
                         if (StatusNum == 0)
                         {
-                            stopwatch.Restart();
+                            Loger.Instance.WithTimeRestart($"遍历添加到列", Time);
                             SaveToDataBaseOneByOne(Ret.AnalysisData.Values, CurrectPageIndex,true);
-                            stopwatch.Stop();
-                            Console.WriteLine($"各个添加耗时{stopwatch.Elapsed.TotalSeconds}");
+                            Loger.Instance.WithTimeRestart($"添加完毕", Time);
                         }
                         //假如从未开始过，则进入全部重新状态
                         else if (StatusNum == -1)
                         {
-                            stopwatch.Restart();
+                            Loger.Instance.WithTimeRestart($"全部添加到列", Time);
                             SaveToDataBaseRange(Ret.AnalysisData.Values, CurrectPageIndex,true);
-                            stopwatch.Stop();
-                            Console.WriteLine($"集群添加耗时{stopwatch.Elapsed.TotalSeconds}");
+                            Loger.Instance.WithTimeRestart($"添加完毕", Time);
                         }
 
                         SaveStatus();
                         var NextData = new ConcurrentDictionary<int, TorrentInfo>(Ret.NextDayData);
                         Ret.Dispose();
+                        Loger.Instance.WithTimeStop($"进行新一轮添加", Time);
                         DownloadOldLoop(NextData, NextData.Values.ElementAt(0).Day);
                     }
                 }
@@ -223,7 +230,9 @@ namespace SpiderServerInLinux
                     ErrorDealWith(e, Download);
                 }
             };
-            Download.DownloadStringAsync(AddOneDay());
+            var DownloadPage = AddOneDay();
+            Loger.Instance.WithTimeStart($"下载页面:{DownloadPage}", Time);
+            Download.DownloadStringAsync(DownloadPage);
         }
 
         private void ErrorDealWith(Exception e, WebClientEx.WebClientEx download)
@@ -241,12 +250,11 @@ namespace SpiderServerInLinux
 
     internal class DownWork : WebPageGet
     {
-        private readonly string DayOfToday;
+        private  string DayOfToday="";
 
         internal DownWork()
         {
             DownLoadOldPage();
-            DayOfToday = DateTime.Now.ToString("yyyy-MM-dd");
             DownLoadNewPage();
         }
 
@@ -255,7 +263,7 @@ namespace SpiderServerInLinux
 
         private void DownLoadNewPage() => Task.Factory.StartNew(() =>
                                             {
-                                                Console.WriteLine("开始获得新数据");
+                                                Loger.Instance.Info("开始获得新数据");
                                                 Thread.Sleep(new TimeSpan(0, 0, 60, 0, 0)); //每小时遍历一次吧
                                                 if (DateTime.Now.ToString("yyyy-MM-dd") != DayOfToday)
                                                     if (PageInDateStatus(DayOfToday) != 1)

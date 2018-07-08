@@ -25,8 +25,9 @@ namespace SpiderServerInLinux
 
         internal void StartListener()
         {
+            Loger.Instance.Info("等待监听");
             var send = socket.Accept(); //就让线程卡在这里
-            Console.WriteLine($"{send.RemoteEndPoint}Connection");
+            Loger.Instance.Info($"{send.RemoteEndPoint}Connection");
             WaitCmd(send);
         }
 

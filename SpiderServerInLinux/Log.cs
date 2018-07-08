@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Drawing;
 using System.IO;
 using System.Text;
 
@@ -41,52 +42,55 @@ namespace SpiderServerInLinux
 
         public void Debug(object msg)
         {
-            Trace.WriteLine(msg, "Debug");
+            Console.ForegroundColor = ConsoleColor.Blue;
+            Trace.WriteLine(msg, "调试");
         }
 
         public void Warn(object msg)
         {
-            Trace.WriteLine(msg, "Warn");
+            Console.ForegroundColor = ConsoleColor.Yellow;
+            Trace.WriteLine(msg, "警告");
         }
 
         public void Info(object msg)
         {
-            Trace.WriteLine(msg, "Info");
-        }
 
+            Console.ForegroundColor = ConsoleColor.DarkGreen;
+            Trace.WriteLine(msg, "信息");
+        }
+        public void WithTimeStart(object msg, Stopwatch Time)
+        {
+            Console.ForegroundColor = ConsoleColor.DarkGreen;
+            Time.Start();
+            Trace.WriteLine(msg, "信息");
+        }
+        public void WithTimeRestart(object msg, Stopwatch Time)
+        {
+            Console.ForegroundColor = ConsoleColor.DarkGreen;
+            Trace.WriteLine($"{msg},用时:{Time.ElapsedMilliseconds}毫秒", "信息");
+            Time.Restart();
+        }
+        public void WithTimeStop(object msg, Stopwatch Time)
+        {
+            Console.ForegroundColor = ConsoleColor.DarkGreen;
+            Trace.WriteLine(msg, "信息");
+            Time.Stop();
+        }
         public void Error(object msg)
         {
-            Trace.WriteLine(msg, "Error");
+            Console.ForegroundColor = ConsoleColor.Red;
+            Trace.WriteLine(msg, "错误");
         }
     }
     public class LogerTraceListener : TraceListener
     {
-        /// <summary>
-        /// FileName
-        /// </summary>
-        private string m_fileName;
-
-        /// <summary>
-        /// Constructor
-        /// </summary>
-        public LogerTraceListener()
-        {
-          var Col=new  System.Collections.ObjectModel.ObservableCollection<string>();
-            
-            string basePath = AppDomain.CurrentDomain.BaseDirectory + "\\Logs\\";
-            if (!Directory.Exists(basePath))
-                Directory.CreateDirectory(basePath);
-            this.m_fileName = basePath +
-                string.Format("Log-{0}.txt", DateTime.Now.ToString("yyyyMMdd"));
-        }
 
         /// <summary>
         /// Write
         /// </summary>
         public override void Write(string message)
         {
-            message = Format(message, "");
-            File.AppendAllText(m_fileName, message);
+            Console.WriteLine($"{DateTime.Now:yyyy-MM-dd mm:ss}->{message}");
         }
 
         /// <summary>
@@ -94,8 +98,7 @@ namespace SpiderServerInLinux
         /// </summary>
         public override void Write(object obj)
         {
-            string message = Format(obj, "");
-            File.AppendAllText(m_fileName, message);
+            Console.WriteLine($"{DateTime.Now:yyyy-MM-dd mm:ss}->{obj}");
         }
 
         /// <summary>
@@ -103,8 +106,7 @@ namespace SpiderServerInLinux
         /// </summary>
         public override void WriteLine(object obj)
         {
-            string message = Format(obj, "");
-            File.AppendAllText(m_fileName, message);
+            Console.WriteLine($"{DateTime.Now:yyyy-MM-dd mm:ss}->{obj}");
         }
 
         /// <summary>
@@ -112,8 +114,7 @@ namespace SpiderServerInLinux
         /// </summary>
         public override void WriteLine(string message)
         {
-            message = Format(message, "");
-            File.AppendAllText(m_fileName, message);
+            Console.WriteLine($"{DateTime.Now:yyyy-MM-dd mm:ss}->{message}");
         }
 
         /// <summary>
@@ -121,8 +122,7 @@ namespace SpiderServerInLinux
         /// </summary>
         public override void WriteLine(object obj, string category)
         {
-            string message = Format(obj, category);
-            File.AppendAllText(m_fileName, message);
+            Console.WriteLine($"{DateTime.Now:yyyy-MM-dd mm:ss}->[{category}]{obj}");
         }
 
         /// <summary>
@@ -130,31 +130,8 @@ namespace SpiderServerInLinux
         /// </summary>
         public override void WriteLine(string message, string category)
         {
-            message = Format(message, category);
-            File.AppendAllText(m_fileName, message);
+            Console.WriteLine($"{DateTime.Now:yyyy-MM-dd mm:ss}->[{category}]{message}");
         }
-
-        /// <summary>
-        /// Format
-        /// </summary>
-        private string Format(object obj, string category)
-        {
-            StringBuilder builder = new StringBuilder();
-            builder.AppendFormat("{0} ", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
-            if (!string.IsNullOrEmpty(category))
-                builder.AppendFormat("[{0}] ", category);
-            if (obj is Exception)
-            {
-                var ex = (Exception)obj;
-                builder.Append(ex.Message + "\r\n");
-                builder.Append(ex.StackTrace + "\r\n");
-            }
-            else
-            {
-                builder.Append(obj.ToString() + "\r\n");
-            }
-
-            return builder.ToString();
-        }
+     
     }
 }
