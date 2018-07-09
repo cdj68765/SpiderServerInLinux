@@ -12,10 +12,7 @@ namespace SpiderServerInLinux
     {
         private static void Main(string[] args)
         {
-            Console.ReadKey();
-            Loger.Instance.LocalInfo($"启动启动启动启动启动启动启启动启动启动启动启动启动启动启动启动启动动启动启动启动");
-            Console.ReadKey();
-            return;
+
             Loger.Instance.LocalInfo($"启动");
             DataBaseCommand.Init();
             Loger.Instance.LocalInfo("数据库初始化完毕");

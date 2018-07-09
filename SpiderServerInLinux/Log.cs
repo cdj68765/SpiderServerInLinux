@@ -135,15 +135,9 @@ namespace SpiderServerInLinux
         {
             Check();
             var PushS = $"{DateTime.Now:yyyy-MM-dd mm:ss}->[{category}]{message}";
-            if (PushS.Length > Console.WindowWidth / 3-1)
-            {
-                LocalInfoC.Push( string.Format("{0,-10}", PushS.Substring(Console.WindowWidth / 3-1,PushS.Length- Console.WindowWidth / 3-1)));
-                LocalInfoC.Push(PushS.Substring(0,Console.WindowWidth / 3-1));
-            }
-            else
-            {
+
                 LocalInfoC.Push(PushS);
-            }
+            
             var List = LocalInfoC.ToArray();
             for (int i = 0; i < List.Length; i++)
             {

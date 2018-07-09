@@ -182,65 +182,72 @@ namespace SpiderServerInLinux
 
         private void DownloadOldLoop(ConcurrentDictionary<int, TorrentInfo> theFirstRet, string Day)
         {
-            var Download = new WebClientEx.WebClientEx();
-            Download.DownloadStringCompleted += (Sender, Object) =>
+            try
             {
-                try
+                var Download = new WebClientEx.WebClientEx();
+                Download.DownloadStringCompleted += (Sender, Object) =>
                 {
-                    Loger.Instance.PageInfo(CurrectPageIndex);
-                    Loger.Instance.WithTimeRestart($"下载完毕", Time);
-                    var Ret = new HandlerHtml(Object.Result, theFirstRet, Day);
-                    Loger.Instance.WithTimeRestart($"分析数据", Time);
-                    //检查是否遍历到了下一天
-                    if (!Ret.AddFin)
+                    try
                     {
-                        //是的话当前页+1，并下载
-                        var DownloadTemp = AddOneDay();
-                        Loger.Instance.LocalInfo($"当前页增加为{DownloadTemp}，继续下载");
-                        Download.DownloadStringAsync(DownloadTemp);
-                    }
-                    else
-                    {
-                        Loger.Instance.WithTimeRestart($"查询页面时间", Time);
-                        var StatusNum = PageInDateStatus(Day);
-                        Loger.Instance.WithTimeRestart($"查询页面完毕", Time);
-                        //假如未完成，从第一条开始进入获取状态
-                        if (StatusNum == 0)
+                        Loger.Instance.PageInfo(CurrectPageIndex);
+                        Loger.Instance.WithTimeRestart($"下载完毕", Time);
+                        var Ret = new HandlerHtml(Object.Result, theFirstRet, Day);
+                        Loger.Instance.WithTimeRestart($"分析数据", Time);
+                        //检查是否遍历到了下一天
+                        if (!Ret.AddFin)
                         {
-                            Loger.Instance.WithTimeRestart($"遍历添加到列", Time);
-                            SaveToDataBaseOneByOne(Ret.AnalysisData.Values, CurrectPageIndex, true);
-                            Loger.Instance.WithTimeRestart($"添加完毕", Time);
+                            //是的话当前页+1，并下载
+                            var DownloadTemp = AddOneDay();
+                            Loger.Instance.LocalInfo($"当前页增加为{DownloadTemp}，继续下载");
+                            Download.DownloadStringAsync(DownloadTemp);
                         }
-                        //假如从未开始过，则进入全部重新状态
-                        else if (StatusNum == -1)
+                        else
                         {
-                            Loger.Instance.WithTimeRestart($"全部添加到列", Time);
-                            SaveToDataBaseRange(Ret.AnalysisData.Values, CurrectPageIndex, true);
-                            Loger.Instance.WithTimeRestart($"添加完毕", Time);
-                        }
+                            Loger.Instance.WithTimeRestart($"查询页面时间", Time);
+                            var StatusNum = PageInDateStatus(Day);
+                            Loger.Instance.WithTimeRestart($"查询页面完毕", Time);
+                            //假如未完成，从第一条开始进入获取状态
+                            if (StatusNum == 0)
+                            {
+                                Loger.Instance.WithTimeRestart($"遍历添加到列", Time);
+                                SaveToDataBaseOneByOne(Ret.AnalysisData.Values, CurrectPageIndex, true);
+                                Loger.Instance.WithTimeRestart($"添加完毕", Time);
+                            }
+                            //假如从未开始过，则进入全部重新状态
+                            else if (StatusNum == -1)
+                            {
+                                Loger.Instance.WithTimeRestart($"全部添加到列", Time);
+                                SaveToDataBaseRange(Ret.AnalysisData.Values, CurrectPageIndex, true);
+                                Loger.Instance.WithTimeRestart($"添加完毕", Time);
+                            }
 
-                        SaveStatus();
-                        var NextData = new ConcurrentDictionary<int, TorrentInfo>(Ret.NextDayData);
-                        Ret.Dispose();
-                        Loger.Instance.WithTimeStop($"进行新一轮添加", Time);
-                        DownloadOldLoop(NextData, NextData.Values.ElementAt(0).Day);
+                            SaveStatus();
+                            var NextData = new ConcurrentDictionary<int, TorrentInfo>(Ret.NextDayData);
+                            Ret.Dispose();
+                            Loger.Instance.WithTimeStop($"进行新一轮添加", Time);
+                            DownloadOldLoop(NextData, NextData.Values.ElementAt(0).Day);
+                        }
                     }
-                }
-                catch (Exception e)
+                    catch (Exception e)
+                    {
+                        Loger.Instance.LocalInfo(e.ToString());
+                        //ErrorDealWith(e, Download);
+                    }
+                };
+                var DownloadPage = AddOneDay();
+                Loger.Instance.WithTimeStart($"下载页面:{DownloadPage}", Time);
+                int time = new Random().Next(1000, 5000);
+                for (int i = time; i > 0; i -= 500)
                 {
-                    ErrorDealWith(e, Download);
+                    Loger.Instance.WaitTime(i / 1000);
+                    Thread.Sleep(500);
                 }
-            };
-            var DownloadPage = AddOneDay();
-            Loger.Instance.WithTimeStart($"下载页面:{DownloadPage}", Time);
-            int time = new Random().Next(1000, 5000);
-            for (int i = time; i > 0; i -= 500)
-            {
-                Loger.Instance.WaitTime(i / 1000);
-                Thread.Sleep(500);
+                Download.DownloadStringAsync(DownloadPage);
             }
-            Download.DownloadStringAsync(DownloadPage);
+            catch (Exception e)
+            {
 
+            }
 
         }
 
@@ -253,7 +260,7 @@ namespace SpiderServerInLinux
             {
             }
 
-            CancelInfo.Cancel();
+           // CancelInfo.Cancel();
         }
     }
 

@@ -56,7 +56,7 @@ namespace SpiderServerInLinux
             using (var db = new LiteDatabase(@"Nyaa.db"))
             {
                 var DateRecord = db.GetCollection<DateRecord>("DateRecord");
-                var FindData = DateRecord.FindOne(Dt => Convert.ToDateTime(Dt._id).ToShortDateString() == Date);
+                var FindData = DateRecord.FindOne(Dt => Convert.ToDateTime(Dt._id).ToString("yyyy-MM-dd") == Date);
                 if (FindData is DateRecord)
                 {
                     Loger.Instance.WithTimeStart($"从数据库返回{Date}数据", Time);
