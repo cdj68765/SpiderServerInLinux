@@ -59,10 +59,10 @@ namespace SpiderServerInLinux
                 var FindData = DateRecord.FindOne(Dt => Convert.ToDateTime(Dt._id).ToShortDateString() == Date);
                 if (FindData is DateRecord)
                 {
-                    Loger.Instance.WithTimeStart("数据库读取完毕", Time);
+                    Loger.Instance.WithTimeStart($"从数据库返回{Date}数据", Time);
                     return FindData;
                 }
-                Loger.Instance.WithTimeStop("数据库读取失败", Time);
+                Loger.Instance.WithTimeStop($"未在数据库找到{Date}数据", Time);
                 return null;
             }
           

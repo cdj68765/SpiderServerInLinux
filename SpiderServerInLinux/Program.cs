@@ -1,7 +1,10 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
+using System.Net;
+using System.Threading;
 using System.Threading.Tasks;
+using System.Linq;
 
 namespace SpiderServerInLinux
 {
@@ -9,12 +12,33 @@ namespace SpiderServerInLinux
     {
         private static void Main(string[] args)
         {
-            Loger.Instance.Info("启动");
-            // Console.WriteLine(DateTime.Now.ToString("yyyy-MM-dd"));
-          
+            Console.ReadKey();
+            Loger.Instance.LocalInfo($"启动启动启动启动启动启动启启动启动启动启动启动启动启动启动启动启动动启动启动启动");
+            Console.ReadKey();
+            return;
+            Loger.Instance.LocalInfo($"启动");
             DataBaseCommand.Init();
-            Loger.Instance.Info("数据库初始化完毕");
+            Loger.Instance.LocalInfo("数据库初始化完毕");
             new DownWork();
+            /*   var Web= new  WebClient();
+                  try
+                  {
+                      Web.DownloadString("https://sukebei.nyaa.si/?p=1");
+                  }
+                  catch (Exception ex)
+                  {
+                      while (ex != null)
+                      {
+                          Console.WriteLine(ex.Message);
+                          ex = ex.InnerException;
+      
+                      }
+                  }*/
+
+            // Console.WriteLine(DateTime.Now.ToString("yyyy-MM-dd"));
+
+
+            // new DownWork();
             /*  Task.Factory.StartNew(() =>
               {
                   Loger.Instance.Info("开始获取网页数据");

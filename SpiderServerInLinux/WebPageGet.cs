@@ -30,7 +30,7 @@ namespace SpiderServerInLinux
 
         internal async void DownloadNewInit(string Date)
         {
-            Loger.Instance.Info("新数据下载初始化");
+            Loger.Instance.LocalInfo("新数据下载初始化");
             var WebClient = new WebClientEx.WebClientEx();
             var TheFirstRet = new HandlerHtml(await WebClient.DownloadStringTaskAsync(AddOneDay()), null,
                 DateTime.Now.ToString("yyyy-MM-dd"));
@@ -41,12 +41,12 @@ namespace SpiderServerInLinux
             {
                 if (FirstDay == Date)
                 {
-                    Loger.Instance.Info("数据循环下载");
+                    Loger.Instance.LocalInfo("数据循环下载");
                     DownloadNewLoop(TheFirstRet.AnalysisData, Date);
                 }
                 else
                 {
-                    Loger.Instance.Info("下载初始化");
+                    Loger.Instance.LocalInfo("下载初始化");
                     DownloadNewInit(Date);
                 }
             }
@@ -54,12 +54,12 @@ namespace SpiderServerInLinux
             {
                 if (LastDay == Date)
                 {
-                    Loger.Instance.Info("数据循环下载");
+                    Loger.Instance.LocalInfo("数据循环下载");
                     DownloadNewLoop(TheFirstRet.NextDayData, Date);
                 }
                 else
                 {
-                    Loger.Instance.Info("下载初始化");
+                    Loger.Instance.LocalInfo("下载初始化");
                     DownloadNewInit(Date);
                 }
             }
@@ -117,7 +117,7 @@ namespace SpiderServerInLinux
 
         internal async void DownloadOldInit()
         {
-            Loger.Instance.Info("开始获得旧数据");
+            Loger.Instance.LocalInfo("开始获得旧数据");
             /*思路设想
              1.先获取第一次数据，然后判断数据库内该时间段是否已经完成//分析获得数据第一个和最后一个的时间
              2.未完成的情况下，开始不断获取任务，获取一天的时间//获取阶段使用单线程分析
@@ -126,7 +126,7 @@ namespace SpiderServerInLinux
             //首先获得一波页面数据分析
             var WebClient = new WebClientEx.WebClientEx();
             //  CurrectPageIndex = Setting.LastPageIndex;
-            Loger.Instance.Info("开始第一次获取初始化");
+            Loger.Instance.LocalInfo("开始第一次获取初始化");
             var TheFirstRet = new HandlerHtml(await WebClient.DownloadStringTaskAsync(
                 new Uri($"{Setting.Address}?p={CurrectPageIndex}")));
             //于数据库交流，获得数据库时间状态
@@ -187,6 +187,7 @@ namespace SpiderServerInLinux
             {
                 try
                 {
+                    Loger.Instance.PageInfo(CurrectPageIndex);
                     Loger.Instance.WithTimeRestart($"下载完毕", Time);
                     var Ret = new HandlerHtml(Object.Result, theFirstRet, Day);
                     Loger.Instance.WithTimeRestart($"分析数据", Time);
@@ -195,7 +196,7 @@ namespace SpiderServerInLinux
                     {
                         //是的话当前页+1，并下载
                         var DownloadTemp = AddOneDay();
-                        Loger.Instance.Info($"当前页增加为{DownloadTemp}，继续下载");
+                        Loger.Instance.LocalInfo($"当前页增加为{DownloadTemp}，继续下载");
                         Download.DownloadStringAsync(DownloadTemp);
                     }
                     else
@@ -207,14 +208,14 @@ namespace SpiderServerInLinux
                         if (StatusNum == 0)
                         {
                             Loger.Instance.WithTimeRestart($"遍历添加到列", Time);
-                            SaveToDataBaseOneByOne(Ret.AnalysisData.Values, CurrectPageIndex,true);
+                            SaveToDataBaseOneByOne(Ret.AnalysisData.Values, CurrectPageIndex, true);
                             Loger.Instance.WithTimeRestart($"添加完毕", Time);
                         }
                         //假如从未开始过，则进入全部重新状态
                         else if (StatusNum == -1)
                         {
                             Loger.Instance.WithTimeRestart($"全部添加到列", Time);
-                            SaveToDataBaseRange(Ret.AnalysisData.Values, CurrectPageIndex,true);
+                            SaveToDataBaseRange(Ret.AnalysisData.Values, CurrectPageIndex, true);
                             Loger.Instance.WithTimeRestart($"添加完毕", Time);
                         }
 
@@ -232,7 +233,15 @@ namespace SpiderServerInLinux
             };
             var DownloadPage = AddOneDay();
             Loger.Instance.WithTimeStart($"下载页面:{DownloadPage}", Time);
+            int time = new Random().Next(1000, 5000);
+            for (int i = time; i > 0; i -= 500)
+            {
+                Loger.Instance.WaitTime(i / 1000);
+                Thread.Sleep(500);
+            }
             Download.DownloadStringAsync(DownloadPage);
+
+
         }
 
         private void ErrorDealWith(Exception e, WebClientEx.WebClientEx download)
@@ -255,7 +264,7 @@ namespace SpiderServerInLinux
         internal DownWork()
         {
             DownLoadOldPage();
-            DownLoadNewPage();
+          //  DownLoadNewPage();
         }
 
         private void DownLoadOldPage() => Task.Factory.StartNew(DownloadOldInit, Setting.CancelSign.Token, TaskCreationOptions.LongRunning,
@@ -263,7 +272,7 @@ namespace SpiderServerInLinux
 
         private void DownLoadNewPage() => Task.Factory.StartNew(() =>
                                             {
-                                                Loger.Instance.Info("开始获得新数据");
+                                                Loger.Instance.LocalInfo("开始获得新数据");
                                                 Thread.Sleep(new TimeSpan(0, 0, 60, 0, 0)); //每小时遍历一次吧
                                                 if (DateTime.Now.ToString("yyyy-MM-dd") != DayOfToday)
                                                     if (PageInDateStatus(DayOfToday) != 1)
