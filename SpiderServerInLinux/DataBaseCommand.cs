@@ -3,19 +3,20 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using LiteDB;
+
 namespace SpiderServerInLinux
 {
     internal static class DataBaseCommand
     {
-        static readonly Stopwatch Time = new Stopwatch();
+        private static readonly Stopwatch Time = new Stopwatch();
+
         internal static void Init()
         {
-           
             Loger.Instance.WithTimeStart("创建或者打开数据库", Time);
             // 打开数据库 (如果不存在自动创建) 
             using (var db = new LiteDatabase(@"Nyaa.db"))
             {
-                Loger.Instance.WithTimeRestart("创建或者打开完毕",Time);
+                Loger.Instance.WithTimeRestart("创建或者打开完毕", Time);
                 var SettingData = db.GetCollection<GlobalSet>("Setting");
                 var FindAdress = SettingData.FindOne(id => id._id == "Address");
                 Loger.Instance.WithTimeRestart("查找历史信息", Time);
@@ -62,10 +63,10 @@ namespace SpiderServerInLinux
                     Loger.Instance.WithTimeStart($"从数据库返回{Date}数据", Time);
                     return FindData;
                 }
+
                 Loger.Instance.WithTimeStop($"未在数据库找到{Date}数据", Time);
                 return null;
             }
-          
         }
 
         #endregion
@@ -95,6 +96,7 @@ namespace SpiderServerInLinux
                 db.GetCollection<DateRecord>("DateRecord")
                     .Upsert(new DateRecord {_id = Data.ElementAt(0).Day, Status = Mode, Page = Page});
             }
+
             Loger.Instance.WithTimeStop("数据库完毕", Time);
         }
 
@@ -110,6 +112,7 @@ namespace SpiderServerInLinux
                 db.GetCollection<DateRecord>("DateRecord")
                     .Upsert(new DateRecord {_id = Data.ElementAt(0).Day, Status = Mode, Page = Page});
             }
+
             Loger.Instance.WithTimeStop("数据库完毕", Time);
         }
 
@@ -121,6 +124,7 @@ namespace SpiderServerInLinux
                 db.GetCollection<GlobalSet>("Setting")
                     .Upsert(new GlobalSet {_id = "LastCount", Value = Setting.LastPageIndex.ToString()});
             }
+
             Loger.Instance.WithTimeStop("数据库完毕", Time);
         }
 

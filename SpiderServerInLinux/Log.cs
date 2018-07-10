@@ -1,16 +1,12 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Drawing;
-using System.IO;
 using System.Linq;
 using System.Text;
-using System.Text.RegularExpressions;
 
 namespace SpiderServerInLinux
 {
-    interface ILoger
+    internal interface ILoger
     {
         void Warn(object msg);
         void LocalInfo(object msg);
@@ -21,9 +17,18 @@ namespace SpiderServerInLinux
     public class Loger : ILoger
     {
         /// <summary>
-        /// Single Instance
+        ///     Single Instance
         /// </summary>
         private static Loger instance;
+
+        /// <summary>
+        ///     Constructor
+        /// </summary>
+        private Loger()
+        {
+            Trace.Listeners.Clear();
+            Trace.Listeners.Add(new LogerTraceListener());
+        }
 
         public static Loger Instance
         {
@@ -33,16 +38,6 @@ namespace SpiderServerInLinux
                     instance = new Loger();
                 return instance;
             }
-
-        }
-
-        /// <summary>
-        /// Constructor
-        /// </summary>
-        private Loger()
-        {
-            Trace.Listeners.Clear();
-            Trace.Listeners.Add(new LogerTraceListener());
         }
 
         public void Debug(object msg)
@@ -59,9 +54,13 @@ namespace SpiderServerInLinux
 
         public void LocalInfo(object msg)
         {
-
             Console.ForegroundColor = ConsoleColor.White;
             Trace.WriteLine(msg, "信息");
+        }
+
+        public void Error(object msg)
+        {
+            Trace.WriteLine(msg, "错误");
         }
 
         public void WithTimeStart(object msg, Stopwatch Time)
@@ -85,12 +84,6 @@ namespace SpiderServerInLinux
             Time.Stop();
         }
 
-        public void Error(object msg)
-        {
-            Console.ForegroundColor = ConsoleColor.Red;
-            Trace.WriteLine(msg, "错误");
-        }
-
         public void PageInfo(int msg)
         {
             Trace.Write(msg.ToString());
@@ -104,66 +97,12 @@ namespace SpiderServerInLinux
 
     public class LogerTraceListener : TraceListener
     {
-        void Check()
-        {
-            if (Console.WindowHeight != WindowHeight || Console.WindowWidth != WindowWidth)
-            {
-                Init();
-                WindowHeight = Console.WindowHeight;
-                WindowWidth = Console.WindowWidth;
-            }
-        }
-        public override void Write(object message)
-        {
-            Check();
-            Console.SetCursorPosition((Console.WindowWidth / 2) + 2, 1);
-            Console.Write($"倒计时:{message}秒");
-        }
-        public override void Write(string message)
-        {
-            Check();
-            Console.SetCursorPosition(1, 1);
-            Console.Write($"当前下载页面:{message}");
-        }
+        private readonly Stack<string> LocalInfoC = new Stack<string>();
+        private int WindowHeight;
 
-        public override void WriteLine(string message)
-        {
-            Console.WriteLine($"{DateTime.Now:yyyy-MM-dd mm:ss}->{message}");
-        }
-     
-        public override void WriteLine(string message, string category)
-        {
-            Check();
-            var PushS = $"{DateTime.Now:yyyy-MM-dd mm:ss}->[{category}]{message}";
+        private int WindowWidth;
 
-                LocalInfoC.Push(PushS);
-            
-            var List = LocalInfoC.ToArray();
-            for (int i = 0; i < List.Length; i++)
-            {
-                Console.SetCursorPosition(2, 5 + i);
-                Console.Write(List[i]);
-                if (i > Console.WindowHeight - 8)
-                {
-                    break;
-                }
-            }
-
-            if (LocalInfoC.Count > 100)
-            {
-                LocalInfoC.Clear();
-                for (int i = 0; i < Console.WindowHeight - 8; i++)
-                {
-                    LocalInfoC.Push(List[Console.WindowHeight - 9 - i]);
-                }
-            }
-        }
-
-        private int WindowWidth = 0;
-        private int WindowHeight = 0;
-        private Stack<string> LocalInfoC = new Stack<string>();
-
-        public static void Init()
+        private void Init()
         {
             Console.CursorVisible = false;
             Console.Clear();
@@ -171,7 +110,6 @@ namespace SpiderServerInLinux
             foreach (var item in from X in Enumerable.Range(0, Console.WindowWidth)
                 from Y in Enumerable.Range(0, Console.WindowHeight)
                 select new Tuple<int, int>(X, Y))
-            {
                 if (item.Item1 == 0 && item.Item2 == 0)
                 {
                     Console.SetCursorPosition(item.Item1, item.Item2);
@@ -218,7 +156,7 @@ namespace SpiderServerInLinux
                     {
                         Console.SetCursorPosition(1, 1);
                         Console.Write($"当前下载页面:{0}");
-                        Console.SetCursorPosition((Console.WindowWidth/2)+2, 1);
+                        Console.SetCursorPosition(Console.WindowWidth / 2 + 2, 1);
                         Console.Write($"倒计时:{0}秒");
                     }
                     else if (item.Item2 == 3)
@@ -250,68 +188,124 @@ namespace SpiderServerInLinux
                         Console.Write("┆");
                     }
                 }
+        }
+
+        private void Check()
+        {
+            if (Console.WindowHeight != WindowHeight || Console.WindowWidth != WindowWidth)
+            {
+                try
+                {
+                    Init();
+                    Draw();
+                }
+                catch (Exception e)
+                {
+                    Check();
+                }
+
+                WindowHeight = Console.WindowHeight;
+                WindowWidth = Console.WindowWidth;
             }
 
-            /*     for (int i = 0; i < Console.WindowWidth; i++)
-                 {
+            Console.SetCursorPosition(Console.WindowWidth / 4 + 2, 1);
+            Console.Write($"内存使用量:{Process.GetCurrentProcess().WorkingSet64 / 1024 / 1024}MB");
+        }
 
-                     for (int j = 0; j < Console.WindowHeight; j++)
-                     {
-                         if (i == 0 && j == 0)
-                         {
-                             Console.SetCursorPosition(i, j);
-                             Console.Write("┏");
-                         }
-                         else if (i == 0 && j == Console.WindowHeight - 1)
-                         {
-                             Console.SetCursorPosition(i, j);
-                             Console.Write("┗");
-                         }
-                         else if (i == Console.WindowWidth - 1 && j == 0)
-                         {
-                             Console.SetCursorPosition(i, j);
-                             Console.Write("┓");
-                         }
-                         else if (i == Console.WindowWidth - 1 && j == Console.WindowHeight - 1)
-                         {
-                             Console.SetCursorPosition(i, j);
-                             Console.Write("┛");
-                         }
-                         else if (i == 0)
-                         {
-                             Console.SetCursorPosition(i, j);
-                             Console.Write("┣");
-                         }else if (i == Console.WindowWidth - 1)
-                         {
-                             Console.SetCursorPosition(i, j);
-                             Console.Write("┫");
-                         }
-                         else if (j == Console.WindowHeight - 1)
-                         {
-                             Console.SetCursorPosition(i, j);
-                             Console.Write("┻");
-                         }
-                         else
-                         {
-                             Console.SetCursorPosition(i, 0);
-                             Console.Write("┳");
-                         }
-                         Thread.Sleep(100);
-                     }
+        private void Draw()
+        {
+            var Top = 5;
+            var CWidth = Console.WindowWidth / 2;
+            foreach (var VARIABLE in LocalInfoC.ToArray())
+            {
+                foreach (var VARIABLE2 in StringSplit(VARIABLE))
+                {
+                    if (string.IsNullOrEmpty(VARIABLE2)) continue;
+                    for (var i = 2; i < CWidth; i++)
+                    {
+                        Console.SetCursorPosition(i, Top);
+                        Console.Write(" ");
+                    }
 
-                     //Console.CursorTop = i;
-                     /*  Console.Write("カウンタ：");
-                       if (i <= 3)
-                       {
-                           Console.ForegroundColor = ConsoleColor.Red;
-                       }
-                       Console.Write("{0:D2}", i);
+                    Console.SetCursorPosition(2, Top);
+                    Console.Write(VARIABLE2);
 
-                       Console.ForegroundColor = ConsoleColor.Gray;
-                       Thread.Sleep(1000);*/
-            // }
+                    Top += 1;
+                    if (Top > Console.WindowHeight - 2) break;
+                }
+
+                if (Top > Console.WindowHeight - 2) break;
+
+                List<string> StringSplit(string s)
+                {
+                    var temp = new List<string>();
+                    var StringSize = Encoding.Default.GetByteCount(s);
+                    var WindowsSize = CWidth - 2;
+                    var CharArray = s.ToArray();
+                    do
+                    {
+                        if (StringSize > WindowsSize)
+                        {
+                            var byteCount = 0;
+                            var pos = 0;
+                            for (var j = 0; j < CharArray.Length; j++)
+                            {
+                                byteCount += CharArray[j] > 255 ? 2 : 1;
+                                if (byteCount > WindowsSize)
+                                {
+                                    pos = j;
+                                    break;
+                                }
+
+                                if (byteCount == WindowsSize)
+                                {
+                                    pos = j + 1;
+                                    break;
+                                }
+                            }
+
+                            if (pos == 0) pos = s.Length;
+
+                            temp.Add(s.Substring(0, pos));
+                            s = s.Substring(pos);
+                            StringSize = Encoding.Default.GetByteCount(s);
+                            CharArray = s.ToArray();
+                        }
+                        else
+                        {
+                            if (!string.IsNullOrEmpty(s)) temp.Add(s);
+
+                            return temp;
+                        }
+                    } while (true);
+                }
+            }
+        }
+
+        public override void Write(object message)
+        {
+            Check();
+            Console.SetCursorPosition(Console.WindowWidth / 2 + 2, 1);
+            Console.Write($"倒计时:{message}秒");
+        }
+
+        public override void Write(string message)
+        {
+            Check();
+            Console.SetCursorPosition(1, 1);
+            Console.Write($"当前下载页面:{message}");
+        }
+
+        public override void WriteLine(string message)
+        {
+            Console.WriteLine($"{DateTime.Now:yyyy-MM-dd mm:ss}->{message}");
+        }
+
+        public override void WriteLine(string message, string category)
+        {
+            Check();
+            LocalInfoC.Push($"{DateTime.Now:yyyy-MM-dd mm:ss}->[{category}]{message}");
+            Draw();
         }
     }
-
-
 }

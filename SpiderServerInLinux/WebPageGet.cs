@@ -13,7 +13,8 @@ namespace SpiderServerInLinux
     {
         private readonly CancellationTokenSource CancelInfo = new CancellationTokenSource();
         private int CurrectPageIndex;
-        Stopwatch Time = new Stopwatch();
+        private readonly Stopwatch Time = new Stopwatch();
+
         private Uri AddOneDay()
         {
             Interlocked.Increment(ref CurrectPageIndex);
@@ -65,7 +66,7 @@ namespace SpiderServerInLinux
             }
         }
 
-        void DownloadNewLoop(ConcurrentDictionary<int, TorrentInfo> theFirstRet, string Day)
+        private void DownloadNewLoop(ConcurrentDictionary<int, TorrentInfo> theFirstRet, string Day)
         {
             var Download = new WebClientEx.WebClientEx();
             Download.DownloadStringCompleted += (Sender, Object) =>
@@ -83,14 +84,8 @@ namespace SpiderServerInLinux
                     {
                         var StatusNum = PageInDateStatus(Day);
                         if (StatusNum == 0)
-                        {
-                            SaveToDataBaseOneByOne(Ret.AnalysisData.Values, CurrectPageIndex,true);
-                           
-                        }
-                        else if (StatusNum == -1)
-                        {
-                            SaveToDataBaseRange(Ret.AnalysisData.Values, CurrectPageIndex,true);
-                        }
+                            SaveToDataBaseOneByOne(Ret.AnalysisData.Values, CurrectPageIndex, true);
+                        else if (StatusNum == -1) SaveToDataBaseRange(Ret.AnalysisData.Values, CurrectPageIndex, true);
 
                         SaveStatus();
                         if (PageInDateStatus(Ret.NextDayData.Values.ElementAt(0).Day) != -1)
@@ -100,7 +95,6 @@ namespace SpiderServerInLinux
                             Ret.Dispose();
                             Loger.Instance.WithTimeRestart($"集群添加完毕，开始新一轮循环", Time);
                             DownloadNewLoop(NextData, NextData.Values.ElementAt(0).Day);
-                         
                         }
                     }
                 }
@@ -109,7 +103,7 @@ namespace SpiderServerInLinux
                     ErrorDealWith(e, Download);
                 }
             };
-           
+
             var DownloadPage = AddOneDay();
             Loger.Instance.WithTimeStart($"下载页面:{DownloadPage}", Time);
             Download.DownloadStringAsync(DownloadPage);
@@ -136,7 +130,7 @@ namespace SpiderServerInLinux
             var LastDay = TheFirstRet.AnalysisData.Values.ElementAt(TheFirstRet.AnalysisData.Count - 1).Day;
             if (FirstDay == LastDay)
             {
-                Loger.Instance.WithTimeStart("查询数据库时间差",Time);
+                Loger.Instance.WithTimeStart("查询数据库时间差", Time);
                 if (PageInDateStatus(FirstDay) == 1)
                 {
                     Loger.Instance.WithTimeStop("查询完毕，当前页为第一天", Time);
@@ -236,19 +230,21 @@ namespace SpiderServerInLinux
                 };
                 var DownloadPage = AddOneDay();
                 Loger.Instance.WithTimeStart($"下载页面:{DownloadPage}", Time);
-                int time = new Random().Next(1000, 5000);
-                for (int i = time; i > 0; i -= 500)
+                var T = new Task(() =>
                 {
-                    Loger.Instance.WaitTime(i / 1000);
-                    Thread.Sleep(500);
-                }
+                    var time = new Random().Next(1000, 5000);
+                    for (var i = time; i > 0; i -= 500)
+                    {
+                        Loger.Instance.WaitTime(i / 1000);
+                        Thread.Sleep(500);
+                    }
+                });
+                T.ContinueWith(obj => { });
                 Download.DownloadStringAsync(DownloadPage);
             }
             catch (Exception e)
             {
-
             }
-
         }
 
         private void ErrorDealWith(Exception e, WebClientEx.WebClientEx download)
@@ -260,32 +256,38 @@ namespace SpiderServerInLinux
             {
             }
 
-           // CancelInfo.Cancel();
+            // CancelInfo.Cancel();
         }
     }
 
     internal class DownWork : WebPageGet
     {
-        private  string DayOfToday="";
+        private readonly string DayOfToday = "";
 
         internal DownWork()
         {
             DownLoadOldPage();
-          //  DownLoadNewPage();
+            //  DownLoadNewPage();
         }
 
-        private void DownLoadOldPage() => Task.Factory.StartNew(DownloadOldInit, Setting.CancelSign.Token, TaskCreationOptions.LongRunning,
+        private void DownLoadOldPage()
+        {
+            Task.Factory.StartNew(DownloadOldInit, Setting.CancelSign.Token, TaskCreationOptions.LongRunning,
                 TaskScheduler.Default);
+        }
 
-        private void DownLoadNewPage() => Task.Factory.StartNew(() =>
-                                            {
-                                                Loger.Instance.LocalInfo("开始获得新数据");
-                                                Thread.Sleep(new TimeSpan(0, 0, 60, 0, 0)); //每小时遍历一次吧
-                                                if (DateTime.Now.ToString("yyyy-MM-dd") != DayOfToday)
-                                                    if (PageInDateStatus(DayOfToday) != 1)
-                                                        DownloadNewInit(DayOfToday);
-                                                DownLoadNewPage();
-                                            }, Setting.CancelSign.Token, TaskCreationOptions.LongRunning,
+        private void DownLoadNewPage()
+        {
+            Task.Factory.StartNew(() =>
+                {
+                    Loger.Instance.LocalInfo("开始获得新数据");
+                    Thread.Sleep(new TimeSpan(0, 0, 60, 0, 0)); //每小时遍历一次吧
+                    if (DateTime.Now.ToString("yyyy-MM-dd") != DayOfToday)
+                        if (PageInDateStatus(DayOfToday) != 1)
+                            DownloadNewInit(DayOfToday);
+                    DownLoadNewPage();
+                }, Setting.CancelSign.Token, TaskCreationOptions.LongRunning,
                 TaskScheduler.Default);
+        }
     }
 }

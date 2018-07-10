@@ -1,22 +1,30 @@
-﻿using System;
-using System.Diagnostics;
-using System.IO;
-using System.Net;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Linq;
-
-namespace SpiderServerInLinux
+﻿namespace SpiderServerInLinux
 {
     internal class Program
     {
-        private static void Main(string[] args)
+        private static  void Main(string[] args)
         {
+            /*   do
+               {
+
+                      var ST = string.Empty;
+
+                   for (int i = 0; i < new Random().Next(10, 30); i++)
+                   {
+                       ST += $"启动{i}";
+                   }
+                   Loger.Instance.LocalInfo(ST);
+                   Thread.Sleep(1);
+               } while (true);*/
 
             Loger.Instance.LocalInfo($"启动");
             DataBaseCommand.Init();
             Loger.Instance.LocalInfo("数据库初始化完毕");
-            new DownWork();
+
+             new DownLoop().DownLoopAsync();
+            
+
+            //new DownWork();
             /*   var Web= new  WebClient();
                   try
                   {

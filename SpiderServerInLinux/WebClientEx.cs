@@ -9,7 +9,6 @@ namespace WebClientEx
         public static CookieCollection inboundCookies;
 
         private readonly int _TimeOut = 30000; //milliseconds
-        public string ErrorInfo;
         private readonly string h_Accept = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8";
         private readonly string h_Accept_Encoding = "gzip, deflate, br";
         private readonly string h_Accept_Language = "en-US,en;q=0.5";
@@ -17,6 +16,8 @@ namespace WebClientEx
 
         private readonly string h_User_Agent =
             "Mozilla/5.0 (Windows NT 10.0; WOW64; rv:47.0) Gecko/20100101 Firefox/47.0";
+
+        public string ErrorInfo;
 
         public WebResponse webResponse;
 
