@@ -9,8 +9,7 @@ namespace SpiderServerInLinux
 {
     internal class DownloadHelp
     {
-        internal readonly BlockingCollection<Tuple<int, string>> DownloadCollect =
-            new BlockingCollection<Tuple<int, string>>();
+        internal readonly BlockingCollection<Tuple<int, string>> DownloadCollect;
 
         internal int DownloadMaxPage = 10;
         internal CancellationTokenSource CancelSign = new CancellationTokenSource();
@@ -28,6 +27,7 @@ namespace SpiderServerInLinux
         internal async Task DownloadPageLoop(int StartPage)
         {
             CurrectPageIndex = StartPage;
+            Loger.Instance.LocalInfo($"循环下载模式启动");
             do
             {
                 DownloadWork();
@@ -47,10 +47,10 @@ namespace SpiderServerInLinux
             {
                 try
                 {
-                    Loger.Instance.WithTimeStart($"下载网页page={CurrectPageIndex}", Time);
+                  //  Loger.Instance.WithTimeStart($"下载网页page={CurrectPageIndex}", Time);
                     DownloadCollect.TryAdd(new Tuple<int, string>(CurrectPageIndex,
                         await WebClient.DownloadStringTaskAsync(new Uri($"{Setting.Address}?p={CurrectPageIndex}"))));
-                    Loger.Instance.WithTimeStop("下载网页完毕", Time);
+                   // Loger.Instance.WithTimeStop("下载网页完毕", Time);
                 }
                 catch (Exception ex)
                 {

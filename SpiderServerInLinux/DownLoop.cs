@@ -9,7 +9,13 @@ namespace SpiderServerInLinux
 
         internal  async Task  DownLoopAsync()
         {
-          await  DoF.DownloadPageLoop(0);
+          await  DoF.DownloadPageLoop(Setting.LastPageIndex);
+            string Date = string.Empty;
+            foreach (var Item in DoF.DownloadCollect.GetConsumingEnumerable())
+            {
+                Loger.Instance.PageInfo(Item.Item1);
+
+            }
         }
         static async void AsyncMethod()
         {

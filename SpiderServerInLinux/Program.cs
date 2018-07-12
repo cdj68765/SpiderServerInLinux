@@ -1,4 +1,6 @@
-﻿namespace SpiderServerInLinux
+﻿using System.Threading.Tasks;
+
+namespace SpiderServerInLinux
 {
     internal class Program
     {
@@ -20,8 +22,12 @@
             Loger.Instance.LocalInfo($"启动");
             DataBaseCommand.Init();
             Loger.Instance.LocalInfo("数据库初始化完毕");
-
-             new DownLoop().DownLoopAsync();
+            Task.Factory.StartNew(async () =>
+            {
+                Loger.Instance.LocalInfo("主线程启动");
+                await new DownLoop().DownLoopAsync();
+            },TaskCreationOptions.LongRunning);
+            
             
 
             //new DownWork();
