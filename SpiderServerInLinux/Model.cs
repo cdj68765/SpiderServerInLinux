@@ -18,9 +18,27 @@ namespace SpiderServerInLinux
         internal static BlockingCollection<TorrentInfo> WordProcess = new BlockingCollection<TorrentInfo>();
     }
 
-    internal class TorrentInfo
+   /* internal class TorrentInfo
     {
         public int id { get; set; }
+        public string Class { get; set; }
+        public string Catagory { get; set; }
+        public string Title { get; set; }
+        public string Torrent { get; set; }
+        public string Magnet { get; set; }
+        public string Size { get; set; }
+        public string Day => Convert.ToDateTime(Date).ToString("yyyy-MM-dd");
+        public string Date { get; set; }
+        public string Up { get; set; }
+        public string Leeches { get; set; }
+        public string Complete { get; set; }
+    }*/
+
+    internal class TorrentInfo
+    {
+        public int id => int.Parse(Url.Replace(@"/view/", "").Replace("#comments",""));
+        public int Timestamp { get; set; }
+        public string Url { get; set; }
         public string Class { get; set; }
         public string Catagory { get; set; }
         public string Title { get; set; }

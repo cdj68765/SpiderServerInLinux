@@ -2,16 +2,18 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Text;
 using LiteDB;
 
 namespace SpiderServerInLinux
 {
     internal static class DataBaseCommand
     {
-        private static readonly Stopwatch Time = new Stopwatch();
+        //private static readonly Stopwatch Time = new Stopwatch();
 
         internal static void Init()
         {
+            Stopwatch Time = new Stopwatch();
             Loger.Instance.WithTimeStart("创建或者打开数据库", Time);
             // 打开数据库 (如果不存在自动创建) 
             using (var db = new LiteDatabase(@"Nyaa.db"))
@@ -35,7 +37,7 @@ namespace SpiderServerInLinux
                     NyaaDB.EnsureIndex(x => x.Catagory);
                     NyaaDB.EnsureIndex(x => x.Date);
                     NyaaDB.EnsureIndex(x => x.id);
-                    NyaaDB.EnsureIndex(x => x.Title);
+                    //  NyaaDB.EnsureIndex(x => x.Title);
                     Loger.Instance.WithTimeRestart("插入网站基础信息到数据库", Time);
                     Loger.Instance.WithTimeStop("创建成功", Time);
                 }
@@ -53,6 +55,7 @@ namespace SpiderServerInLinux
 
         internal static DateRecord GetDateInfo(string Date)
         {
+            Stopwatch Time = new Stopwatch();
             Loger.Instance.WithTimeStart("数据库读取中", Time);
             using (var db = new LiteDatabase(@"Nyaa.db"))
             {
@@ -88,44 +91,89 @@ namespace SpiderServerInLinux
 
         internal static void SaveToDataBaseRange(ICollection<TorrentInfo> Data, int Page, bool Mode = false)
         {
+            Stopwatch Time = new Stopwatch();
             Loger.Instance.WithTimeStart("数据库保存中", Time);
             using (var db = new LiteDatabase(@"Nyaa.db"))
             {
                 var NyaaDB = db.GetCollection<TorrentInfo>("NyaaDB");
-                NyaaDB.InsertBulk(Data);
+                try
+                {
+                    NyaaDB.InsertBulk(Data);
+                }
+                catch (LiteException e)
+                {
+                    Loger.Instance.LocalInfo("集群添加失败，转入单独添加");
+                    foreach (var VARIABLE in Data)
+                    {
+                        try
+                        {
+                            NyaaDB.Upsert(VARIABLE);
+
+                        }
+                        catch (LiteException ex)
+                        {
+                            Loger.Instance.LocalInfo($"单独添加失败失败原因{ex}");
+                        }
+                    }
+                }
+
                 db.GetCollection<DateRecord>("DateRecord")
                     .Upsert(new DateRecord {_id = Data.ElementAt(0).Day, Status = Mode, Page = Page});
             }
 
-            Loger.Instance.WithTimeStop("数据库完毕", Time);
+            SaveLastCountStatus();
+            Loger.Instance.WithTimeStop("数据库操作完毕", Time);
         }
 
         internal static void SaveToDataBaseOneByOne(ICollection<TorrentInfo> Data, int Page, bool Mode = false)
         {
+            Stopwatch Time = new Stopwatch();
             Loger.Instance.WithTimeStart("数据库保存中", Time);
             using (var db = new LiteDatabase(@"Nyaa.db"))
             {
                 db.GetCollection<DateRecord>("DateRecord")
                     .Upsert(new DateRecord {_id = Data.ElementAt(0).Day, Status = false});
+
                 var NyaaDB = db.GetCollection<TorrentInfo>("NyaaDB");
-                foreach (var VARIABLE in Data) NyaaDB.Upsert(VARIABLE);
-                db.GetCollection<DateRecord>("DateRecord")
-                    .Upsert(new DateRecord {_id = Data.ElementAt(0).Day, Status = Mode, Page = Page});
+
+                foreach (var VARIABLE in Data)
+                {
+                    try
+                    {
+                        NyaaDB.Upsert(VARIABLE);
+
+                    }
+                    catch (Exception e)
+                    {
+                        Loger.Instance.LocalInfo(e);
+                    }
+
+                    db.GetCollection<DateRecord>("DateRecord")
+                        .Upsert(new DateRecord {_id = Data.ElementAt(0).Day, Status = Mode, Page = Page});
+                }
             }
 
-            Loger.Instance.WithTimeStop("数据库完毕", Time);
+
+            SaveLastCountStatus();
+            Loger.Instance.WithTimeStop("数据库操作完毕", Time);
         }
 
-        internal static void SaveStatus()
+        internal static void SaveLastCountStatus()
         {
-            Loger.Instance.WithTimeStart("数据库保存中", Time);
             using (var db = new LiteDatabase(@"Nyaa.db"))
             {
                 db.GetCollection<GlobalSet>("Setting")
                     .Upsert(new GlobalSet {_id = "LastCount", Value = Setting.LastPageIndex.ToString()});
             }
+        }
 
-            Loger.Instance.WithTimeStop("数据库完毕", Time);
+        internal static void SavePage(string Page)
+        {
+            using (var db = new LiteDatabase(@"Nyaa.db"))
+            {
+                db.GetCollection("WebPage")
+                    .Insert(new BsonDocument {["_id"] = ObjectId.NewObjectId(), ["Page"] = Encoding.Unicode.GetBytes(Page)});
+            }
         }
 
         #endregion

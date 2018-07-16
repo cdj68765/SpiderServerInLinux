@@ -87,7 +87,7 @@ namespace SpiderServerInLinux
                             SaveToDataBaseOneByOne(Ret.AnalysisData.Values, CurrectPageIndex, true);
                         else if (StatusNum == -1) SaveToDataBaseRange(Ret.AnalysisData.Values, CurrectPageIndex, true);
 
-                        SaveStatus();
+                        SaveLastCountStatus();
                         if (PageInDateStatus(Ret.NextDayData.Values.ElementAt(0).Day) != -1)
                         {
                             Loger.Instance.WithTimeRestart($"开始集群添加", Time);
@@ -183,7 +183,6 @@ namespace SpiderServerInLinux
                 {
                     try
                     {
-                        Loger.Instance.PageInfo(CurrectPageIndex);
                         Loger.Instance.WithTimeRestart($"下载完毕", Time);
                         var Ret = new HandlerHtml(Object.Result, theFirstRet, Day);
                         Loger.Instance.WithTimeRestart($"分析数据", Time);
@@ -215,7 +214,7 @@ namespace SpiderServerInLinux
                                 Loger.Instance.WithTimeRestart($"添加完毕", Time);
                             }
 
-                            SaveStatus();
+                            SaveLastCountStatus();
                             var NextData = new ConcurrentDictionary<int, TorrentInfo>(Ret.NextDayData);
                             Ret.Dispose();
                             Loger.Instance.WithTimeStop($"进行新一轮添加", Time);

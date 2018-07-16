@@ -80,13 +80,13 @@ namespace SpiderServerInLinux
         public void WithTimeStop(object msg, Stopwatch Time)
         {
             Console.ForegroundColor = ConsoleColor.White;
-            Trace.WriteLine(msg, "信息");
+            Trace.WriteLine($"{msg},用时:{Time.ElapsedMilliseconds}毫秒", "信息");
             Time.Stop();
         }
 
-        public void PageInfo(int msg)
+        public void DateInfo(string msg)
         {
-            Trace.Write(msg.ToString());
+            Trace.Write(msg);
         }
 
         internal void WaitTime(int i)
@@ -208,7 +208,7 @@ namespace SpiderServerInLinux
                 WindowWidth = Console.WindowWidth;
             }
 
-            Console.SetCursorPosition(Console.WindowWidth / 4 + 2, 1);
+            Console.SetCursorPosition(Console.WindowWidth / 2 + Console.WindowWidth / 4 + 2, 1);
             Console.Write($"内存使用量:{Process.GetCurrentProcess().WorkingSet64 / 1024 / 1024}MB");
         }
 
@@ -293,12 +293,14 @@ namespace SpiderServerInLinux
         {
             Check();
             Console.SetCursorPosition(1, 1);
-            Console.Write($"当前下载页面:{message}");
+            Console.Write($"当前下载页面:{Setting.LastPageIndex}  当前下载日期:{message}");
         }
 
         public override void WriteLine(string message)
         {
-            Console.WriteLine($"{DateTime.Now:yyyy-MM-dd mm:ss}->{message}");
+            Check();
+            LocalInfoC.Push($"{DateTime.Now:yyyy-MM-dd mm:ss}->{message}");
+            Draw();
         }
 
         public override void WriteLine(string message, string category)
