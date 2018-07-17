@@ -299,14 +299,14 @@ namespace SpiderServerInLinux
         public override void WriteLine(string message)
         {
             Check();
-            LocalInfoC.Push($"{DateTime.Now:yyyy-MM-dd mm:ss}->{message}");
+            LocalInfoC.Push($"{DateTime.Now:MM-dd hh:mm:ss}->{message}");
             Draw();
         }
 
         public override void WriteLine(string message, string category)
         {
             Check();
-            LocalInfoC.Push($"{DateTime.Now:yyyy-MM-dd mm:ss}->[{category}]{message}");
+            LocalInfoC.Push($"{DateTime.Now:MM-dd hh:mm:ss}->[{category}]{message}");
             Draw();
         }
     }

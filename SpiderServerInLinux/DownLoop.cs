@@ -18,7 +18,12 @@ namespace SpiderServerInLinux
                 {
                     Setting.LastPageIndex = Item.Item1;
                     DataBaseCommand.SavePage(Item.Item2);
-                    PageHandler.HandlerToHtml(Item.Item2);
+                    if (PageHandler.HandlerToHtml(Item.Item2) != 75)
+                    {
+                        Loger.Instance.LocalInfo("当前获得条目小于75条,检查是否完成获取");
+                        DoF.DownloadCollect.CompleteAdding();
+                        DoF.CancelSign.Cancel();
+                    }
                 }
             }, TaskCreationOptions.LongRunning);
             Task.Factory.StartNew(() =>

@@ -79,9 +79,10 @@ namespace SpiderServerInLinux
         }
         internal readonly BlockingCollection<Tuple<Tuple<string,int>, System.Collections.Generic.ICollection<TorrentInfo>>> DataCollect=new BlockingCollection<Tuple<Tuple<string, int>, System.Collections.Generic.ICollection<TorrentInfo>>>();
 
-        public void HandlerToHtml(string result)
+        public int HandlerToHtml(string result)
         {
             if (AnalysisData == null) AnalysisData = new ConcurrentDictionary<int, TorrentInfo>();
+            var LoopConut = 0;
             if (result != "")
             {
                 Loger.Instance.DateInfo(DateOfNow);
@@ -90,6 +91,7 @@ namespace SpiderServerInLinux
                 HtmlDoc.LoadHtml(result);
                 foreach (var item in HtmlDoc.DocumentNode.SelectNodes(@"/html/body/div[1]/div[2]/table/tbody/tr"))
                 {
+                    Interlocked.Increment(ref LoopConut);
                     var TempData = new TorrentInfo();
                     var temp = HtmlNode.CreateNode(item.OuterHtml);
                     TempData.Class = item.Attributes["class"].Value;
@@ -132,10 +134,8 @@ namespace SpiderServerInLinux
                         pageCount = 0;
                         AnalysisData.Clear();
                         AddFin = true;
-                        Loger.Instance.WithTimeRestart($"结束获取{TempData.Day}数据", Time);
+                        Loger.Instance.WithTimeRestart($"结束获取{DateOfNow}数据", Time);
                     }
-
-
                     AnalysisData.AddOrUpdate(TempData.id, TempData, (key, Value) => TempData);
                 }
 
@@ -145,6 +145,8 @@ namespace SpiderServerInLinux
                     AnalysisData.Clear();
                 }
             }
+
+            return LoopConut;
         }
 
 

@@ -12,9 +12,8 @@ namespace SpiderServerInLinux
         internal readonly BlockingCollection<Tuple<int, string>> DownloadCollect;
 
         internal int DownloadMaxPage = 10;
-        internal CancellationTokenSource CancelSign = new CancellationTokenSource();
+        internal readonly CancellationTokenSource CancelSign;
         //private readonly Stopwatch Time = new Stopwatch();
-        private readonly WebClientEx.WebClientEx WebClient = new WebClientEx.WebClientEx();
         private int CurrectPageIndex;
 
         internal DownloadHelp()
@@ -30,19 +29,32 @@ namespace SpiderServerInLinux
             Loger.Instance.LocalInfo($"循环下载模式启动");
             do
             {
-                 DownloadWork();
-                var time = new Random().Next(1000, 10000);
-                for (var i = time; i > 0; i -= 1000)
+                try
                 {
-                    Loger.Instance.WaitTime(i / 1000);
-                    await Task.Delay(1000);
+                    DownloadWork();
+                    var time = new Random().Next(1000, 10000);
+                    for (var i = time; i > 0; i -= 1000)
+                    {
+                        Loger.Instance.WaitTime(i / 1000);
+                        await Task.Delay(1000);
+                    }
+                    Interlocked.Increment(ref CurrectPageIndex);
                 }
-
-                Interlocked.Increment(ref CurrectPageIndex);
+                catch (Exception e)
+                {
+                    var time = new Random().Next(10000, 100000);
+                    for (var i = time; i > 0; i -= 1000)
+                    {
+                        Loger.Instance.WaitTime(i / 1000);
+                        Thread.Sleep(1000);
+                    }
+                    Loger.Instance.Error(e);
+                }
+          
             } while (!CancelSign.IsCancellationRequested);
         }
 
-        readonly WebClientEx.WebClientEx WebClientEX = new WebClientEx.WebClientEx();
+       
         private  void DownloadWork()
         {
             if (!CancelSign.IsCancellationRequested&& !DownloadCollect.IsAddingCompleted)
@@ -50,21 +62,22 @@ namespace SpiderServerInLinux
                 try
                 {
                     Stopwatch Time = new Stopwatch();
+                    WebClientEx.WebClientEx WebClientEX = new WebClientEx.WebClientEx();
                     Loger.Instance.WithTimeStart($"下载网页page={CurrectPageIndex}", Time);
                     DownloadCollect.TryAdd(new Tuple<int, string>(CurrectPageIndex,
                         WebClientEX.DownloadStringTaskAsync(new Uri($"{Setting.Address}?p={CurrectPageIndex}"))
                             .Result));
                     Loger.Instance.WithTimeStop("下载网页完毕", Time);
                 }
-                catch (Exception ex)
+                catch (InvalidOperationException ex)
                 {
                     if (DownloadCollect.IsCompleted)
                     {
                         Loger.Instance.Error($"管道状态已经完成");
-                        return;
+                        CancelSign.Cancel();
                     }
 
-                    if (ex.Message.IndexOf("Object", StringComparison.Ordinal)!=-1)
+                /*    if (ex.Message.IndexOf("Object", StringComparison.Ordinal) != -1)
                     {
                         Loger.Instance.Error($"Object错误，开始重试");
                         Thread.Sleep(10000);
@@ -95,7 +108,7 @@ namespace SpiderServerInLinux
                         });
                         T.Start();
                         T.ContinueWith(obj => { DownloadWork(); });
-                    }
+                    }*/
                 }
             }
             else if (CancelSign.IsCancellationRequested)
