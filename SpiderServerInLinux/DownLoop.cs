@@ -10,6 +10,7 @@ namespace SpiderServerInLinux
         internal void DownLoopAsync()
         {
             //DownNewDayAsync();
+            Setting.LastPageIndex = 12766;
             DownAsync();
             var PageHandler = new HandlerHtml();
             Task.Factory.StartNew(() =>
