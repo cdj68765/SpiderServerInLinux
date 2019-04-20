@@ -18,8 +18,8 @@ namespace SpiderServerInLinux
         private Uri AddOneDay()
         {
             Interlocked.Increment(ref CurrectPageIndex);
-            if (CurrectPageIndex > Setting.LastPageIndex) Setting.LastPageIndex = CurrectPageIndex;
-            return new Uri($"{Setting.Address}?p={CurrectPageIndex}");
+            if (CurrectPageIndex > Setting._GlobalSet.NyaaLastPageIndex) Setting._GlobalSet.NyaaLastPageIndex = CurrectPageIndex;
+            return new Uri($"{Setting._GlobalSet.NyaaAddress}?p={CurrectPageIndex}");
         }
 
         internal int PageInDateStatus(string Date)
@@ -66,7 +66,7 @@ namespace SpiderServerInLinux
             }
         }
 
-        private void DownloadNewLoop(ConcurrentDictionary<int, TorrentInfo> theFirstRet, string Day)
+        private void DownloadNewLoop(ConcurrentDictionary<int, NyaaInfo> theFirstRet, string Day)
         {
             var Download = new WebClientEx.WebClientEx();
             Download.DownloadStringCompleted += (Sender, Object) =>
@@ -86,12 +86,10 @@ namespace SpiderServerInLinux
                         if (StatusNum == 0)
                             SaveToDataBaseOneByOne(Ret.AnalysisData.Values, CurrectPageIndex, true);
                         else if (StatusNum == -1) SaveToDataBaseRange(Ret.AnalysisData.Values, CurrectPageIndex, true);
-
-                        SaveLastCountStatus();
                         if (PageInDateStatus(Ret.NextDayData.Values.ElementAt(0).Day) != -1)
                         {
                             Loger.Instance.WithTimeRestart($"开始集群添加", Time);
-                            var NextData = new ConcurrentDictionary<int, TorrentInfo>(Ret.NextDayData);
+                            var NextData = new ConcurrentDictionary<int, NyaaInfo>(Ret.NextDayData);
                             Ret.Dispose();
                             Loger.Instance.WithTimeRestart($"集群添加完毕，开始新一轮循环", Time);
                             DownloadNewLoop(NextData, NextData.Values.ElementAt(0).Day);
@@ -119,10 +117,10 @@ namespace SpiderServerInLinux
              */
             //首先获得一波页面数据分析
             var WebClient = new WebClientEx.WebClientEx();
-            //  CurrectPageIndex = Setting.LastPageIndex;
+            // CurrectPageIndex = Setting.LastPageIndex;
             Loger.Instance.LocalInfo("开始第一次获取初始化");
             var TheFirstRet = new HandlerHtml(await WebClient.DownloadStringTaskAsync(
-                new Uri($"{Setting.Address}?p={CurrectPageIndex}")));
+                new Uri($"{Setting._GlobalSet.NyaaAddress}?p={CurrectPageIndex}")));
             //于数据库交流，获得数据库时间状态
             //首先判断首尾是否相同 用来判断同一页是否有日期交替
 
@@ -157,7 +155,7 @@ namespace SpiderServerInLinux
                     else
                     {
                         Loger.Instance.WithTimeStop("查询完毕，当前页非第一天", Time);
-                        TheFirstRet.NextDayData = new ConcurrentDictionary<int, TorrentInfo>();
+                        TheFirstRet.NextDayData = new ConcurrentDictionary<int, NyaaInfo>();
                         foreach (var VARIABLE in TheFirstRet.AnalysisData)
                         {
                             if (VARIABLE.Value.Day == LastDay)
@@ -174,7 +172,7 @@ namespace SpiderServerInLinux
             }
         }
 
-        private void DownloadOldLoop(ConcurrentDictionary<int, TorrentInfo> theFirstRet, string Day)
+        private void DownloadOldLoop(ConcurrentDictionary<int, NyaaInfo> theFirstRet, string Day)
         {
             try
             {
@@ -214,8 +212,7 @@ namespace SpiderServerInLinux
                                 Loger.Instance.WithTimeRestart($"添加完毕", Time);
                             }
 
-                            SaveLastCountStatus();
-                            var NextData = new ConcurrentDictionary<int, TorrentInfo>(Ret.NextDayData);
+                            var NextData = new ConcurrentDictionary<int, NyaaInfo>(Ret.NextDayData);
                             Ret.Dispose();
                             Loger.Instance.WithTimeStop($"进行新一轮添加", Time);
                             DownloadOldLoop(NextData, NextData.Values.ElementAt(0).Day);
@@ -266,7 +263,7 @@ namespace SpiderServerInLinux
         internal DownWork()
         {
             DownLoadOldPage();
-            //  DownLoadNewPage();
+            // DownLoadNewPage();
         }
 
         private void DownLoadOldPage()

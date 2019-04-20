@@ -3,27 +3,27 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Timers;
 
 namespace SpiderServerInLinux
 {
     internal interface ILoger
     {
         void Warn(object msg);
+
         void LocalInfo(object msg);
+
         void Debug(object msg);
+
         void Error(object msg);
     }
 
     public class Loger : ILoger
     {
-        /// <summary>
-        ///     Single Instance
-        /// </summary>
         private static Loger instance;
 
-        /// <summary>
-        ///     Constructor
-        /// </summary>
         private Loger()
         {
             Trace.Listeners.Clear();
@@ -93,11 +93,22 @@ namespace SpiderServerInLinux
         {
             Trace.Write(i);
         }
+
+        internal void ServerInfo(string Host, string Info)
+        {
+            Trace.Write(Host, Info);
+        }
+
+        internal void ServerInfo(string Host, Exception Info)
+        {
+            Trace.Write(Host, Info.Message);
+        }
     }
 
     public class LogerTraceListener : TraceListener
     {
         private readonly Stack<string> LocalInfoC = new Stack<string>();
+        private readonly Stack<string> Remote = new Stack<string>();
         private int WindowHeight;
 
         private int WindowWidth;
@@ -108,8 +119,8 @@ namespace SpiderServerInLinux
             Console.Clear();
             Console.CancelKeyPress += delegate { Console.Clear(); };
             foreach (var item in from X in Enumerable.Range(0, Console.WindowWidth)
-                from Y in Enumerable.Range(0, Console.WindowHeight)
-                select new Tuple<int, int>(X, Y))
+                                 from Y in Enumerable.Range(0, Console.WindowHeight)
+                                 select new Tuple<int, int>(X, Y))
                 if (item.Item1 == 0 && item.Item2 == 0)
                 {
                     Console.SetCursorPosition(item.Item1, item.Item2);
@@ -188,40 +199,80 @@ namespace SpiderServerInLinux
                         Console.Write("┆");
                     }
                 }
+            Console.SetCursorPosition(0, 0);
         }
 
-        private void Check()
+        private bool Checking = false;
+
+        public void Check()
         {
-            if (Console.WindowHeight != WindowHeight || Console.WindowWidth != WindowWidth)
+            if (!Checking)
+            {
+                Checking = true;
+                Task.Factory.StartNew(() =>
+                {
+                    while (true)
+                    {
+                        Thread.Sleep(Setting.LoopTime);
+                        _Check();
+                    }
+                });
+            }
+
+            _Check();
+            void _Check()
             {
                 try
                 {
-                    Init();
-                    Draw();
+                    if (Console.WindowHeight != WindowHeight || Console.WindowWidth != WindowWidth)
+                    {
+                        Init();
+                        DrawLocal();
+                        DrawRemote();
+                        WindowHeight = Console.WindowHeight;
+                        WindowWidth = Console.WindowWidth;
+                    }
+                    for (var i = Console.WindowWidth / 2 + Console.WindowWidth / 6 - 1; i < Console.WindowWidth - 1; i++)
+                    {
+                        Console.SetCursorPosition(i, 1);
+                        Console.Write(" ");
+                    }
+                    Console.SetCursorPosition(Console.WindowWidth / 2 + Console.WindowWidth / 6 - 1, 1);
+                    Console.Write($"内存使用量:{Process.GetCurrentProcess().WorkingSet64 / 1024 / 1024}MB");
+                    if (Setting.SSR != null)
+                    {
+                        Console.SetCursorPosition(Console.WindowWidth / 2 + Console.WindowWidth / 3, 1);
+                        Console.Write($"SSR流量:{HumanReadableFilesize((double)Setting.SSR.SSRSpeedInfo.totalDownloadBytes)}");
+                    }
                 }
                 catch (Exception e)
                 {
-                    Check();
+                    Loger.Instance.ServerInfo("SSR", e);
                 }
-
-                WindowHeight = Console.WindowHeight;
-                WindowWidth = Console.WindowWidth;
+                String HumanReadableFilesize(double size)
+                {
+                    var units = new[] { "B", "KB", "MB", "GB", "TB", "PB" };
+                    double mod = 1024.0;
+                    int i = 0;
+                    while (size >= mod)
+                    {
+                        size /= mod;
+                        i++;
+                    }
+                    return Math.Round(size) + units[i];
+                }
             }
-
-            Console.SetCursorPosition(Console.WindowWidth / 2 + Console.WindowWidth / 4 + 2, 1);
-            Console.Write($"内存使用量:{Process.GetCurrentProcess().WorkingSet64 / 1024 / 1024}MB");
         }
 
-        private void Draw()
+        private void DrawLocal()
         {
             var Top = 5;
-            var CWidth = Console.WindowWidth / 2;
             foreach (var VARIABLE in LocalInfoC.ToArray())
             {
                 foreach (var VARIABLE2 in StringSplit(VARIABLE))
                 {
                     if (string.IsNullOrEmpty(VARIABLE2)) continue;
-                    for (var i = 2; i < CWidth; i++)
+                    for (var i = 2; i < Console.WindowWidth / 2; i++)
                     {
                         Console.SetCursorPosition(i, Top);
                         Console.Write(" ");
@@ -235,79 +286,111 @@ namespace SpiderServerInLinux
                 }
 
                 if (Top > Console.WindowHeight - 2) break;
-
-                List<string> StringSplit(string s)
-                {
-                    var temp = new List<string>();
-                    var StringSize = Encoding.Default.GetByteCount(s);
-                    var WindowsSize = CWidth - 2;
-                    var CharArray = s.ToArray();
-                    do
-                    {
-                        if (StringSize > WindowsSize)
-                        {
-                            var byteCount = 0;
-                            var pos = 0;
-                            for (var j = 0; j < CharArray.Length; j++)
-                            {
-                                byteCount += CharArray[j] > 255 ? 2 : 1;
-                                if (byteCount > WindowsSize)
-                                {
-                                    pos = j;
-                                    break;
-                                }
-
-                                if (byteCount == WindowsSize)
-                                {
-                                    pos = j + 1;
-                                    break;
-                                }
-                            }
-
-                            if (pos == 0) pos = s.Length;
-
-                            temp.Add(s.Substring(0, pos));
-                            s = s.Substring(pos);
-                            StringSize = Encoding.Default.GetByteCount(s);
-                            CharArray = s.ToArray();
-                        }
-                        else
-                        {
-                            if (!string.IsNullOrEmpty(s)) temp.Add(s);
-
-                            return temp;
-                        }
-                    } while (true);
-                }
             }
+        }
+
+        private void DrawRemote()
+        {
+            var Top = 5;
+            foreach (var VARIABLE in Remote.ToArray())
+            {
+                foreach (var VARIABLE2 in StringSplit(VARIABLE))
+                {
+                    if (string.IsNullOrEmpty(VARIABLE2)) continue;
+                    for (var i = (Console.WindowWidth / 2) + 2; i < Console.WindowWidth - 1; i++)
+                    {
+                        Console.SetCursorPosition(i, Top);
+                        Console.Write(" ");
+                    }
+
+                    Console.SetCursorPosition((Console.WindowWidth / 2) + 2, Top);
+                    Console.Write(VARIABLE2);
+
+                    Top += 1;
+                    if (Top > Console.WindowHeight - 2) break;
+                }
+
+                if (Top > Console.WindowHeight - 2) break;
+            }
+        }
+
+        private List<string> StringSplit(string s)
+        {
+            var temp = new List<string>();
+            var StringSize = Encoding.Default.GetByteCount(s);
+            var WindowsSize = (Console.WindowWidth / 2) - 3;
+            var CharArray = s.ToArray();
+            do
+            {
+                if (StringSize > WindowsSize)
+                {
+                    var byteCount = 0;
+                    var pos = 0;
+                    for (var j = 0; j < CharArray.Length; j++)
+                    {
+                        byteCount += CharArray[j] > 255 ? 2 : 1;
+                        if (byteCount > WindowsSize)
+                        {
+                            pos = j;
+                            break;
+                        }
+
+                        if (byteCount == WindowsSize)
+                        {
+                            pos = j + 1;
+                            break;
+                        }
+                    }
+
+                    if (pos == 0) pos = s.Length;
+
+                    temp.Add(s.Substring(0, pos));
+                    s = s.Substring(pos);
+                    StringSize = Encoding.Default.GetByteCount(s);
+                    CharArray = s.ToArray();
+                }
+                else
+                {
+                    if (!string.IsNullOrEmpty(s)) temp.Add(s);
+
+                    return temp;
+                }
+            } while (true);
         }
 
         public override void Write(object message)
         {
-            Check();
-            Console.SetCursorPosition(Console.WindowWidth / 2 + 2, 1);
-            Console.Write($"倒计时:{message}秒");
+            /*   Check();
+               Console.SetCursorPosition(Console.WindowWidth / 2 + 2, 1);
+               Console.Write($"倒计时:{message}秒");*/
         }
 
         public override void Write(string message)
         {
             Check();
             Console.SetCursorPosition(1, 1);
-            Console.Write($"当前下载页面:{Setting.LastPageIndex}  当前下载日期:{message}");
+            Console.Write($"当前下载页面:{Setting._GlobalSet.NyaaLastPageIndex}  当前下载日期:{message}");
         }
 
         public override void WriteLine(string message)
         {
             Check();
             LocalInfoC.Push($"{DateTime.Now:MM-dd hh:mm:ss}->{message}");
-            Draw();
+            DrawLocal();
         }
 
         public override void WriteLine(string message, string category)
         {
             Check();
             LocalInfoC.Push($"{DateTime.Now:MM-dd hh:mm:ss}->[{category}]{message}");
-            Draw();
+            DrawLocal();
+        }
+
+        public override void Write(string category, string message)
+        {
+            Check();
+            Remote.Push($"{DateTime.Now:MM-dd hh:mm:ss}->[{category}]{message}");
+            DrawRemote();
         }
     }
 }

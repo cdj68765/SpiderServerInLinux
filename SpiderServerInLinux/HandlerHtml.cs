@@ -11,22 +11,22 @@ namespace SpiderServerInLinux
         public bool AddFin;
         int pageCount = 0;
         private string DateOfNow = string.Empty;
-        public ConcurrentDictionary<int, TorrentInfo> AnalysisData;
-        public ConcurrentDictionary<int, TorrentInfo> NextDayData;
+        public ConcurrentDictionary<int, NyaaInfo> AnalysisData;
+        public ConcurrentDictionary<int, NyaaInfo> NextDayData;
         private static readonly Stopwatch Time = new Stopwatch();
-        public HandlerHtml(string result, ConcurrentDictionary<int, TorrentInfo> PreData = null, string Day = null)
+        public HandlerHtml(string result, ConcurrentDictionary<int, NyaaInfo> PreData = null, string Day = null)
         {
             if (PreData != null)
                 AnalysisData = PreData;
             else
-                AnalysisData = new ConcurrentDictionary<int, TorrentInfo>();
+                AnalysisData = new ConcurrentDictionary<int, NyaaInfo>();
             if (result != "")
             {
                 var HtmlDoc = new HtmlDocument();
                 HtmlDoc.LoadHtml(result);
                 foreach (var item in HtmlDoc.DocumentNode.SelectNodes(@"/html/body/div[1]/div[2]/table/tbody/tr"))
                 {
-                    var TempData = new TorrentInfo();
+                    var TempData = new NyaaInfo();
                     var temp = HtmlNode.CreateNode(item.OuterHtml);
                     TempData.Class = item.Attributes["class"].Value;
                     TempData.Catagory = temp.SelectSingleNode("td[1]/a").Attributes["title"]
@@ -64,7 +64,7 @@ namespace SpiderServerInLinux
 
                         if (TempData.Day != Day)
                         {
-                            NextDayData = new ConcurrentDictionary<int, TorrentInfo>();
+                            NextDayData = new ConcurrentDictionary<int, NyaaInfo>();
                             NextDayData.AddOrUpdate(TempData.id, TempData, (key, Value) => TempData);
                             AddFin = true;
                             continue;
@@ -77,11 +77,11 @@ namespace SpiderServerInLinux
                 //SaveToDataBaseFormList(new List<TorrentInfo>(AnalysisData.Values));
             }
         }
-        internal readonly BlockingCollection<Tuple<Tuple<string,int>, System.Collections.Generic.ICollection<TorrentInfo>>> DataCollect=new BlockingCollection<Tuple<Tuple<string, int>, System.Collections.Generic.ICollection<TorrentInfo>>>();
+        internal readonly BlockingCollection<Tuple<Tuple<string,int>, System.Collections.Generic.ICollection<NyaaInfo>>> DataCollect=new BlockingCollection<Tuple<Tuple<string, int>, System.Collections.Generic.ICollection<NyaaInfo>>>();
 
         public int HandlerToHtml(string result)
         {
-            if (AnalysisData == null) AnalysisData = new ConcurrentDictionary<int, TorrentInfo>();
+            if (AnalysisData == null) AnalysisData = new ConcurrentDictionary<int, NyaaInfo>();
             var LoopConut = 0;
             if (result != "")
             {
@@ -92,7 +92,7 @@ namespace SpiderServerInLinux
                 foreach (var item in HtmlDoc.DocumentNode.SelectNodes(@"/html/body/div[1]/div[2]/table/tbody/tr"))
                 {
                     Interlocked.Increment(ref LoopConut);
-                    var TempData = new TorrentInfo();
+                    var TempData = new NyaaInfo();
                     var temp = HtmlNode.CreateNode(item.OuterHtml);
                     TempData.Class = item.Attributes["class"].Value;
                     TempData.Catagory = temp.SelectSingleNode("td[1]/a").Attributes["title"]
@@ -129,7 +129,7 @@ namespace SpiderServerInLinux
                     if (DateOfNow != TempData.Day)
                     {
                         DataCollect.TryAdd(
-                            new Tuple<Tuple<string, int>, System.Collections.Generic.ICollection<TorrentInfo>>(
+                            new Tuple<Tuple<string, int>, System.Collections.Generic.ICollection<NyaaInfo>>(
                                 new Tuple<string, int>(DateOfNow, pageCount), AnalysisData.Values));
                         pageCount = 0;
                         AnalysisData.Clear();

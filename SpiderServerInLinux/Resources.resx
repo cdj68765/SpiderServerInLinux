@@ -1,0 +1,309 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!-- 
+    Microsoft ResX Schema 
+    
+    Version 2.0
+    
+    The primary goals of this format is to allow a simple XML format 
+    that is mostly human readable. The generation and parsing of the 
+    various data types are done through the TypeConverter classes 
+    associated with the data types.
+    
+    Example:
+    
+    ... ado.net/XML headers & schema ...
+    <resheader name="resmimetype">text/microsoft-resx</resheader>
+    <resheader name="version">2.0</resheader>
+    <resheader name="reader">System.Resources.ResXResourceReader, System.Windows.Forms, ...</resheader>
+    <resheader name="writer">System.Resources.ResXResourceWriter, System.Windows.Forms, ...</resheader>
+    <data name="Name1"><value>this is my long string</value><comment>this is a comment</comment></data>
+    <data name="Color1" type="System.Drawing.Color, System.Drawing">Blue</data>
+    <data name="Bitmap1" mimetype="application/x-microsoft.net.object.binary.base64">
+        <value>[base64 mime encoded serialized .NET Framework object]</value>
+    </data>
+    <data name="Icon1" type="System.Drawing.Icon, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+        <value>[base64 mime encoded string representing a byte array form of the .NET Framework object]</value>
+        <comment>This is a comment</comment>
+    </data>
+                
+    There are any number of "resheader" rows that contain simple 
+    name/value pairs.
+    
+    Each data row contains a name, and value. The row also contains a 
+    type or mimetype. Type corresponds to a .NET class that support 
+    text/value conversion through the TypeConverter architecture. 
+    Classes that don't support this are serialized and stored with the 
+    mimetype set.
+    
+    The mimetype is used for serialized objects, and tells the 
+    ResXResourceReader how to depersist the object. This is currently not 
+    extensible. For a given mimetype the value must be set accordingly:
+    
+    Note - application/x-microsoft.net.object.binary.base64 is the format 
+    that the ResXResourceWriter will generate, however the reader can 
+    read any of the formats listed below.
+    
+    mimetype: application/x-microsoft.net.object.binary.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Binary.BinaryFormatter
+            : and then encoded with base64 encoding.
+    
+    mimetype: application/x-microsoft.net.object.soap.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Soap.SoapFormatter
+            : and then encoded with base64 encoding.
+
+    mimetype: application/x-microsoft.net.object.bytearray.base64
+    value   : The object must be serialized into a byte array 
+            : using a System.ComponentModel.TypeConverter
+            : and then encoded with base64 encoding.
+    -->
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="ArgumentException_HttpRequest_SetNotAvailableHeader" xml:space="preserve">
+    <value>Http请求为设置头信息</value>
+  </data>
+  <data name="ArgumentException_MultiThreading_BegIndexRangeMoreEndIndex" xml:space="preserve">
+    <value>起始索引不能大于最终索引</value>
+  </data>
+  <data name="ArgumentException_OnlyAbsoluteUri" xml:space="preserve">
+    <value>仅允许绝对地址</value>
+  </data>
+  <data name="ArgumentOutOfRangeException_CanNotBeLess" xml:space="preserve">
+    <value>不能更小</value>
+  </data>
+  <data name="ArgumentOutOfRangeException_CanNotBeLessOrGreater" xml:space="preserve">
+    <value>不能更大或者更小</value>
+  </data>
+  <data name="ArgumentOutOfRangeException_StringLengthCanNotBeMore" xml:space="preserve">
+    <value>字符串超长</value>
+  </data>
+  <data name="FormatException_ProxyClient_WrongPort" xml:space="preserve">
+    <value>客户端代理端口错误</value>
+  </data>
+  <data name="HttpException_ClientError" xml:space="preserve">
+    <value>HTTP错误:客户错误</value>
+  </data>
+  <data name="HttpException_ConnectTimeout" xml:space="preserve">
+    <value>HTTP错误:连接超时</value>
+  </data>
+  <data name="HttpException_FailedConnect" xml:space="preserve">
+    <value>HTTP错误:连接错误</value>
+  </data>
+  <data name="HttpException_FailedGetHostAddresses" xml:space="preserve">
+    <value>HTTP错误:获得主机地址错误</value>
+  </data>
+  <data name="HttpException_FailedReceiveMessageBody" xml:space="preserve">
+    <value>HTTP错误:错误的接收信息体</value>
+  </data>
+  <data name="HttpException_FailedReceiveResponse" xml:space="preserve">
+    <value>HTTP错误:错误的接受请求</value>
+  </data>
+  <data name="HttpException_FailedSendRequest" xml:space="preserve">
+    <value>HTTP错误:错误的发送请求</value>
+  </data>
+  <data name="HttpException_FailedSslConnect" xml:space="preserve">
+    <value>HTTP错误:错误的SSL连接</value>
+  </data>
+  <data name="HttpException_WaitDataTimeout" xml:space="preserve">
+    <value>HTTP错误:等待数据超时</value>
+  </data>
+  <data name="HttpException_ReceivedEmptyResponse" xml:space="preserve">
+    <value>HTTP错误:空应答</value>
+  </data>
+  <data name="HttpException_SeverError" xml:space="preserve">
+    <value>HTTP错误:服务器错误</value>
+  </data>
+  <data name="HttpException_WrongCookie" xml:space="preserve">
+    <value>HTTP错误:错误的Cookie</value>
+  </data>
+  <data name="HttpException_WrongHeader" xml:space="preserve">
+    <value>HTTP错误:错误的网页头信息</value>
+  </data>
+  <data name="InvalidOperationException_HttpResponse_HasError" xml:space="preserve">
+    <value>Http应答错误</value>
+  </data>
+  <data name="InvalidOperationException_NotSupportedEncodingFormat" xml:space="preserve">
+    <value>不支持的加密格式</value>
+  </data>
+  <data name="InvalidOperationException_ProxyClient_WrongHost" xml:space="preserve">
+    <value>错误的代理客户端主机</value>
+  </data>
+  <data name="InvalidOperationException_ProxyClient_WrongPassword" xml:space="preserve">
+    <value>错误的代理客户端密码</value>
+  </data>
+  <data name="InvalidOperationException_ProxyClient_WrongPort" xml:space="preserve">
+    <value>错误的代理客户端端口</value>
+  </data>
+  <data name="InvalidOperationException_ProxyClient_WrongUsername" xml:space="preserve">
+    <value>错误的代理客户端用户名</value>
+  </data>
+  <data name="ProxyException_CommandError" xml:space="preserve">
+    <value>代理:命令错误</value>
+  </data>
+  <data name="ProxyException_ConnectTimeout" xml:space="preserve">
+    <value>代理:连接超时</value>
+  </data>
+  <data name="ProxyException_Error" xml:space="preserve">
+    <value>代理:异常错误</value>
+  </data>
+  <data name="ProxyException_FailedConnect" xml:space="preserve">
+    <value>代理:错误的连接</value>
+  </data>
+  <data name="ProxyException_FailedGetHostAddresses" xml:space="preserve">
+    <value>代理:获得主机地址错误</value>
+  </data>
+  <data name="ProxyException_NotSupportedAddressType" xml:space="preserve">
+    <value>代理:不支持的地址类型</value>
+  </data>
+  <data name="ProxyException_ReceivedEmptyResponse" xml:space="preserve">
+    <value>代理:收到空的回复</value>
+  </data>
+  <data name="ProxyException_ReceivedWrongResponse" xml:space="preserve">
+    <value>代理:收到错误的回复</value>
+  </data>
+  <data name="ProxyException_ReceivedWrongStatusCode" xml:space="preserve">
+    <value>代理:收到错误的状态代码</value>
+  </data>
+  <data name="ProxyException_Socks5_FailedAuthOn" xml:space="preserve">
+    <value>代理:Socks登录错误</value>
+  </data>
+  <data name="Socks4_CommandReplyRequestRejectedCannotConnectToIdentd" xml:space="preserve">
+    <value>Socks4服务器无法访问导致的ID错误</value>
+  </data>
+  <data name="Socks4_CommandReplyRequestRejectedDifferentIdentd" xml:space="preserve">
+    <value>Socks4因无法确认ID导致连接错误</value>
+  </data>
+  <data name="Socks4_CommandReplyRequestRejectedOrFailed" xml:space="preserve">
+    <value>Socks4请求被拒绝或者错误</value>
+  </data>
+  <data name="Socks5_AuthMethodReplyNoAcceptableMethods" xml:space="preserve">
+    <value>Socks5不支持身份验证</value>
+  </data>
+  <data name="Socks5_CommandReplyAddressTypeNotSupported" xml:space="preserve">
+    <value>Socks5不支持的地址类型</value>
+  </data>
+  <data name="Socks5_CommandReplyCommandNotSupported" xml:space="preserve">
+    <value>Socks5命令不支持</value>
+  </data>
+  <data name="Socks5_CommandReplyConnectionNotAllowedByRuleset" xml:space="preserve">
+    <value>Socks5禁止连接</value>
+  </data>
+  <data name="Socks5_CommandReplyConnectionRefused" xml:space="preserve">
+    <value>Socks5连接错误</value>
+  </data>
+  <data name="Socks5_CommandReplyGeneralSocksServerFailure" xml:space="preserve">
+    <value>Socks5服务器错误</value>
+  </data>
+  <data name="Socks5_CommandReplyHostUnreachable" xml:space="preserve">
+    <value>Socks5主机应答错误</value>
+  </data>
+  <data name="Socks5_CommandReplyNetworkUnreachable" xml:space="preserve">
+    <value>Socks5网络应答错误</value>
+  </data>
+  <data name="Socks5_CommandReplyTTLExpired" xml:space="preserve">
+    <value>Socks5TTL 回复错误</value>
+  </data>
+  <data name="Socks_UnknownError" xml:space="preserve">
+    <value>Socks未知错误</value>
+  </data>
+  <data name="ArgumentException_EmptyString" xml:space="preserve">
+    <value>空字符串</value>
+  </data>
+  <data name="ArgumentOutOfRangeException_StringHelper_MoreLengthString" xml:space="preserve">
+    <value>字符串起始位置不能大于字符串大小</value>
+  </data>
+  <data name="DirectoryNotFoundException_DirectoryNotFound" xml:space="preserve">
+    <value>目录不存在</value>
+  </data>
+  <data name="HttpException_Default" xml:space="preserve">
+    <value>HTTP错误:默认错误</value>
+  </data>
+  <data name="NetException_Default" xml:space="preserve">
+    <value>默认网络错误</value>
+  </data>
+  <data name="ProxyException_Default" xml:space="preserve">
+    <value>代理:默认错误</value>
+  </data>
+  <data name="HttpException_ReceivedWrongResponse" xml:space="preserve">
+    <value>HTTP错误:应答错误</value>
+  </data>
+  <data name="ProxyException_WaitDataTimeout" xml:space="preserve">
+    <value>代理:等待超时</value>
+  </data>
+  <data name="HttpException_LimitRedirections" xml:space="preserve">
+    <value>HTTP错误:超出重定数</value>
+  </data>
+  <data name="HttpException_WrongChunkedBlockLength" xml:space="preserve">
+    <value>HTTP错误:错误的块大小</value>
+  </data>
+  <data name="InvalidOperationException_ChainProxyClient_NotProxies" xml:space="preserve">
+    <value>没有为连接指定代理</value>
+  </data>
+  <data name="ArgumentOutOfRangeException_CanNotBeGreater" xml:space="preserve">
+    <value>不能更大</value>
+  </data>
+  <data name="ArgumentException_CanNotReadOrSeek" xml:space="preserve">
+    <value>不能读取或者寻址</value>
+  </data>
+  <data name="ArgumentException_WrongPath" xml:space="preserve">
+    <value>错误的地址</value>
+  </data>
+</root>
