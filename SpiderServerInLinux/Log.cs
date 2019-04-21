@@ -237,6 +237,15 @@ namespace SpiderServerInLinux
                         Console.SetCursorPosition(i, 1);
                         Console.Write(" ");
                     }
+                    try
+                    {
+                        Console.SetCursorPosition(1, 1);
+                        Console.Write($"当前Nyaa下载页面:{Setting._GlobalSet.NyaaLastPageIndex} 当前Jav下载页面:{Setting._GlobalSet.JavLastPageIndex}");
+                    }
+                    catch (Exception)
+                    {
+                    }
+
                     Console.SetCursorPosition(Console.WindowWidth / 2 + Console.WindowWidth / 6 - 1, 1);
                     Console.Write($"内存使用量:{Process.GetCurrentProcess().WorkingSet64 / 1024 / 1024}MB");
                     if (Setting.SSR != null)
@@ -369,7 +378,7 @@ namespace SpiderServerInLinux
         {
             Check();
             Console.SetCursorPosition(1, 1);
-            Console.Write($"当前下载页面:{Setting._GlobalSet.NyaaLastPageIndex}  当前下载日期:{message}");
+            Console.Write($"当前Nyaa下载页面:{Setting._GlobalSet.NyaaLastPageIndex}  当前下载日期:{message}");
         }
 
         public override void WriteLine(string message)

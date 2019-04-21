@@ -1,10 +1,13 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Reflection;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Cowboy.WebSockets;
@@ -12,6 +15,7 @@ using HtmlAgilityPack;
 using LiteDB;
 using Shadowsocks.Controller;
 using xNet;
+using static xNet.HttpResponse;
 
 namespace SpiderServerInLinux
 {
@@ -19,6 +23,7 @@ namespace SpiderServerInLinux
     {
         private static async Task<int> Main(string[] args)
         {
+            Setting._GlobalSet = new GlobalSet().Open();
             await Init();
             return await Setting.ShutdownResetEvent.Task.ConfigureAwait(false);
         }
@@ -46,13 +51,12 @@ namespace SpiderServerInLinux
 
         private static async Task InitCoreAsync()
         {
-            Setting._GlobalSet = new GlobalSet().Open();
             await Task.WhenAll(
             Task.Run(() => { DataBaseCommand.InitNyaaDataBase(); }),
             Task.Run(() => { DataBaseCommand.InitJavDataBase(); }),
             Task.Run(() =>
             {
-                if (!Setting._GlobalSet.SocksCheck)
+                if (Setting._GlobalSet.SocksCheck)
                 {
                     Setting.SSR = new ShadowsocksController();
                 }
@@ -64,6 +68,7 @@ namespace SpiderServerInLinux
             => Loger.Instance.LocalInfo("数据库初始化完毕")).
             ContinueWith(obj =>
             {
+                Setting.DownloadManage = new DownloadManage();
                 /*var _controller = new ShadowsocksController();
                 _controller.Start();
                 using (var request = new HttpRequest())

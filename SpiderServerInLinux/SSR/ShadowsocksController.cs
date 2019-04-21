@@ -104,14 +104,15 @@ namespace Shadowsocks.Controller
                 }
             }
             Reload();
-            if (Setting.CheckOnline(true))
-                Loger.Instance.ServerInfo("SSR", $"SSR工作正常");
-            else
-            {
-                Loger.Instance.ServerInfo("SSR", $"SSR无法访问远程网络");
-                Setting.SSR = null;
-                GC.Collect();
-            }
+            /* if (Setting.CheckOnline())
+                 Loger.Instance.ServerInfo("SSR", $"SSR工作正常");
+             else
+             {
+                 Loger.Instance.ServerInfo("SSR", $"SSR无法访问远程网络");
+                 Stop();
+                 Setting.SSR = null;
+                 GC.Collect();
+             }*/
         }
 
         public ServerTrans SSRSpeedInfo;
@@ -291,7 +292,6 @@ namespace Shadowsocks.Controller
             {
                 _listener.Stop();
             }
-            ServerTransferTotal.Save(_transfer);
         }
 
         public void ClearTransferTotal(string server_addr)

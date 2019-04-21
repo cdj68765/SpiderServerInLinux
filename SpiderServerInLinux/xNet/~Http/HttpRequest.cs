@@ -2651,7 +2651,7 @@ namespace xNet
                 if (!connectDoneEvent.Wait(_connectTimeout))
                 {
                     tcpClient.Close();
-                    throw NewHttpException(Resources.HttpException_ConnectTimeout, null, HttpExceptionStatus.ConnectFailure);
+                    Loger.Instance.Error("连接超时");
                 }
 
                 if (connectException != null)
@@ -2660,6 +2660,7 @@ namespace xNet
 
                     if (connectException is SocketException)
                     {
+                        Loger.Instance.Error(connectException.Message);
                         // throw NewHttpException(Resources.HttpException_FailedConnect,
                         // connectException, HttpExceptionStatus.ConnectFailure);
                     }
@@ -2670,7 +2671,6 @@ namespace xNet
                 if (!tcpClient.Connected)
                 {
                     tcpClient.Close();
-                    throw NewHttpException(Resources.HttpException_FailedConnect, null, HttpExceptionStatus.ConnectFailure);
                 }
 
                 #endregion Создание подключения

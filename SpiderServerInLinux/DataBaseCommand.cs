@@ -47,7 +47,7 @@ namespace SpiderServerInLinux
                     var NyaaDB = db.GetCollection<JavInfo>("JavDB");
                     NyaaDB.EnsureIndex(x => x.id);
                     NyaaDB.EnsureIndex(x => x.Date);
-                    NyaaDB.EnsureIndex(x => x.Title);
+                    NyaaDB.EnsureIndex(x => x.Size);
                     Loger.Instance.LocalInfo("创建JAV数据库成功");
                 }
                 else
@@ -156,6 +156,41 @@ namespace SpiderServerInLinux
                 }
             }
             Loger.Instance.WithTimeStop("数据库操作完毕", Time);
+        }
+
+        internal static void SaveToJavDataBaseRange(ICollection<JavInfo> Collect)
+        {
+            using (var db = new LiteDatabase(@"Jav.db"))
+            {
+                try
+                {
+                    var JavDB = db.GetCollection<JavInfo>("JavDB");
+                    JavDB.InsertBulk(Collect);
+                }
+                catch (Exception)
+                {
+                    SaveToJavDataBaseOneByOne(Collect);
+                }
+            }
+        }
+
+        internal static void SaveToJavDataBaseOneByOne(ICollection<JavInfo> Collect)
+        {
+            using (var db = new LiteDatabase(@"Jav.db"))
+            {
+                var JavDB = db.GetCollection<JavInfo>("JavDB");
+                foreach (var item in Collect)
+                {
+                    try
+                    {
+                        JavDB.Upsert(item);
+                    }
+                    catch (Exception e)
+                    {
+                        Loger.Instance.LocalInfo(e);
+                    }
+                }
+            }
         }
 
         internal static void SavePage(string Page)

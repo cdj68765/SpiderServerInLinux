@@ -21,29 +21,52 @@ namespace SpiderServerInLinux
         internal static int Socks5Point;
         internal static ShadowsocksController SSR;
         internal static server server;
+        internal static DownloadManage DownloadManage;
         internal static readonly CancellationTokenSource CancelSign = new CancellationTokenSource();
         internal static readonly TaskCompletionSource<byte> ShutdownResetEvent = new TaskCompletionSource<byte>();
 
-        internal static bool CheckOnline(bool SSR = false)
+        internal static bool CheckOnline(bool ssr = false)
         {
             try
             {
                 using (var request = new HttpRequest())
                 {
-                    Thread.Sleep(2000);
+                    Thread.Sleep(1000);
                     request.ConnectTimeout = 1000;
                     request.UserAgent = Http.ChromeUserAgent();
-                    if (SSR) request.Proxy = Socks5ProxyClient.Parse($"127.0.0.1:{Socks5Point}");
+                    if (ssr) request.Proxy = Socks5ProxyClient.Parse($"127.0.0.1:{Socks5Point}");
                     HttpResponse response = request.Get(@"google.co.jp");
+                    //HttpResponse response = request.Get(@"https://www.141jav.com/new");
                     if (response.StatusCode == HttpStatusCode.OK)
                     {
-                        Loger.Instance.ServerInfo("SSR", $"下载Google");
+                        //File.WriteAllText("Page.heml", response.ToString());
+                        //Thread.Sleep(1000);
                         return true;
                     }
                 }
             }
-            catch (Exception)
+            catch (Exception e)
             {
+                if (!_GlobalSet.SocksCheck)
+                {
+                    if (SSR == null)
+                    {
+                        SSR = new ShadowsocksController();
+                    }
+                    Loger.Instance.Error("连接失败，尝试使用SSR连接");
+                    if (!ssr)
+                    {
+                        if (CheckOnline(true))
+                        {
+                            Loger.Instance.Error("使用SSR连接成功");
+                            _GlobalSet.SocksCheck = true;
+                            return true;
+                        }
+                    }
+                    SSR.Stop();
+                    SSR = null;
+                    GC.Collect();
+                }
             }
             return false;
         }
@@ -52,13 +75,15 @@ namespace SpiderServerInLinux
     [Serializable]
     internal class GlobalSet
     {
-        private string _NyaaAddress = "https://sukebei.nyaa.si/";
-        private string _JavAddress;
+        private string _NyaaAddress = "https://sukebei.nyaa.si/?p=";
+        private string _JavAddress = "https://www.141jav.com/new?page=";
         private string _ssr_url = "ssr://MTkzLjExMC4yMDMuMjI6MzQxMTI6YXV0aF9jaGFpbl9hOmFlcy0yNTYtY2ZiOmh0dHBfc2ltcGxlOk5qWTRPRGMzTmpVLz9vYmZzcGFyYW09JnByb3RvcGFyYW09JnJlbWFya3M9NmFhWjVyaXZJR1FnTFNCYjU1UzFMLWlCbENfbnA3dGRJRU5PTWl0T1ZGUSZncm91cD00NEdUNDRHdjQ0S0xMdWlRak9PQmlBJnVkcHBvcnQ9MCZ1b3Q9MA";
-        private int _NyaaLastPageIndex;
-        private int _JavLastPageIndex;
+        private int _NyaaLastPageIndex = 0;
+        private int _JavLastPageIndex = 0;
         private int _ConnectPoint = 2222;
         private bool _SocksCheck = false;
+        private bool _NyaaFin = false;
+        private bool _JavFin = false;
         internal string NyaaAddress { get { return _NyaaAddress; } set { _NyaaAddress = value; Save(); } }
         internal string JavAddress { get { return _JavAddress; } set { _JavAddress = value; Save(); } }
         internal string ssr_url { get { return _ssr_url; } set { _ssr_url = value; Save(); } }
@@ -66,6 +91,8 @@ namespace SpiderServerInLinux
         internal int JavLastPageIndex { get { return _JavLastPageIndex; } set { _JavLastPageIndex = value; Save(); } }
         internal int ConnectPoint { get { return _ConnectPoint; } set { _ConnectPoint = value; Save(); } }
         internal bool SocksCheck { get { return _SocksCheck; } set { _SocksCheck = value; Save(); } }
+        internal bool NyaaFin { get { return _SocksCheck; } set { _NyaaFin = value; Save(); } }
+        internal bool JavFin { get { return _SocksCheck; } set { _JavFin = value; Save(); } }
 
         internal GlobalSet()
         {
@@ -75,6 +102,7 @@ namespace SpiderServerInLinux
         {
             if (File.Exists("GlobalSet.dat"))
             {
+                Loger.Instance.LocalInfo($"找到配置文件，路径{new FileInfo("GlobalSet.dat").FullName}");
                 using (Stream stream = new FileStream("GlobalSet.dat", FileMode.Open))
                 {
                     IFormatter Formatter = new BinaryFormatter();
@@ -82,7 +110,11 @@ namespace SpiderServerInLinux
                     return Formatter.Deserialize(stream) as GlobalSet;
                 }
             }
-            return new GlobalSet();
+            else
+            {
+                Loger.Instance.LocalInfo($"未找到配置文件，正在新建");
+            }
+            return new GlobalSet().Save();
         }
 
         public void Open(byte[] Data)
@@ -99,13 +131,14 @@ namespace SpiderServerInLinux
             }
         }
 
-        private void Save()
+        private GlobalSet Save()
         {
             using (Stream stream = new FileStream("GlobalSet.dat", FileMode.OpenOrCreate))
             {
                 IFormatter Fileformatter = new BinaryFormatter();
                 Fileformatter.Serialize(stream, this);
             }
+            return this;
         }
 
         public byte[] Send()
@@ -175,11 +208,14 @@ namespace SpiderServerInLinux
     internal class JavInfo
     {
         public string id { get; set; }
-        public string Url { get; set; }
+        public string Magnet { get; set; }
+        public string ImgUrl { get; set; }
+        public string ImgUrlError { get; set; }
         public byte[] Image { get; set; }
-        public string Title { get; set; }
-        public byte[] Torrent { get; set; }
+        public string Describe { get; set; }
         public string Size { get; set; }
         public string Date { get; set; }
+        public string[] Tags { get; set; }
+        public string[] Actress { get; set; }
     }
 }

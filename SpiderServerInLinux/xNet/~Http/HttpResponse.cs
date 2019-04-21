@@ -556,10 +556,10 @@ namespace xNet
 
             #endregion Проверка состояния
 
-            if (MessageBodyLoaded)
-            {
-                return new byte[0];
-            }
+            /* if (MessageBodyLoaded)
+             {
+                 return new byte[0];
+             }*/
 
             var memoryStream = new MemoryStream(
                 (ContentLength == -1) ? 0 : ContentLength);
@@ -594,6 +594,8 @@ namespace xNet
 
             return memoryStream.ToArray();
         }
+
+        public byte[] Ret;
 
         /// <summary>
         /// Загружает тело сообщения и возвращает его в виде строки.
@@ -650,10 +652,8 @@ namespace xNet
             }
 
             MessageBodyLoaded = true;
-
-            string text = CharacterSet.GetString(
-                memoryStream.GetBuffer(), 0, (int)memoryStream.Length);
-
+            Ret = memoryStream.GetBuffer();
+            string text = CharacterSet.GetString(Ret, 0, (int)memoryStream.Length);
             return text;
         }
 
