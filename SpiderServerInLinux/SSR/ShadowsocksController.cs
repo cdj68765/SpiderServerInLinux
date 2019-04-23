@@ -63,8 +63,7 @@ namespace Shadowsocks.Controller
             bool CheckIfPortInUse(int port)
             {
                 IPGlobalProperties ipProperties = IPGlobalProperties.GetIPGlobalProperties();
-                IPEndPoint[] ipEndPoints = ipProperties.GetActiveTcpListeners();
-                foreach (IPEndPoint endPoint in ipEndPoints)
+                foreach (IPEndPoint endPoint in ipProperties.GetActiveTcpListeners())
                 {
                     if (endPoint.Port == port)
                     {

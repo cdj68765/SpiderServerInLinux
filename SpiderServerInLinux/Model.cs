@@ -19,6 +19,8 @@ namespace SpiderServerInLinux
         internal static BlockingCollection<NyaaInfo> WordProcess = new BlockingCollection<NyaaInfo>();
         internal static ShowInControl ShowInfo;
         internal static int Socks5Point;
+        internal static string JavDownLoadNow;
+        internal static string NyaaDownLoadNow;
         internal static ShadowsocksController SSR;
         internal static server server;
         internal static DownloadManage DownloadManage;
@@ -79,7 +81,7 @@ namespace SpiderServerInLinux
         private string _JavAddress = "https://www.141jav.com/new?page=";
         private string _ssr_url = "ssr://MTkzLjExMC4yMDMuMjI6MzQxMTI6YXV0aF9jaGFpbl9hOmFlcy0yNTYtY2ZiOmh0dHBfc2ltcGxlOk5qWTRPRGMzTmpVLz9vYmZzcGFyYW09JnByb3RvcGFyYW09JnJlbWFya3M9NmFhWjVyaXZJR1FnTFNCYjU1UzFMLWlCbENfbnA3dGRJRU5PTWl0T1ZGUSZncm91cD00NEdUNDRHdjQ0S0xMdWlRak9PQmlBJnVkcHBvcnQ9MCZ1b3Q9MA";
         private int _NyaaLastPageIndex = 0;
-        private int _JavLastPageIndex = 0;
+        private int _JavLastPageIndex = 2;
         private int _ConnectPoint = 2222;
         private bool _SocksCheck = false;
         private bool _NyaaFin = false;
@@ -91,8 +93,8 @@ namespace SpiderServerInLinux
         internal int JavLastPageIndex { get { return _JavLastPageIndex; } set { _JavLastPageIndex = value; Save(); } }
         internal int ConnectPoint { get { return _ConnectPoint; } set { _ConnectPoint = value; Save(); } }
         internal bool SocksCheck { get { return _SocksCheck; } set { _SocksCheck = value; Save(); } }
-        internal bool NyaaFin { get { return _SocksCheck; } set { _NyaaFin = value; Save(); } }
-        internal bool JavFin { get { return _SocksCheck; } set { _JavFin = value; Save(); } }
+        internal bool NyaaFin { get { return _NyaaFin; } set { _NyaaFin = value; Save(); } }
+        internal bool JavFin { get { return _JavFin; } set { _JavFin = value; Save(); } }
 
         internal GlobalSet()
         {

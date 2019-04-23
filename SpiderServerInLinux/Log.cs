@@ -239,8 +239,14 @@ namespace SpiderServerInLinux
                     }
                     try
                     {
+                        for (var i = 1; i < Console.WindowWidth / 2 - 1; i++)
+                        {
+                            Console.SetCursorPosition(i, 1);
+                            Console.Write(" ");
+                        }
                         Console.SetCursorPosition(1, 1);
-                        Console.Write($"当前Nyaa下载页面:{Setting._GlobalSet.NyaaLastPageIndex} 当前Jav下载页面:{Setting._GlobalSet.JavLastPageIndex}");
+                        var ShowJav = Setting._GlobalSet.JavFin ? $"当前Jav下载页面:{Setting._GlobalSet.JavLastPageIndex}" : $"Jav下次更新时间{Setting.JavDownLoadNow}";
+                        Console.Write($"当前Nyaa下载页面:{Setting._GlobalSet.NyaaLastPageIndex} {ShowJav}");
                     }
                     catch (Exception)
                     {
@@ -250,7 +256,7 @@ namespace SpiderServerInLinux
                     Console.Write($"内存使用量:{Process.GetCurrentProcess().WorkingSet64 / 1024 / 1024}MB");
                     if (Setting.SSR != null)
                     {
-                        Console.SetCursorPosition(Console.WindowWidth / 2 + Console.WindowWidth / 3, 1);
+                        Console.SetCursorPosition(Console.WindowWidth / 2 + Console.WindowWidth / 3 - 3, 1);
                         Console.Write($"SSR流量:{HumanReadableFilesize((double)Setting.SSR.SSRSpeedInfo.totalDownloadBytes)}");
                     }
                 }
@@ -262,13 +268,25 @@ namespace SpiderServerInLinux
                 {
                     var units = new[] { "B", "KB", "MB", "GB", "TB", "PB" };
                     double mod = 1024.0;
-                    int i = 0;
+                    var DoubleCount = new List<double>();
                     while (size >= mod)
                     {
                         size /= mod;
-                        i++;
+                        DoubleCount.Add(size);
                     }
-                    return Math.Round(size) + units[i];
+                    var Ret = "";
+                    for (int j = DoubleCount.Count; j > 0; j--)
+                    {
+                        if (j == DoubleCount.Count)
+                        {
+                            Ret += $"{Math.Floor(DoubleCount[j - 1])}{units[j]}";
+                        }
+                        else
+                        {
+                            Ret += $"{Math.Floor(DoubleCount[j - 1] - (Math.Floor(DoubleCount[j]) * 1024))}{units[j]}";
+                        }
+                    }
+                    return Ret;
                 }
             }
         }

@@ -137,9 +137,7 @@ namespace SpiderServerInLinux
             {
                 db.GetCollection<DateRecord>("DateRecord")
                     .Upsert(new DateRecord { _id = Data.ElementAt(0).Day, Status = false });
-
                 var NyaaDB = db.GetCollection<NyaaInfo>("NyaaDB");
-
                 foreach (var VARIABLE in Data)
                 {
                     try
@@ -158,6 +156,26 @@ namespace SpiderServerInLinux
             Loger.Instance.WithTimeStop("数据库操作完毕", Time);
         }
 
+        internal static bool SaveToJavDataBaseOneObject(JavInfo item2)
+        {
+            using (var db = new LiteDatabase(@"Jav.db"))
+            {
+                try
+                {
+                    var JavDB = db.GetCollection<JavInfo>("JavDB");
+                    if (!JavDB.Exists(x => x.id == item2.id))
+                    {
+                        JavDB.Insert(item2);
+                        return true;
+                    }
+                }
+                catch (Exception)
+                {
+                }
+                return false;
+            }
+        }
+
         internal static void SaveToJavDataBaseRange(ICollection<JavInfo> Collect)
         {
             using (var db = new LiteDatabase(@"Jav.db"))
@@ -171,6 +189,48 @@ namespace SpiderServerInLinux
                 {
                     SaveToJavDataBaseOneByOne(Collect);
                 }
+            }
+        }
+
+        internal static bool SaveToNyaaDataBaseRange(ICollection<NyaaInfo> Collect)
+        {
+            using (var db = new LiteDatabase(@"Nyaa.db"))
+            {
+                try
+                {
+                    var NyaaDB = db.GetCollection<NyaaInfo>("NyaaDB");
+                    NyaaDB.InsertBulk(Collect);
+                    return true;
+                }
+                catch (Exception)
+                {
+                }
+            }
+            return false;
+        }
+
+        internal static bool SaveToNyaaDataBaseOneObject(NyaaInfo item2)
+        {
+            using (var db = new LiteDatabase(@"Nyaa.db"))
+            {
+                try
+                {
+                    var NyaaDB = db.GetCollection<NyaaInfo>("NyaaDB");
+                    if (!NyaaDB.Exists(x => x.Timestamp == item2.Timestamp))
+                    {
+                        NyaaDB.Insert(item2);
+                        return true;
+                    }
+                    else if (!NyaaDB.Exists(x => x.Url == item2.Url))
+                    {
+                        NyaaDB.Insert(item2);
+                        return true;
+                    }
+                }
+                catch (Exception)
+                {
+                }
+                return false;
             }
         }
 

@@ -81,9 +81,13 @@ namespace Client
 
         internal server(string IP, string Point)
         {
-            var uri = new Uri($"ws://{IP}:{Point}/");
-            _client = new AsyncWebSocketClient(uri, new ServerDateOperation());
-            _client.Connect();
+            Task.Factory.StartNew(async () =>
+            {
+                var uri = new Uri($"ws://{IP}:{Point}/");
+                _client = new AsyncWebSocketClient(uri, new ServerDateOperation());
+                await _client.Connect();
+            });
+
             /* Task.Factory.StartNew(async () =>
              {
                  try
@@ -103,6 +107,17 @@ namespace Client
                      Class1.MainForm.Connecting(false);
                  }
              });*/
+        }
+
+        internal void Connect3Set()
+        {
+            Task.Factory.StartNew(async () =>
+            {
+                var uri = new Uri($"ws://{Settings.Default.ip}:{Settings.Default.point}/Data");
+                var client = new AsyncWebSocketClient(uri, new ServerDataBaseOperation());
+                await client.Connect();
+                await client.SendTextAsync("Get");
+            });
         }
 
         internal void Connect2Set()
@@ -130,11 +145,50 @@ namespace Client
         }
     }
 
-    internal class ServerDateOperation : IAsyncWebSocketClientMessageDispatcher
+    internal class ServerDataBaseOperation : IAsyncWebSocketClientMessageDispatcher
     {
         public Task OnServerBinaryReceived(AsyncWebSocketClient client, byte[] data, int offset, int count)
         {
-            Class1.MainForm.Init(new GlobalSet().Open(data));
+            File.WriteAllBytes("jav.db", data);
+            return Task.CompletedTask;
+        }
+
+        public Task OnServerConnected(AsyncWebSocketClient client)
+        {
+            return Task.CompletedTask;
+        }
+
+        public Task OnServerDisconnected(AsyncWebSocketClient client)
+        {
+            return Task.CompletedTask;
+        }
+
+        public Task OnServerFragmentationStreamClosed(AsyncWebSocketClient client, byte[] data, int offset, int count)
+        {
+            return Task.CompletedTask;
+        }
+
+        public Task OnServerFragmentationStreamContinued(AsyncWebSocketClient client, byte[] data, int offset, int count)
+        {
+            return Task.CompletedTask;
+        }
+
+        public Task OnServerFragmentationStreamOpened(AsyncWebSocketClient client, byte[] data, int offset, int count)
+        {
+            return Task.CompletedTask;
+        }
+
+        public Task OnServerTextReceived(AsyncWebSocketClient client, string text)
+        {
+            return Task.CompletedTask;
+        }
+    }
+
+    public class ServerDateOperation : IAsyncWebSocketClientMessageDispatcher
+    {
+        public Task OnServerBinaryReceived(AsyncWebSocketClient client, byte[] data, int offset, int count)
+        {
+            //Class1.MainForm.Init(new GlobalSet().Open(data));
             return Task.CompletedTask;
         }
 

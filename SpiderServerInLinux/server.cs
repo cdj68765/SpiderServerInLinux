@@ -89,6 +89,16 @@ namespace SpiderServerInLinux
             public DataOpera() : base(@"/Data")
             {
             }
+
+            public override async Task OnSessionTextReceived(AsyncWebSocketSession session, string text)
+            {
+                Loger.Instance.ServerInfo("主机", $"远程{session.RemoteEndPoint}命令{text}");
+                if (text == "Get")
+                {
+                    await session.SendBinaryAsync(File.ReadAllBytes("Jav.db"));
+                }
+                await Task.CompletedTask;
+            }
         }
     }
 }

@@ -34,10 +34,8 @@ namespace Client
                 Settings.Default.point = textBox2.Text;
                 Settings.Default.Save();
             }
-            ThreadPool.QueueUserWorkItem((obj) =>
-            {
-                _server = new server(Settings.Default.ip, Settings.Default.point);
-            });
+
+            button1.PerformClick();
         }
 
         internal void Connecting(bool ConnectControl)
@@ -62,16 +60,19 @@ namespace Client
 
         private void Button1_Click(object sender, EventArgs e)
         {
-            if (_server != null)
+            Task.Factory.StartNew(() =>
             {
-                _server._client.Close(Cowboy.WebSockets.WebSocketCloseCode.NormalClosure);
-                _server._client.Dispose();
-                _server = null;
-            }
-            else
-            {
-                _server = new server(textBox1.Text, textBox2.Text);
-            }
+                if (_server != null)
+                {
+                    _server._client.Close(Cowboy.WebSockets.WebSocketCloseCode.NormalClosure);
+                    _server._client.Dispose();
+                    _server = null;
+                }
+                else
+                {
+                    _server = new server(textBox1.Text, textBox2.Text);
+                }
+            });
         }
 
         public void ShowStatus(string info)
@@ -114,6 +115,11 @@ namespace Client
             {
                 _server.Connect2Set();
             }
+        }
+
+        private void Button4_Click(object sender, EventArgs e)
+        {
+            _server.Connect3Set();
         }
     }
 }

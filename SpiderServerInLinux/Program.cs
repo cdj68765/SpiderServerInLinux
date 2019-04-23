@@ -33,6 +33,7 @@ namespace SpiderServerInLinux
             Directory.SetCurrentDirectory(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location));
             AppDomain.CurrentDomain.ProcessExit += delegate
             {
+                Setting.DownloadManage.Dispose();
                 Console.Clear();
                 Console.WriteLine("程序退出");
             };
