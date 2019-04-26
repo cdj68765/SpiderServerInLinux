@@ -4,6 +4,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
+using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -14,6 +15,7 @@ namespace SpiderServerInLinux
     public class DownloadManage : IDisposable
     {
         public CancellationTokenSource NyaaNewDownloadCancel = new CancellationTokenSource();
+        public CancellationTokenSource NyaaOldDownloadCancel = new CancellationTokenSource();
         public System.Timers.Timer GetNyaaNewDataTiner = new System.Timers.Timer();
         public CancellationTokenSource JavOldDownloadCancel = new CancellationTokenSource();
         public CancellationTokenSource JavNewDownloadCancel = new CancellationTokenSource();
@@ -34,9 +36,18 @@ namespace SpiderServerInLinux
 
         private async void Load()
         {
+            Setting._GlobalSet.NyaaFin = false;
+            if (Setting.NyaaStartPoint > Setting._GlobalSet.NyaaLastPageIndex)
+            {
+                Setting._GlobalSet.NyaaLastPageIndex = Setting.NyaaStartPoint;
+                Loger.Instance.LocalInfo("重置Nyaa下载索引");
+            }
+            else
+            {
+                Setting.NyaaStartPoint = Setting._GlobalSet.NyaaLastPageIndex;
+            }
             Loger.Instance.LocalInfo("初始化下载");
-            GetOldDate();
-            await Task.WhenAll(GetJavNewData(), GetNyaaNewData());
+            await Task.WhenAll(GetJavNewData(), GetNyaaNewData(), GetOldDate());
         }
 
         private Task GetNyaaNewData()
@@ -50,12 +61,17 @@ namespace SpiderServerInLinux
                         Loger.Instance.LocalInfo("开始获取新Nyaa信息");
                         NyaaNewDownloadCancel = new CancellationTokenSource();
                         GetNyaaNewDataTiner.Stop();
+                        if (Setting._GlobalSet.NyaaCheckPoint == 0)
+                        {
+                            Setting._GlobalSet.NyaaCheckPoint = DataBaseCommand.GetNyaaCheckPoint();
+                        }
                         var DownloadCollect = new BlockingCollection<Tuple<int, string>>();
+                        //await Task.WhenAll(DownloadLoop(Setting._GlobalSet.NyaaAddress, Setting._GlobalSet.NyaaFin ? 0 : Setting._GlobalSet.NyaaLastPageIndex, DownloadCollect, NyaaNewDownloadCancel), HandlerNyaaHtml(DownloadCollect));
                         await Task.WhenAll(DownloadLoop(Setting._GlobalSet.NyaaAddress, 0, DownloadCollect, NyaaNewDownloadCancel), HandlerNyaaHtml(DownloadCollect));
                         GetNyaaNewDataTiner = new System.Timers.Timer(new Random().Next(2, 12) * 3600 * 1000);
                         Setting.NyaaDownLoadNow = DateTime.Now.AddMilliseconds(GetNyaaNewDataTiner.Interval).ToString("MM-dd|hh:mm");
                         Loger.Instance.LocalInfo($"下次获得新数据为{Setting.NyaaDownLoadNow}");
-                        GetNyaaNewDataTiner.Start();
+                        GetNyaaNewDataTiner.Enabled = true;
                     };
                     GetNyaaNewDataTiner.Enabled = true;
                 }
@@ -69,18 +85,49 @@ namespace SpiderServerInLinux
             {
                 using (var request = new HttpRequest())
                 {
+                    var _Day = "";
                     foreach (var item in SaveData.GetConsumingEnumerable())
                     {
                         try
                         {
-                            if (item.Item1 >= Setting._GlobalSet.NyaaLastPageIndex)
+                            if (!DataBaseCommand.SaveToNyaaDataBaseRange(item.Item2))
+                            {
+                                foreach (var AddTemp in item.Item2)
+                                {
+                                    if (!DataBaseCommand.SaveToNyaaDataBaseOneObject(AddTemp))
+                                    {
+                                        Loger.Instance.LocalInfo($"当前保存Nyaa下载日期{item.Item2.First().Day}");
+                                        Loger.Instance.LocalInfo($"判断Nyaa下载完成");
+                                        NyaaNewDownloadCancel.Cancel();
+                                        downloadCollect.CompleteAdding();
+                                        break;
+                                    }
+                                    else
+                                    {
+                                        Loger.Instance.LocalInfo($"检测到时间轴到达上一时间点");
+                                        Loger.Instance.LocalInfo($"判断Nyaa下载完成");
+                                        Setting._GlobalSet.NyaaFin = true;
+                                        NyaaNewDownloadCancel.Cancel();
+                                        downloadCollect.CompleteAdding();
+                                        break;
+                                    }
+                                }
+                            }
+
+                            if (item.Item1 > Setting._GlobalSet.NyaaLastPageIndex)
                             {
                                 Setting._GlobalSet.NyaaLastPageIndex = item.Item1;
+                                if (_Day != item.Item2.First().Day)
+                                {
+                                    _Day = item.Item2.First().Day;
+                                    Loger.Instance.LocalInfo($"当前保存Nyaa下载日期{_Day}");
+                                }
                             }
                         }
                         catch (Exception ex)
                         {
                             Loger.Instance.LocalInfo($"Nyaa保存出错{ex}");
+                            break;
                         }
                     }
                     NyaaNewDownloadCancel.Cancel();
@@ -136,64 +183,157 @@ namespace SpiderServerInLinux
                     catch (Exception e)
                     {
                         Loger.Instance.LocalInfo($"Nyaa解析失败，失败原因{e}");
-                    }
-                    finally
-                    {
-                        downloadCollect.CompleteAdding();
-                        SaveData.CompleteAdding();
+                        break;
                     }
                 }
+                downloadCollect.CompleteAdding();
+                SaveData.CompleteAdding();
             });
         }
 
-        public System.Timers.Timer GetJavNewDataTiner = new System.Timers.Timer();
+        public System.Timers.Timer GetJavNewDataTimer = new System.Timers.Timer();
 
         private Task GetJavNewData()
         {
             return Task.Run(() =>
             {
                 {
-                    GetJavNewDataTiner = new System.Timers.Timer(10000);
-                    GetJavNewDataTiner.Elapsed += async delegate
+                    GetJavNewDataTimer = new System.Timers.Timer(10000);
+                    GetJavNewDataTimer.Elapsed += async delegate
                     {
                         Loger.Instance.LocalInfo("开始获取新Jav信息");
                         JavNewDownloadCancel = new CancellationTokenSource();
-                        GetJavNewDataTiner.Stop();
+                        GetJavNewDataTimer.Stop();
                         var DownloadCollect = new BlockingCollection<Tuple<int, string>>();
                         await Task.WhenAll(DownloadLoop(Setting._GlobalSet.JavAddress, 0, DownloadCollect, JavNewDownloadCancel), HandlerJavHtml(DownloadCollect, true));
-                        GetJavNewDataTiner = new System.Timers.Timer(new Random().Next(2, 12) * 3600 * 1000);
-                        Loger.Instance.LocalInfo($"下次获得新数据为{DateTime.Now.AddMilliseconds(GetJavNewDataTiner.Interval).ToString("F")}");
-                        GetJavNewDataTiner.Start();
+                        GetJavNewDataTimer = new System.Timers.Timer(new Random().Next(6, 18) * 3600 * 1000);
+                        Setting.JavDownLoadNow = DateTime.Now.AddMilliseconds(GetJavNewDataTimer.Interval).ToString("MM-dd|hh:mm");
+                        Loger.Instance.LocalInfo($"下次获得新数据为{Setting.JavDownLoadNow}");
+                        GetJavNewDataTimer.Enabled = true;
                     };
-                    GetJavNewDataTiner.Enabled = true;
+                    GetJavNewDataTimer.Enabled = true;
                 }
             });
         }
 
-        private void GetOldDate()
+        private Task GetOldDate()
         {
-            if (JavOldDownloadRunning)
+            return Task.Run(() =>
+             {
+                 if (!Setting._GlobalSet.NyaaFin)
+                 {
+                     var DownloadCollect = new BlockingCollection<Tuple<int, string>>();
+                     NyaaOldDownloadCancel = new CancellationTokenSource();
+                     DownloadLoop(Setting.NyaaAddress, Setting._GlobalSet.NyaaLastPageIndex, DownloadCollect, NyaaOldDownloadCancel);
+                     HandlerOldNyaaHtml(DownloadCollect);
+                 }
+                 else
+                 {
+                     Loger.Instance.LocalInfo($"Nyaa下载完毕，跳过旧数据获取");
+                 }
+                 return;
+                 if (Setting._GlobalSet.JavFin)
+                 {
+                     var DownloadCollect = new BlockingCollection<Tuple<int, string>>();
+                     DownloadLoop(Setting._GlobalSet.JavAddress, Setting._GlobalSet.JavLastPageIndex, DownloadCollect, JavOldDownloadCancel);
+                     HandlerJavHtml(DownloadCollect);
+                 }
+                 else
+                 {
+                     Loger.Instance.LocalInfo($"JAV下载完毕，跳过旧数据获取");
+                 }
+             }, JavOldDownloadCancel.Token);
+        }
+
+        private Task HandlerOldNyaaHtml(BlockingCollection<Tuple<int, string>> downloadCollect)
+        {
+            var SaveData = new BlockingCollection<Tuple<int, NyaaInfo>>();
+            Task.Factory.StartNew(() =>
             {
-                Loger.Instance.LocalInfo("下载Jav数据进程已经运行");
-                return;
-            }
-            Task.Run(() =>
-           {
-               if (Setting._GlobalSet.NyaaFin)
-               {
-                   var DownloadCollect = new BlockingCollection<Tuple<int, string>>();
-               }
-               if (Setting._GlobalSet.JavFin)
-               {
-                   var DownloadCollect = new BlockingCollection<Tuple<int, string>>();
-                   DownloadLoop(Setting._GlobalSet.JavAddress, Setting._GlobalSet.JavLastPageIndex, DownloadCollect, JavOldDownloadCancel);
-                   HandlerJavHtml(DownloadCollect);
-               }
-               else
-               {
-                   Loger.Instance.LocalInfo($"JAV下载完毕，跳过旧数据获取");
-               }
-           }, JavOldDownloadCancel.Token);
+                using (var request = new HttpRequest())
+                {
+                    List<NyaaInfo> Save = new List<NyaaInfo>();
+                    foreach (var item in SaveData.GetConsumingEnumerable())
+                    {
+                        Save.Add(item.Item2);
+                        Setting.NyaaStartPoint = item.Item1;
+                        if (item.Item2.Day != Setting.NyaaDay)
+                        {
+                            Setting.NyaaDay = item.Item2.Day;
+                            Loger.Instance.LocalInfo($"当前保存Nyaa下载日期{Setting.NyaaDay}");
+                        }
+                        if (Save.Count > 25 || SaveData.IsCompleted)
+                        {
+                            if (!DataBaseCommand.SaveToNyaaDataBaseRange(Save))
+                            {
+                                foreach (var AddTemp in Save)
+                                {
+                                    DataBaseCommand.SaveToNyaaDataBaseOneObject(AddTemp, false);
+                                }
+                            }
+                            Setting._GlobalSet.NyaaLastPageIndex = item.Item1;
+                            Save.Clear();
+                        }
+                    }
+                    if (Save.Count != 0)
+                    {
+                        if (!DataBaseCommand.SaveToNyaaDataBaseRange(Save))
+                        {
+                            foreach (var AddTemp in Save)
+                            {
+                                DataBaseCommand.SaveToNyaaDataBaseOneObject(AddTemp, false);
+                            }
+                        }
+                        Save.Clear();
+                    }
+                    Loger.Instance.LocalInfo($"当前保存旧Nyaa线程退出");
+                }
+            });
+            return Task.Run(() =>
+            {
+                var HtmlDoc = new HtmlDocument();
+                foreach (var Page in downloadCollect.GetConsumingEnumerable())
+                {
+                    if (Page.Item1 > Setting.NyaaEndPoint)
+                    {
+                        Loger.Instance.LocalInfo($"Nyaa解析到最大索引，完成旧数据下载");
+                        break;
+                    }
+                    if (string.IsNullOrEmpty(Page.Item2))
+                    {
+                        Task.Delay(1000);
+                        continue;
+                    }
+                    HtmlDoc.LoadHtml(Page.Item2);
+                    try
+                    {
+                        var TempData = new NyaaInfo();
+                        var temp = HtmlNode.CreateNode(HtmlDoc.DocumentNode.OuterHtml);
+                        TempData.Class = temp.SelectSingleNode("/html/body/div[1]/div[2]").Attributes["class"]
+                            .Value.Split('-')[1];
+                        TempData.Catagory = $"{temp.SelectSingleNode("/html/body/div[1]/div[2]/div[2]/div[1]/div[2]/a[1]").InnerText} - {temp.SelectSingleNode("/html/body/div[1]/div[2]/div[2]/div[1]/div[2]/a[2]").InnerText}";
+                        TempData.Title = temp.SelectSingleNode("/html/body/div[1]/div[2]/div[1]/h3").InnerText.Replace("\r", "").Replace("\t", "").Replace("\n", "");
+                        TempData.Url = $"/view/{Page.Item1}";
+                        TempData.Torrent = temp.SelectSingleNode("/html/body/div[1]/div[2]/div[3]/a[1]").Attributes["href"].Value;
+                        TempData.Magnet = temp.SelectSingleNode("/html/body/div[1]/div[2]/div[3]/a[2]").Attributes["href"].Value;
+                        TempData.Size = temp.SelectSingleNode("/html/body/div[1]/div[2]/div[2]/div[4]/div[2]").InnerText;
+                        TempData.Timestamp = int.Parse(temp.SelectSingleNode("/html/body/div[1]/div[2]/div[2]/div[1]/div[4]").Attributes["data-timestamp"].Value);
+                        TempData.Date = temp.SelectSingleNode("/html/body/div[1]/div[2]/div[2]/div[1]/div[4]").InnerText.Replace(" UTC", "");
+                        TempData.Up = temp.SelectSingleNode("/html/body/div[1]/div[2]/div[2]/div[2]/div[4]/span").InnerText;
+                        TempData.Leeches = temp.SelectSingleNode("/html/body/div[1]/div[2]/div[2]/div[3]/div[4]/span").InnerText;
+                        TempData.Complete = temp.SelectSingleNode("/html/body/div[1]/div[2]/div[2]/div[4]/div[4]").InnerText;
+                        SaveData.Add(new Tuple<int, NyaaInfo>(Page.Item1, TempData));
+                    }
+                    catch (Exception e)
+                    {
+                        Loger.Instance.LocalInfo($"Nyaa解析失败，失败原因{e}");
+                        break;
+                    }
+                }
+                NyaaOldDownloadCancel.Cancel();
+                downloadCollect.CompleteAdding();
+                SaveData.CompleteAdding();
+            });
         }
 
         private Task HandlerJavHtml(BlockingCollection<Tuple<int, string>> downloadCollect, bool GetNew = false)
@@ -424,8 +564,8 @@ namespace SpiderServerInLinux
                               }
                               Interlocked.Increment(ref ErrorCount);
                               Loger.Instance.LocalInfo($"下载{downurl.ToString()}失败，计数{ErrorCount}次");
-                              Loger.Instance.LocalInfo(ex.Message);
-                              var time = new Random().Next(10000, 100000);
+                              //Loger.Instance.LocalInfo(ex.Message);
+                              var time = new Random().Next(5000, 10000);
                               for (var i = time; i > 0; i -= 1000)
                               {
                                   if (token.Token.IsCancellationRequested)
@@ -435,8 +575,16 @@ namespace SpiderServerInLinux
                                   Loger.Instance.WaitTime(i / 1000);
                                   Thread.Sleep(1000);
                               }
+                              if (ErrorCount > 1 && LastPageIndex > Setting.NyaaStartPoint)
+                              {
+                                  ErrorCount = 0;
+                                  Loger.Instance.LocalInfo($"{downurl}下载失败，跳过");
+                                  Interlocked.Increment(ref LastPageIndex);
+                                  continue;
+                              }
                               if (ErrorCount > 5)
                               {
+                                  ErrorCount = 0;
                                   Loger.Instance.LocalInfo($"下载{downurl.ToString()}失败，退出下载进程");
                                   if (!Setting.CheckOnline(Setting._GlobalSet.SocksCheck))
                                   {
@@ -460,8 +608,9 @@ namespace SpiderServerInLinux
         {
             Setting.DownloadManage.JavNewDownloadCancel.Cancel();
             Setting.DownloadManage.JavOldDownloadCancel.Cancel();
-            GetJavNewDataTiner.Dispose();
-            while (!Setting.DownloadManage.JavOldDownloadRunning && !Setting.DownloadManage.JavNewDownloadCancel.IsCancellationRequested)
+            Setting.DownloadManage.NyaaOldDownloadCancel.Cancel();
+            GetJavNewDataTimer.Dispose();
+            while (!Setting.DownloadManage.JavOldDownloadRunning && !Setting.DownloadManage.JavNewDownloadCancel.IsCancellationRequested && !NyaaOldDownloadCancel.IsCancellationRequested)
             {
                 Thread.Sleep(1000);
             }

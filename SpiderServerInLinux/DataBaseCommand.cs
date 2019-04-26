@@ -78,6 +78,20 @@ namespace SpiderServerInLinux
             }
         }
 
+        internal static int GetNyaaCheckPoint()
+        {
+            using (var db = new LiteDatabase(@"Nyaa.db"))
+            {
+                Stopwatch Time = new Stopwatch();
+                Loger.Instance.WithTimeStart("数据查找中", Time);
+                var DateRecord = db.GetCollection<NyaaInfo>("NyaaDB");
+                var results = DateRecord.Find(Query.All()).OrderByDescending(x => x.Timestamp).Where(d => !d.Day.StartsWith("2019")).FirstOrDefault();
+                // var results = DateRecord.FindOne(x => x.Timestamp == Setting._GlobalSet.NyaaCheckPoint);
+                Loger.Instance.WithTimeStop($"数据查找完毕{results.Timestamp}", Time);
+                return results.Timestamp;
+            }
+        }
+
         #endregion 从数据库读取
 
         #region 数据库查找
@@ -209,23 +223,35 @@ namespace SpiderServerInLinux
             return false;
         }
 
-        internal static bool SaveToNyaaDataBaseOneObject(NyaaInfo item2)
+        internal static bool SaveToNyaaDataBaseOneObject(NyaaInfo item2, bool Mode = true)
         {
             using (var db = new LiteDatabase(@"Nyaa.db"))
             {
                 try
                 {
                     var NyaaDB = db.GetCollection<NyaaInfo>("NyaaDB");
-                    if (!NyaaDB.Exists(x => x.Timestamp == item2.Timestamp))
+                    if (Mode)
                     {
-                        NyaaDB.Insert(item2);
-                        return true;
+                        if (!NyaaDB.Update(item2))
+                        {
+                            NyaaDB.Insert(item2);
+                            return true;
+                        }
                     }
-                    else if (!NyaaDB.Exists(x => x.Url == item2.Url))
+                    else
                     {
-                        NyaaDB.Insert(item2);
-                        return true;
+                        NyaaDB.Upsert(item2);
                     }
+                    /* if (!NyaaDB.Exists(x => x.Timestamp == item2.Timestamp))
+                     {
+                         NyaaDB.Insert(item2);
+                         return true;
+                     }
+                     else if (!NyaaDB.Exists(x => x.Url == item2.Url))
+                     {
+                         NyaaDB.Insert(item2);
+                         return true;
+                     }*/
                 }
                 catch (Exception)
                 {

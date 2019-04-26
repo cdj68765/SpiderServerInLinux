@@ -26,6 +26,10 @@ namespace SpiderServerInLinux
         internal static DownloadManage DownloadManage;
         internal static readonly CancellationTokenSource CancelSign = new CancellationTokenSource();
         internal static readonly TaskCompletionSource<byte> ShutdownResetEvent = new TaskCompletionSource<byte>();
+        internal static int NyaaStartPoint = 2520080;
+        internal static readonly int NyaaEndPoint = 2708397;
+        internal static readonly string NyaaAddress = "https://sukebei.nyaa.si/view/";
+        internal static string NyaaDay = "";
 
         internal static bool CheckOnline(bool ssr = false)
         {
@@ -86,6 +90,7 @@ namespace SpiderServerInLinux
         private bool _SocksCheck = false;
         private bool _NyaaFin = false;
         private bool _JavFin = false;
+        private int _NayyCheckPoint = 0;
         internal string NyaaAddress { get { return _NyaaAddress; } set { _NyaaAddress = value; Save(); } }
         internal string JavAddress { get { return _JavAddress; } set { _JavAddress = value; Save(); } }
         internal string ssr_url { get { return _ssr_url; } set { _ssr_url = value; Save(); } }
@@ -95,6 +100,7 @@ namespace SpiderServerInLinux
         internal bool SocksCheck { get { return _SocksCheck; } set { _SocksCheck = value; Save(); } }
         internal bool NyaaFin { get { return _NyaaFin; } set { _NyaaFin = value; Save(); } }
         internal bool JavFin { get { return _JavFin; } set { _JavFin = value; Save(); } }
+        internal int NyaaCheckPoint { get { return _NayyCheckPoint; } set { _NayyCheckPoint = value; Save(); } }
 
         internal GlobalSet()
         {

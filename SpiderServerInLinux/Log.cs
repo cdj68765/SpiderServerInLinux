@@ -245,8 +245,9 @@ namespace SpiderServerInLinux
                             Console.Write(" ");
                         }
                         Console.SetCursorPosition(1, 1);
-                        var ShowJav = Setting._GlobalSet.JavFin ? $"当前Jav下载页面:{Setting._GlobalSet.JavLastPageIndex}" : $"Jav下次更新时间{Setting.JavDownLoadNow}";
-                        Console.Write($"当前Nyaa下载页面:{Setting._GlobalSet.NyaaLastPageIndex} {ShowJav}");
+                        var ShowJav = Setting._GlobalSet.JavFin ? $"当前Jav下载页面:{Setting._GlobalSet.JavLastPageIndex}" : $"Jav:{Setting.JavDownLoadNow}";
+                        var ShowNyaa = !Setting._GlobalSet.NyaaFin ? $"Nyaa:{Setting.NyaaStartPoint}|{Setting.NyaaDay}|{Setting.NyaaDownLoadNow}" : $"Nyaa下次更新时间{Setting.NyaaDownLoadNow}";
+                        Console.Write($"{ShowNyaa} {ShowJav}");
                     }
                     catch (Exception)
                     {
