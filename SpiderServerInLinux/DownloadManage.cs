@@ -68,10 +68,10 @@ namespace SpiderServerInLinux
                         var DownloadCollect = new BlockingCollection<Tuple<int, string>>();
                         //await Task.WhenAll(DownloadLoop(Setting._GlobalSet.NyaaAddress, Setting._GlobalSet.NyaaFin ? 0 : Setting._GlobalSet.NyaaLastPageIndex, DownloadCollect, NyaaNewDownloadCancel), HandlerNyaaHtml(DownloadCollect));
                         await Task.WhenAll(DownloadLoop(Setting._GlobalSet.NyaaAddress, 0, DownloadCollect, NyaaNewDownloadCancel), HandlerNyaaHtml(DownloadCollect));
-                        GetNyaaNewDataTiner = new System.Timers.Timer(new Random().Next(2, 12) * 3600 * 1000);
+                        GetNyaaNewDataTiner.Interval = new Random().Next(2, 12) * 3600 * 1000;
                         Setting.NyaaDownLoadNow = DateTime.Now.AddMilliseconds(GetNyaaNewDataTiner.Interval).ToString("MM-dd|hh:mm");
                         Loger.Instance.LocalInfo($"下次获得新数据为{Setting.NyaaDownLoadNow}");
-                        GetNyaaNewDataTiner.Enabled = true;
+                        GetNyaaNewDataTiner.Start();
                     };
                     GetNyaaNewDataTiner.Enabled = true;
                 }
@@ -104,6 +104,11 @@ namespace SpiderServerInLinux
                                     }
                                     else
                                     {
+                                        Loger.Instance.LocalInfo($"当前保存Nyaa下载日期{item.Item2.First().Day}");
+                                        Loger.Instance.LocalInfo($"判断Nyaa下载完成");
+                                        NyaaNewDownloadCancel.Cancel();
+                                        downloadCollect.CompleteAdding();
+                                        break;
                                         Loger.Instance.LocalInfo($"检测到时间轴到达上一时间点");
                                         Loger.Instance.LocalInfo($"判断Nyaa下载完成");
                                         Setting._GlobalSet.NyaaFin = true;
@@ -206,10 +211,10 @@ namespace SpiderServerInLinux
                         GetJavNewDataTimer.Stop();
                         var DownloadCollect = new BlockingCollection<Tuple<int, string>>();
                         await Task.WhenAll(DownloadLoop(Setting._GlobalSet.JavAddress, 0, DownloadCollect, JavNewDownloadCancel), HandlerJavHtml(DownloadCollect, true));
-                        GetJavNewDataTimer = new System.Timers.Timer(new Random().Next(6, 18) * 3600 * 1000);
+                        GetJavNewDataTimer.Interval=new Random().Next(6, 18) * 3600 * 1000;
                         Setting.JavDownLoadNow = DateTime.Now.AddMilliseconds(GetJavNewDataTimer.Interval).ToString("MM-dd|hh:mm");
                         Loger.Instance.LocalInfo($"下次获得新数据为{Setting.JavDownLoadNow}");
-                        GetJavNewDataTimer.Enabled = true;
+                        GetJavNewDataTimer.Start();
                     };
                     GetJavNewDataTimer.Enabled = true;
                 }
@@ -563,6 +568,20 @@ namespace SpiderServerInLinux
                                   break;
                               }
                               Interlocked.Increment(ref ErrorCount);
+                              if (Address==Setting.NyaaAddress)
+                              {
+                                  var _time = new Random().Next(2000, 5000);
+                                  for (var i = _time; i > 0; i -= 1000)
+                                  {
+                                      Thread.Sleep(1000);
+                                  }
+                                  if (ErrorCount >= 1)
+                                  {
+                                      ErrorCount = 0;
+                                      Interlocked.Increment(ref LastPageIndex);
+                                  }
+                                  continue;
+                              }
                               Loger.Instance.LocalInfo($"下载{downurl.ToString()}失败，计数{ErrorCount}次");
                               //Loger.Instance.LocalInfo(ex.Message);
                               var time = new Random().Next(5000, 10000);
@@ -574,13 +593,6 @@ namespace SpiderServerInLinux
                                   }
                                   Loger.Instance.WaitTime(i / 1000);
                                   Thread.Sleep(1000);
-                              }
-                              if (ErrorCount > 1 && LastPageIndex > Setting.NyaaStartPoint)
-                              {
-                                  ErrorCount = 0;
-                                  Loger.Instance.LocalInfo($"{downurl}下载失败，跳过");
-                                  Interlocked.Increment(ref LastPageIndex);
-                                  continue;
                               }
                               if (ErrorCount > 5)
                               {
