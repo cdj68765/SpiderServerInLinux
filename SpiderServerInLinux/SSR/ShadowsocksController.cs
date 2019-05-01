@@ -90,6 +90,7 @@ namespace Shadowsocks.Controller
             Setting.Socks5Point = _config.localPort;
             var Config = new Server(Setting._GlobalSet.ssr_url, "");
             if (!string.IsNullOrEmpty(Config.remarks)) Loger.Instance.ServerInfo("SSR", $"SSR服务器名称，{Config.remarks}");
+            Config.server = GetIp(Config.server);
             Loger.Instance.ServerInfo("SSR", $"SSR地址解析完毕，IP:{Config.server}");
             _config.configs.Add(Config);
             _transfer = ServerTransferTotal.Load();
@@ -98,6 +99,12 @@ namespace Shadowsocks.Controller
                 if (_transfer.servers.ContainsKey(server.server))
                 {
                     SSRSpeedInfo = (ServerTrans)_transfer.servers[server.server];
+                    ServerSpeedLog log = new ServerSpeedLog(((ServerTrans)_transfer.servers[server.server]).totalUploadBytes, ((ServerTrans)_transfer.servers[server.server]).totalDownloadBytes);
+                    server.SetServerSpeedLog(log);
+                }
+                else
+                {
+                    _transfer.AddDownload(server.server, 0);
                     ServerSpeedLog log = new ServerSpeedLog(((ServerTrans)_transfer.servers[server.server]).totalUploadBytes, ((ServerTrans)_transfer.servers[server.server]).totalDownloadBytes);
                     server.SetServerSpeedLog(log);
                 }
@@ -112,6 +119,17 @@ namespace Shadowsocks.Controller
                  Setting.SSR = null;
                  GC.Collect();
              }*/
+            string GetIp(string domain)
+            {
+                if (!IPAddress.TryParse(domain, out IPAddress ip))
+                {
+                    domain = domain.Replace("http://", "").Replace("https://", "");
+                    IPHostEntry hostEntry = Dns.GetHostEntry(domain);
+                    IPEndPoint ipEndPoint = new IPEndPoint(hostEntry.AddressList[0], 0);
+                    return ipEndPoint.Address.ToString();
+                }
+                return domain;
+            }
         }
 
         public ServerTrans SSRSpeedInfo;

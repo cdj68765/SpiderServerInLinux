@@ -36,16 +36,6 @@ namespace SpiderServerInLinux
 
         private async void Load()
         {
-            Setting._GlobalSet.NyaaFin = false;
-            if (Setting.NyaaStartPoint > Setting._GlobalSet.NyaaLastPageIndex)
-            {
-                Setting._GlobalSet.NyaaLastPageIndex = Setting.NyaaStartPoint;
-                Loger.Instance.LocalInfo("重置Nyaa下载索引");
-            }
-            else
-            {
-                Setting.NyaaStartPoint = Setting._GlobalSet.NyaaLastPageIndex;
-            }
             Loger.Instance.LocalInfo("初始化下载");
             await Task.WhenAll(GetJavNewData(), GetNyaaNewData(), GetOldDate());
         }
@@ -61,15 +51,11 @@ namespace SpiderServerInLinux
                         Loger.Instance.LocalInfo("开始获取新Nyaa信息");
                         NyaaNewDownloadCancel = new CancellationTokenSource();
                         GetNyaaNewDataTiner.Stop();
-                        if (Setting._GlobalSet.NyaaCheckPoint == 0)
-                        {
-                            Setting._GlobalSet.NyaaCheckPoint = DataBaseCommand.GetNyaaCheckPoint();
-                        }
                         var DownloadCollect = new BlockingCollection<Tuple<int, string>>();
                         //await Task.WhenAll(DownloadLoop(Setting._GlobalSet.NyaaAddress, Setting._GlobalSet.NyaaFin ? 0 : Setting._GlobalSet.NyaaLastPageIndex, DownloadCollect, NyaaNewDownloadCancel), HandlerNyaaHtml(DownloadCollect));
                         await Task.WhenAll(DownloadLoop(Setting._GlobalSet.NyaaAddress, 0, DownloadCollect, NyaaNewDownloadCancel), HandlerNyaaHtml(DownloadCollect));
                         GetNyaaNewDataTiner.Interval = new Random().Next(2, 12) * 3600 * 1000;
-                        Setting.NyaaDownLoadNow = DateTime.Now.AddMilliseconds(GetNyaaNewDataTiner.Interval).ToString("MM-dd|hh:mm");
+                        Setting.NyaaDownLoadNow = DateTime.Now.AddMilliseconds(GetNyaaNewDataTiner.Interval).ToString("MM-dd|HH:mm");
                         Loger.Instance.LocalInfo($"下次获得新数据为{Setting.NyaaDownLoadNow}");
                         GetNyaaNewDataTiner.Start();
                     };
@@ -211,8 +197,8 @@ namespace SpiderServerInLinux
                         GetJavNewDataTimer.Stop();
                         var DownloadCollect = new BlockingCollection<Tuple<int, string>>();
                         await Task.WhenAll(DownloadLoop(Setting._GlobalSet.JavAddress, 0, DownloadCollect, JavNewDownloadCancel), HandlerJavHtml(DownloadCollect, true));
-                        GetJavNewDataTimer.Interval=new Random().Next(6, 18) * 3600 * 1000;
-                        Setting.JavDownLoadNow = DateTime.Now.AddMilliseconds(GetJavNewDataTimer.Interval).ToString("MM-dd|hh:mm");
+                        GetJavNewDataTimer.Interval = new Random().Next(6, 18) * 3600 * 1000;
+                        Setting.JavDownLoadNow = DateTime.Now.AddMilliseconds(GetJavNewDataTimer.Interval).ToString("MM-dd|HH:mm");
                         Loger.Instance.LocalInfo($"下次获得新数据为{Setting.JavDownLoadNow}");
                         GetJavNewDataTimer.Start();
                     };
@@ -224,30 +210,30 @@ namespace SpiderServerInLinux
         private Task GetOldDate()
         {
             return Task.Run(() =>
-             {
-                 if (!Setting._GlobalSet.NyaaFin)
-                 {
-                     var DownloadCollect = new BlockingCollection<Tuple<int, string>>();
-                     NyaaOldDownloadCancel = new CancellationTokenSource();
-                     DownloadLoop(Setting.NyaaAddress, Setting._GlobalSet.NyaaLastPageIndex, DownloadCollect, NyaaOldDownloadCancel);
-                     HandlerOldNyaaHtml(DownloadCollect);
-                 }
-                 else
-                 {
-                     Loger.Instance.LocalInfo($"Nyaa下载完毕，跳过旧数据获取");
-                 }
-                 return;
-                 if (Setting._GlobalSet.JavFin)
-                 {
-                     var DownloadCollect = new BlockingCollection<Tuple<int, string>>();
-                     DownloadLoop(Setting._GlobalSet.JavAddress, Setting._GlobalSet.JavLastPageIndex, DownloadCollect, JavOldDownloadCancel);
-                     HandlerJavHtml(DownloadCollect);
-                 }
-                 else
-                 {
-                     Loger.Instance.LocalInfo($"JAV下载完毕，跳过旧数据获取");
-                 }
-             }, JavOldDownloadCancel.Token);
+            {
+                return;
+                if (!Setting._GlobalSet.NyaaFin)
+                {
+                    var DownloadCollect = new BlockingCollection<Tuple<int, string>>();
+                    NyaaOldDownloadCancel = new CancellationTokenSource();
+                    DownloadLoop(Setting.NyaaAddress, Setting._GlobalSet.NyaaLastPageIndex, DownloadCollect, NyaaOldDownloadCancel);
+                    HandlerOldNyaaHtml(DownloadCollect);
+                }
+                else
+                {
+                    Loger.Instance.LocalInfo($"Nyaa下载完毕，跳过旧数据获取");
+                }
+                if (Setting._GlobalSet.JavFin)
+                {
+                    var DownloadCollect = new BlockingCollection<Tuple<int, string>>();
+                    DownloadLoop(Setting._GlobalSet.JavAddress, Setting._GlobalSet.JavLastPageIndex, DownloadCollect, JavOldDownloadCancel);
+                    HandlerJavHtml(DownloadCollect);
+                }
+                else
+                {
+                    Loger.Instance.LocalInfo($"JAV下载完毕，跳过旧数据获取");
+                }
+            }, JavOldDownloadCancel.Token);
         }
 
         private Task HandlerOldNyaaHtml(BlockingCollection<Tuple<int, string>> downloadCollect)
@@ -261,7 +247,6 @@ namespace SpiderServerInLinux
                     foreach (var item in SaveData.GetConsumingEnumerable())
                     {
                         Save.Add(item.Item2);
-                        Setting.NyaaStartPoint = item.Item1;
                         if (item.Item2.Day != Setting.NyaaDay)
                         {
                             Setting.NyaaDay = item.Item2.Day;
@@ -299,11 +284,6 @@ namespace SpiderServerInLinux
                 var HtmlDoc = new HtmlDocument();
                 foreach (var Page in downloadCollect.GetConsumingEnumerable())
                 {
-                    if (Page.Item1 > Setting.NyaaEndPoint)
-                    {
-                        Loger.Instance.LocalInfo($"Nyaa解析到最大索引，完成旧数据下载");
-                        break;
-                    }
                     if (string.IsNullOrEmpty(Page.Item2))
                     {
                         Task.Delay(1000);
@@ -539,23 +519,20 @@ namespace SpiderServerInLinux
         {
             return Task.Factory.StartNew(() =>
               {
-                  using (var request = new HttpRequest())
+                  using (var request = new HttpRequest()
+                  {
+                      UserAgent = Http.ChromeUserAgent(),
+                      ConnectTimeout = 20000
+                  })
                   {
                       int ErrorCount = 0;
-                      request.UserAgent = Http.ChromeUserAgent();
-                      request.ConnectTimeout = 20000;
                       if (Setting._GlobalSet.SocksCheck) request.Proxy = Socks5ProxyClient.Parse($"127.0.0.1:{Setting.Socks5Point}");
                       while (!token.Token.IsCancellationRequested)
                       {
                           var downurl = new Uri($"{Address}{LastPageIndex}");
                           try
                           {
-                              var time = new Random().Next(1000, 10000);
-                              for (var i = time; i > 0; i -= 1000)
-                              {
-                                  Loger.Instance.WaitTime(i / 1000);
-                                  Thread.Sleep(1000);
-                              }
+                              Thread.Sleep(500);
                               HttpResponse response = request.Get(downurl);
                               downloadCollect.Add(new Tuple<int, string>(LastPageIndex, response.ToString()));
                               Interlocked.Increment(ref LastPageIndex);
@@ -568,20 +545,21 @@ namespace SpiderServerInLinux
                                   break;
                               }
                               Interlocked.Increment(ref ErrorCount);
-                              if (Address==Setting.NyaaAddress)
+                              if (Address == Setting.NyaaAddress)
                               {
-                                  var _time = new Random().Next(2000, 5000);
-                                  for (var i = _time; i > 0; i -= 1000)
+                                  if (ex.Message == "NotFound")
                                   {
-                                      Thread.Sleep(1000);
-                                  }
-                                  if (ErrorCount >= 1)
-                                  {
-                                      ErrorCount = 0;
                                       Interlocked.Increment(ref LastPageIndex);
+                                      continue;
                                   }
-                                  continue;
                               }
+                              if (ex.Message.StartsWith("Cannot access a disposed object"))
+                              {
+                                  Loger.Instance.LocalInfo($"SSR异常，退出全部下载进程");
+                                  token.Cancel();
+                                  break;
+                              }
+                              Loger.Instance.LocalInfo($"{ex.Message}");
                               Loger.Instance.LocalInfo($"下载{downurl.ToString()}失败，计数{ErrorCount}次");
                               //Loger.Instance.LocalInfo(ex.Message);
                               var time = new Random().Next(5000, 10000);

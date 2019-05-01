@@ -2320,11 +2320,8 @@ namespace xNet
             {
                 createdNewConnection = TryCreateConnectionOrUseExisting(address, previousAddress);
             }
-            catch (HttpException ex)
+            catch (Exception e)
             {
-                if (CanReconnect())
-                    return ReconnectAfterFail();
-
                 throw;
             }
 
@@ -2341,14 +2338,14 @@ namespace xNet
             }
             catch (SecurityException ex)
             {
-                Loger.Instance.ServerInfo("SSR", ex);
+                Loger.Instance.Warn(ex);
             }
             catch (IOException ex)
             {
                 if (CanReconnect())
                     return ReconnectAfterFail();
 
-                Loger.Instance.ServerInfo("SSR", ex);
+                Loger.Instance.Warn(ex);
             }
 
             #endregion Отправка запроса
@@ -2382,7 +2379,14 @@ namespace xNet
             _whenConnectionIdle = DateTime.Now;
 
             if (!IgnoreProtocolErrors)
-                CheckStatusCode(_response.StatusCode);
+            {
+                if (_response.StatusCode != HttpStatusCode.OK)
+                {
+                    throw new Exception(_response.StatusCode.ToString());
+                }
+            }
+
+            //CheckStatusCode(_response.StatusCode);
 
             #region Переадресация
 
@@ -2582,8 +2586,7 @@ namespace xNet
                 {
                     if (ex is SocketException || ex is ArgumentException)
                     {
-                        throw NewHttpException(
-                            Resources.HttpException_FailedGetHostAddresses, ex);
+                        throw new Exception(ex.Message);
                     }
 
                     throw;
@@ -2686,7 +2689,8 @@ namespace xNet
                 }
                 catch (ProxyException ex)
                 {
-                    throw NewHttpException(Resources.HttpException_FailedConnect, ex, HttpExceptionStatus.ConnectFailure);
+                    throw new Exception(HttpExceptionStatus.ConnectFailure.ToString());
+                    //throw NewHttpException(Resources.HttpException_FailedConnect, ex, HttpExceptionStatus.ConnectFailure);
                 }
             }
 
@@ -2719,7 +2723,7 @@ namespace xNet
                 }
                 catch (Exception ex)
                 {
-                    Loger.Instance.ServerInfo("主机", ex);
+                    Loger.Instance.Warn(ex);
                 }
             }
             else

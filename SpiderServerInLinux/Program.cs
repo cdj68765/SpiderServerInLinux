@@ -23,6 +23,67 @@ namespace SpiderServerInLinux
     {
         private static async Task<int> Main(string[] args)
         {
+            Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+            var HtmlDoc = new HtmlDocument();
+            HtmlDoc.LoadHtml(File.ReadAllText("MiMiC"));
+            var Form2 = HtmlNode.CreateNode(HtmlDoc.DocumentNode.SelectNodes(
+                       "//div[@class='t_msgfont']")[0].OuterHtml);
+            List<AVData> ItemList = new List<AVData>();
+            var Temp = new AVData();
+            foreach (var Child in Form2.ChildNodes)
+            {
+                switch (Child.Name)
+                {
+                    case "a":
+                        Temp.ReadBt(Child.InnerText);
+                        ItemList.Add(Temp);
+                        Temp = new AVData();
+                        break;
+
+                    case "#text":
+                        Temp.ReadInfo(Child.InnerText);
+                        break;
+
+                    case "br":
+                        Temp.InfoList.Add(new[] { "br", Child.InnerText });
+                        break;
+
+                    case "img":
+                        Temp.ReadImg(Child.Attributes["src"].Value);
+                        break;
+
+                    default:
+                        //Debug.WriteLine($"{Child.InnerText}");
+                        break;
+                }
+            }
+
+            //http://www.mmfhd.com/forumdisplay.php?fid=55&page=
+            //http://www.mmbuff.com/forumdisplay.php?fid=55&page=
+            /* using (var request = new HttpRequest()
+             {
+                 UserAgent = Http.ChromeUserAgent(),
+                 ConnectTimeout = 20000,
+                 CharacterSet = Encoding.GetEncoding("GBK")
+             })
+             {
+                 //request.Proxy = Socks5ProxyClient.Parse($"127.0.0.1:7070");
+                 HttpResponse response = request.Get("http://www.mmbuff.com/viewthread.php?tid=1203210");
+                 var Save = response.ToString();
+                 File.WriteAllText("MiMiC", Save);
+             }
+                             var HtmlDoc = new HtmlDocument();
+                 HtmlDoc.LoadHtml(Encoding.GetEncoding("GBK").GetString(response.Ret));
+                 foreach (var item in HtmlDoc.DocumentNode.SelectNodes(@"/html/body/center/form/div[1]/div/table"))
+                 {
+                     var CT = item.SelectSingleNode("tr/td[1]/a").Attributes["href"].Value;
+                     CT = item.SelectSingleNode("tr/td[3]/a[1]").InnerText;
+                     CT = item.SelectSingleNode("tr/td[4]/a").InnerText;
+                     CT = item.SelectSingleNode("tr/td[4]/span").InnerText;
+                 }
+              */
+
+            return 0;
             Setting._GlobalSet = new GlobalSet().Open();
             await Init();
             return await Setting.ShutdownResetEvent.Task.ConfigureAwait(false);

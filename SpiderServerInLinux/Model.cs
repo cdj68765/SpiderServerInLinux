@@ -1,10 +1,13 @@
 ﻿using Shadowsocks.Controller;
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Formatters.Binary;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using xNet;
@@ -26,10 +29,8 @@ namespace SpiderServerInLinux
         internal static DownloadManage DownloadManage;
         internal static readonly CancellationTokenSource CancelSign = new CancellationTokenSource();
         internal static readonly TaskCompletionSource<byte> ShutdownResetEvent = new TaskCompletionSource<byte>();
-        internal static int NyaaStartPoint = 2520080;
-        internal static readonly int NyaaEndPoint = 2708397;
         internal static readonly string NyaaAddress = "https://sukebei.nyaa.si/view/";
-        internal static string NyaaDay = "";
+        internal static string NyaaDay = "";//过去下载每条Nyaa用
 
         internal static bool CheckOnline(bool ssr = false)
         {
@@ -40,8 +41,8 @@ namespace SpiderServerInLinux
                     Thread.Sleep(1000);
                     request.ConnectTimeout = 1000;
                     request.UserAgent = Http.ChromeUserAgent();
-                    if (ssr) request.Proxy = Socks5ProxyClient.Parse($"127.0.0.1:{Socks5Point}");
-                    HttpResponse response = request.Get(@"google.co.jp");
+                    if (ssr) request.Proxy = Socks5ProxyClient.Parse($"127.0.0.1:{Setting.Socks5Point}");
+                    HttpResponse response = request.Get(@"https://www.google.co.jp/");
                     //HttpResponse response = request.Get(@"https://www.141jav.com/new");
                     if (response.StatusCode == HttpStatusCode.OK)
                     {
@@ -83,14 +84,16 @@ namespace SpiderServerInLinux
     {
         private string _NyaaAddress = "https://sukebei.nyaa.si/?p=";
         private string _JavAddress = "https://www.141jav.com/new?page=";
+        private string _MiMiaiAddress = "http://www.mmbuff.com/forumdisplay.php?fid=55&page=";
         private string _ssr_url = "ssr://MTkzLjExMC4yMDMuMjI6MzQxMTI6YXV0aF9jaGFpbl9hOmFlcy0yNTYtY2ZiOmh0dHBfc2ltcGxlOk5qWTRPRGMzTmpVLz9vYmZzcGFyYW09JnByb3RvcGFyYW09JnJlbWFya3M9NmFhWjVyaXZJR1FnTFNCYjU1UzFMLWlCbENfbnA3dGRJRU5PTWl0T1ZGUSZncm91cD00NEdUNDRHdjQ0S0xMdWlRak9PQmlBJnVkcHBvcnQ9MCZ1b3Q9MA";
         private int _NyaaLastPageIndex = 0;
-        private int _JavLastPageIndex = 2;
+        private int _JavLastPageIndex = 0;
+        private int _MiMiAiPageIndex = 0;
         private int _ConnectPoint = 2222;
         private bool _SocksCheck = false;
         private bool _NyaaFin = false;
         private bool _JavFin = false;
-        private int _NayyCheckPoint = 0;
+        private bool _MiMiAiCheck = false;
         internal string NyaaAddress { get { return _NyaaAddress; } set { _NyaaAddress = value; Save(); } }
         internal string JavAddress { get { return _JavAddress; } set { _JavAddress = value; Save(); } }
         internal string ssr_url { get { return _ssr_url; } set { _ssr_url = value; Save(); } }
@@ -100,7 +103,9 @@ namespace SpiderServerInLinux
         internal bool SocksCheck { get { return _SocksCheck; } set { _SocksCheck = value; Save(); } }
         internal bool NyaaFin { get { return _NyaaFin; } set { _NyaaFin = value; Save(); } }
         internal bool JavFin { get { return _JavFin; } set { _JavFin = value; Save(); } }
-        internal int NyaaCheckPoint { get { return _NayyCheckPoint; } set { _NayyCheckPoint = value; Save(); } }
+        internal string MiMiaiAddress { get { return _MiMiaiAddress; } set { _MiMiaiAddress = value; Save(); } }
+        internal int MiMiAiPageIndex { get { return _MiMiAiPageIndex; } set { _MiMiAiPageIndex = value; Save(); } }
+        internal bool MiMiAiCheck { get { return _MiMiAiCheck; } set { _MiMiAiCheck = value; Save(); } }
 
         internal GlobalSet()
         {
@@ -225,5 +230,174 @@ namespace SpiderServerInLinux
         public string Date { get; set; }
         public string[] Tags { get; set; }
         public string[] Actress { get; set; }
+    }
+
+    public class AVData
+    {
+        public List<ByteInfo> BtList = new List<ByteInfo>();
+        public List<ByteInfo> ImgList = new List<ByteInfo>();
+        public List<string[]> InfoList = new List<string[]>();
+        private readonly Regex GetCodeRegex = new Regex(@"[a-zA-Z0-9//-]+", RegexOptions.Compiled);
+        private string Title;
+        private string GetCode;
+        private object Actress;
+        private string studio;
+        private string series;
+        private string[] Category;
+        private DateTime date;
+        private string magnet;
+
+        private Dictionary<string, string> Match = new Dictionary<string, string>()
+        {
+            {"番号","GetCode"},
+            {"女優:","Actress"},
+            {"出演:","Actress"},
+            {"スタジオ","studio"},
+            {"シリーズ","series"},
+            {"カテゴリ","Category"},
+            {"発売日","date"},
+            {"販売日","date"},
+            {"配信日","date"},
+            {"特征","magnet"},
+            {"驗證編號","magnet"},
+            {"驗證全碼","magnet"},
+            {"種子代碼","magnet"},
+        };
+
+        internal void ReadBt(string innerText)
+        {
+            InfoList.Add(new[] { "bt", innerText });
+            BtList.Add(new ByteInfo
+            {
+                OriInfo = innerText
+                // Byteinfo = net.GetByte(new Uri(innerText)), Byteinfo = net.GetByte(new Uri("http://www7.2kdown.com/link.php?ref=2E6cs8MBHc")),
+            });
+        }
+
+        internal void ReadInfo(string innerText)
+        {
+            InfoList.Add(new[] { "text", innerText });
+            innerText = innerText.Replace("\r\n", "").Replace("&nbsp;", "");
+            if (string.IsNullOrEmpty(Title) && innerText != "\r\n")
+            {
+                Title = innerText;
+                return;
+            }
+            switch (Match.SingleOrDefault(VARIABLE => innerText.Contains(VARIABLE.Key)).Value)
+            {
+                case "GetCode":
+                    GetCode = GetCodeRegex.Match(innerText).Value;
+                    break;
+
+                case "Actress":
+                    SplitString(ref innerText);
+                    Actress = innerText;
+                    break;
+
+                case "studio":
+                    SplitString(ref innerText);
+                    studio = innerText;
+                    break;
+
+                case "series":
+                    SplitString(ref innerText);
+                    series = innerText;
+                    break;
+
+                case "Category":
+                    SplitString(ref innerText);
+                    Category = innerText.Split(new char[] { ',', ' ', '?' }, StringSplitOptions.RemoveEmptyEntries);
+                    break;
+
+                case "date":
+                    try
+                    {
+                        SplitString(ref innerText);
+                        if (!DateTime.TryParse(GetCodeRegex.Match(innerText).Value, out date))
+                        {
+                            if (!DateTime.TryParse(innerText, out date))
+                            {
+                                Console.WriteLine();
+                            }
+                        }
+
+                        break;
+                    }
+                    catch (Exception)
+                    {
+                    }
+                    break;
+
+                case "magnet":
+                    SplitString(ref innerText);
+                    magnet = $"magnet:?xt=urn:btih:{innerText.Replace(" ", "")}";
+                    break;
+
+                default:
+                    if (!string.IsNullOrWhiteSpace(innerText))
+                    { }
+                    //Debug.WriteLine($"{innerText}");
+                    break;
+            }
+        }
+
+        private static void SplitString(ref String Text)
+        {
+            if (Text.Contains(":"))
+            {
+                Text = Text.Split(':')[1];
+            }
+            else if (Text.Contains("："))
+            {
+                Text = Text.Split('：')[1];
+            }
+            else if (Text.Contains(" "))
+            {
+                Text = Text.Split(' ')[1];
+            }
+            else
+            {
+                //Debug.WriteLine($"{Text}");
+            }
+        }
+
+        internal void ReadImg(string innerText)
+        {
+            InfoList.Add(new[] { "img", innerText });
+            ImgList.Add(new ByteInfo
+            {
+                OriInfo = innerText,
+                //Byteinfo = net.GetByteDirect(innerText)
+                //Byteinfo = net.GetByteDirect("http://img588.net/images/2017/09/14/4.th.jpg"),
+            });
+        }
+
+        public class ByteInfo
+        {
+            public byte[] _Byteinfo;
+
+            public string OriInfo { get; internal set; }
+            public string Status { get; set; }
+
+            public Tuple<string, byte[]> Byteinfo
+            {
+                set
+                {
+                    if (value.Item1 == null)
+                    {
+                        Status = "Null";
+                    }
+                    else if (value.Item1 == "")
+                    {
+                        Status = "GetOk";
+                        _Byteinfo = value.Item2;
+                    }
+                    else
+                    {
+                        Status = value.Item1;
+                    }
+                }
+            }
+        }
     }
 }

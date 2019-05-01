@@ -246,7 +246,7 @@ namespace SpiderServerInLinux
                         }
                         Console.SetCursorPosition(1, 1);
                         var ShowJav = Setting._GlobalSet.JavFin ? $"当前Jav下载页面:{Setting._GlobalSet.JavLastPageIndex}" : $"Jav:{Setting.JavDownLoadNow}";
-                        var ShowNyaa = !Setting._GlobalSet.NyaaFin ? $"Nyaa:{Setting.NyaaStartPoint}|{Setting.NyaaDay}|{Setting.NyaaDownLoadNow}" : $"Nyaa下次更新时间{Setting.NyaaDownLoadNow}";
+                        var ShowNyaa = !Setting._GlobalSet.NyaaFin ? $"Nyaa:{Setting.NyaaDownLoadNow}" : $"Nyaa下次更新时间{Setting.NyaaDownLoadNow}";
                         Console.Write($"{ShowNyaa} {ShowJav}");
                     }
                     catch (Exception)
@@ -258,7 +258,13 @@ namespace SpiderServerInLinux
                     if (Setting.SSR != null)
                     {
                         Console.SetCursorPosition(Console.WindowWidth / 2 + Console.WindowWidth / 3 - 3, 1);
-                        Console.Write($"SSR流量:{HumanReadableFilesize((double)Setting.SSR.SSRSpeedInfo.totalDownloadBytes)}");
+                        try
+                        {
+                            Console.Write($"SSR流量:{HumanReadableFilesize((double)Setting.SSR.SSRSpeedInfo.totalDownloadBytes)}");
+                        }
+                        catch (Exception)
+                        {
+                        }
                     }
                 }
                 catch (Exception e)
@@ -403,21 +409,21 @@ namespace SpiderServerInLinux
         public override void WriteLine(string message)
         {
             Check();
-            LocalInfoC.Push($"{DateTime.Now:MM-dd hh:mm:ss}->{message}");
+            LocalInfoC.Push($"{DateTime.Now:MM-dd HH:mm:ss}->{message}");
             DrawLocal();
         }
 
         public override void WriteLine(string message, string category)
         {
             Check();
-            LocalInfoC.Push($"{DateTime.Now:MM-dd hh:mm:ss}->[{category}]{message}");
+            LocalInfoC.Push($"{DateTime.Now:MM-dd HH:mm:ss}->[{category}]{message}");
             DrawLocal();
         }
 
         public override void Write(string category, string message)
         {
             Check();
-            Remote.Push($"{DateTime.Now:MM-dd hh:mm:ss}->[{category}]{message}");
+            Remote.Push($"{DateTime.Now:MM-dd HH:mm:ss}->[{category}]{message}");
             DrawRemote();
         }
     }
