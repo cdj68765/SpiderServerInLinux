@@ -232,36 +232,62 @@ namespace SpiderServerInLinux
         public string[] Actress { get; set; }
     }
 
-    public class AVData
+    public class MiMiAiNetData
     {
         public List<ByteInfo> BtList = new List<ByteInfo>();
         public List<ByteInfo> ImgList = new List<ByteInfo>();
         public List<string[]> InfoList = new List<string[]>();
         private readonly Regex GetCodeRegex = new Regex(@"[a-zA-Z0-9//-]+", RegexOptions.Compiled);
         private string Title;
+        private string SubTitle;
+        private string OriTitle;
         private string GetCode;
-        private object Actress;
+        private string[] Actress;
         private string studio;
         private string series;
         private string[] Category;
         private DateTime date;
         private string magnet;
+        private string Duration;
+        private string Size;
+        private string Star;
+        private string Age;
+        private string _3D;
+        private string Height;
 
         private Dictionary<string, string> Match = new Dictionary<string, string>()
         {
             {"番号","GetCode"},
-            {"女優:","Actress"},
-            {"出演:","Actress"},
+             {"商品番号","GetCode"},
+            {"女優","Actress"},
+            {"出演","Actress"},
+             //{"主演女優","Actress"},
+                {"主演","Actress"},
+              {"名前","Actress"},
             {"スタジオ","studio"},
             {"シリーズ","series"},
+            //{"カテゴリ一覧","Category"},
             {"カテゴリ","Category"},
+            {"タグ","Category"},
+              {"タイプ","Category"},
             {"発売日","date"},
             {"販売日","date"},
             {"配信日","date"},
+            {"公開日","date"},
             {"特征","magnet"},
             {"驗證編號","magnet"},
             {"驗證全碼","magnet"},
             {"種子代碼","magnet"},
+            {"店長推薦作品","SubTitle"},
+            {"タイトル","SubTitle"},
+            {"収録時間","Duration"},
+            {"再生時間","Duration"},
+             {"動画","Duration"},
+            {"ユーザー評価","Star"},
+            {"3サイズ","_3D"},
+             {"サイズ","_3D"},
+            {"年齢","Age"},
+             { "身長","Height"}
         };
 
         internal void ReadBt(string innerText)
@@ -276,73 +302,193 @@ namespace SpiderServerInLinux
 
         internal void ReadInfo(string innerText)
         {
-            InfoList.Add(new[] { "text", innerText });
-            innerText = innerText.Replace("\r\n", "").Replace("&nbsp;", "");
-            if (string.IsNullOrEmpty(Title) && innerText != "\r\n")
+            try
             {
-                Title = innerText;
-                return;
-            }
-            switch (Match.SingleOrDefault(VARIABLE => innerText.Contains(VARIABLE.Key)).Value)
-            {
-                case "GetCode":
-                    GetCode = GetCodeRegex.Match(innerText).Value;
-                    break;
+                innerText = innerText.Replace("\r\n", "").Replace("&nbsp;", "");
+                if (innerText.StartsWith(" ")) innerText = innerText.Remove(0, 1);
+                if (!string.IsNullOrEmpty(innerText))
+                {
+                    InfoList.Add(new[] { "text", innerText });
+                }
+                if (string.IsNullOrEmpty(Title) && innerText != "\r\n")
+                {
+                    Title = innerText;
+                    return;
+                }
 
-                case "Actress":
-                    SplitString(ref innerText);
-                    Actress = innerText;
-                    break;
+                var _Match = Match.SingleOrDefault(VARIABLE => innerText.StartsWith(VARIABLE.Key));
+                switch (_Match.Value)
+                {
+                    case "GetCode":
+                        GetCode = GetCodeRegex.Match(innerText).Value;
+                        break;
 
-                case "studio":
-                    SplitString(ref innerText);
-                    studio = innerText;
-                    break;
+                    case "Actress":
+                        SplitString(_Match.Key, ref innerText);
+                        if (!string.IsNullOrEmpty(innerText))
+                            Actress = innerText.Split(new char[] { '，', ',' }, StringSplitOptions.RemoveEmptyEntries);
+                        break;
 
-                case "series":
-                    SplitString(ref innerText);
-                    series = innerText;
-                    break;
-
-                case "Category":
-                    SplitString(ref innerText);
-                    Category = innerText.Split(new char[] { ',', ' ', '?' }, StringSplitOptions.RemoveEmptyEntries);
-                    break;
-
-                case "date":
-                    try
-                    {
-                        SplitString(ref innerText);
-                        if (!DateTime.TryParse(GetCodeRegex.Match(innerText).Value, out date))
+                    case "Category":
+                        SplitString(_Match.Key, ref innerText);
+                        if (innerText.Contains(':'))
                         {
-                            if (!DateTime.TryParse(innerText, out date))
+                            var Temp = innerText.Split(":")[1];
+                            if (!string.IsNullOrEmpty(Temp))
                             {
-                                Console.WriteLine();
+                                innerText = Temp;
                             }
                         }
-
+                        else if (innerText.Contains('：'))
+                        {
+                            var Temp = innerText.Split("：")[1];
+                            if (!string.IsNullOrEmpty(Temp))
+                            {
+                                innerText = Temp;
+                            }
+                        }
+                        Category = innerText.Split(new char[] { ',', ' ', '?' }, StringSplitOptions.RemoveEmptyEntries);
                         break;
-                    }
-                    catch (Exception)
-                    {
-                    }
-                    break;
 
-                case "magnet":
-                    SplitString(ref innerText);
-                    magnet = $"magnet:?xt=urn:btih:{innerText.Replace(" ", "")}";
-                    break;
+                    case "SubTitle":
+                        if (SubTitle == null)
+                        {
+                            SubTitle = innerText;
+                        }
+                        SplitString(_Match.Key, ref innerText);
+                        OriTitle = innerText;
+                        break;
 
-                default:
-                    if (!string.IsNullOrWhiteSpace(innerText))
-                    { }
-                    //Debug.WriteLine($"{innerText}");
-                    break;
+                    case "date":
+                        try
+                        {
+                            SplitString(_Match.Key, ref innerText);
+                            if (!DateTime.TryParse(GetCodeRegex.Match(innerText).Value, out date))
+                            {
+                                if (!DateTime.TryParse(innerText, out date))
+                                {
+                                    Console.WriteLine();
+                                }
+                            }
+
+                            break;
+                        }
+                        catch (Exception)
+                        {
+                        }
+                        break;
+
+                    case "magnet":
+                        SplitString(_Match.Key, ref innerText);
+                        magnet = $"magnet:?xt=urn:btih:{innerText.Replace(" ", "")}";
+                        break;
+
+                    default:
+                        if (!string.IsNullOrWhiteSpace(innerText))
+                        {
+                            if (!string.IsNullOrEmpty(_Match.Value))
+                            {
+                                var Field = this.GetType().GetField(_Match.Value, BindingFlags.Public | BindingFlags.Instance | BindingFlags.NonPublic);
+                                if (Field != null)
+                                {
+                                    SplitString(_Match.Key, ref innerText);
+                                    if (!string.IsNullOrEmpty(innerText))
+                                    {
+                                        Field.SetValue(this, innerText);
+                                        break;
+                                    }
+                                }
+                            }
+                            if (innerText.ToUpper().EndsWith("G") || innerText.ToUpper().EndsWith("MB"))
+                            {
+                                Size = innerText;
+                                break;
+                            }
+                            else if (innerText.StartsWith("Link URL:") || innerText.StartsWith("写真") || innerText.StartsWith("形式") || innerText.StartsWith("L ストリーミング"))
+                            {
+                                break;
+                            }
+                            else if (string.IsNullOrEmpty(SubTitle) && innerText != "\r\n")
+                            {
+                                SubTitle = innerText;
+                                break;
+                            }
+                            else
+                            {
+                                _Match = Match.SingleOrDefault(VARIABLE => InfoList[InfoList.Count - 2][1].Replace(":", "").Replace("：", "").StartsWith(VARIABLE.Key));
+                                if (!string.IsNullOrEmpty(_Match.Key))
+                                {
+                                    switch (_Match.Value)
+                                    {
+                                        case "date":
+                                            {
+                                                if (!DateTime.TryParse(GetCodeRegex.Match(innerText).Value, out date))
+                                                {
+                                                    if (!DateTime.TryParse(innerText, out date))
+                                                    {
+                                                        Console.WriteLine();
+                                                    }
+                                                }
+                                            }
+                                            break;
+
+                                        case "Actress":
+                                            if (!string.IsNullOrEmpty(innerText))
+                                                Actress = innerText.Split(new char[] { '，', ',' }, StringSplitOptions.RemoveEmptyEntries);
+                                            break;
+
+                                        default:
+                                            {
+                                                var Field = this.GetType().GetField(_Match.Value, BindingFlags.Public | BindingFlags.Instance | BindingFlags.NonPublic);
+                                                if (Field != null)
+                                                {
+                                                    if (string.IsNullOrEmpty(Field.GetValue(this) as string))
+                                                    {
+                                                        if (!string.IsNullOrEmpty(innerText))
+                                                        {
+                                                            Field.SetValue(this, innerText);
+                                                            break;
+                                                        }
+                                                    }
+                                                    else
+                                                    {
+                                                        Console.WriteLine();
+                                                    }
+                                                }
+                                            }
+                                            break;
+                                    }
+                                    break;
+                                }
+                                else
+                                {
+                                    Console.WriteLine();
+                                }
+                            }
+                            Console.WriteLine();
+                        }
+                        //Debug.WriteLine($"{innerText}");
+                        break;
+                }
+            }
+            catch (Exception)
+            {
+                throw;
             }
         }
 
-        private static void SplitString(ref String Text)
+        private static void SplitString(string Temp, ref String Text)
         {
+            try
+            {
+                Text = Text.Replace(Temp, "").Remove(0, 2);
+            }
+            catch (Exception)
+            {
+                Text = "";
+            }
+
+            return;
             if (Text.Contains(":"))
             {
                 Text = Text.Split(':')[1];

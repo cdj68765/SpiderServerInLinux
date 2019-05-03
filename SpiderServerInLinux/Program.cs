@@ -28,8 +28,8 @@ namespace SpiderServerInLinux
             HtmlDoc.LoadHtml(File.ReadAllText("MiMiC"));
             var Form2 = HtmlNode.CreateNode(HtmlDoc.DocumentNode.SelectNodes(
                        "//div[@class='t_msgfont']")[0].OuterHtml);
-            List<AVData> ItemList = new List<AVData>();
-            var Temp = new AVData();
+            List<MiMiAiNetData> ItemList = new List<MiMiAiNetData>();
+            var Temp = new MiMiAiNetData();
             foreach (var Child in Form2.ChildNodes)
             {
                 switch (Child.Name)
@@ -37,7 +37,7 @@ namespace SpiderServerInLinux
                     case "a":
                         Temp.ReadBt(Child.InnerText);
                         ItemList.Add(Temp);
-                        Temp = new AVData();
+                        Temp = new MiMiAiNetData();
                         break;
 
                     case "#text":
@@ -45,7 +45,10 @@ namespace SpiderServerInLinux
                         break;
 
                     case "br":
-                        Temp.InfoList.Add(new[] { "br", Child.InnerText });
+                        if (!string.IsNullOrEmpty(Child.InnerText))
+                        {
+                            Temp.InfoList.Add(new[] { "br", Child.InnerText });
+                        }
                         break;
 
                     case "img":
@@ -53,6 +56,7 @@ namespace SpiderServerInLinux
                         break;
 
                     default:
+                        Console.WriteLine();
                         //Debug.WriteLine($"{Child.InnerText}");
                         break;
                 }
