@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -24,6 +25,7 @@ namespace SpiderServerInLinux
         internal static int Socks5Point;
         internal static string JavDownLoadNow;
         internal static string NyaaDownLoadNow;
+        internal static string MiMiDownLoadNow;
         internal static ShadowsocksController SSR;
         internal static server server;
         internal static DownloadManage DownloadManage;
@@ -31,6 +33,7 @@ namespace SpiderServerInLinux
         internal static readonly TaskCompletionSource<byte> ShutdownResetEvent = new TaskCompletionSource<byte>();
         internal static readonly string NyaaAddress = "https://sukebei.nyaa.si/view/";
         internal static string NyaaDay = "";//过去下载每条Nyaa用
+        internal static string MiMiDay = "";//过去下载每条MiMi用
 
         internal static bool CheckOnline(bool ssr = false)
         {
@@ -82,10 +85,10 @@ namespace SpiderServerInLinux
     [Serializable]
     internal class GlobalSet
     {
-        private string _NyaaAddress = "https://sukebei.nyaa.si/?p=";
-        private string _JavAddress = "https://www.141jav.com/new?page=";
-        private string _MiMiaiAddress = "http://www.mmbuff.com/forumdisplay.php?fid=55&page=";
-        private string _ssr_url = "ssr://MTkzLjExMC4yMDMuMjI6MzQxMTI6YXV0aF9jaGFpbl9hOmFlcy0yNTYtY2ZiOmh0dHBfc2ltcGxlOk5qWTRPRGMzTmpVLz9vYmZzcGFyYW09JnByb3RvcGFyYW09JnJlbWFya3M9NmFhWjVyaXZJR1FnTFNCYjU1UzFMLWlCbENfbnA3dGRJRU5PTWl0T1ZGUSZncm91cD00NEdUNDRHdjQ0S0xMdWlRak9PQmlBJnVkcHBvcnQ9MCZ1b3Q9MA";
+        private string _NyaaAddress;
+        private string _JavAddress;
+        private string _MiMiAiAddress;
+        private string _ssr_url;
         private int _NyaaLastPageIndex = 0;
         private int _JavLastPageIndex = 0;
         private int _MiMiAiPageIndex = 0;
@@ -93,7 +96,7 @@ namespace SpiderServerInLinux
         private bool _SocksCheck = false;
         private bool _NyaaFin = false;
         private bool _JavFin = false;
-        private bool _MiMiAiCheck = false;
+        private bool _MiMiFin = false;
         internal string NyaaAddress { get { return _NyaaAddress; } set { _NyaaAddress = value; Save(); } }
         internal string JavAddress { get { return _JavAddress; } set { _JavAddress = value; Save(); } }
         internal string ssr_url { get { return _ssr_url; } set { _ssr_url = value; Save(); } }
@@ -103,9 +106,19 @@ namespace SpiderServerInLinux
         internal bool SocksCheck { get { return _SocksCheck; } set { _SocksCheck = value; Save(); } }
         internal bool NyaaFin { get { return _NyaaFin; } set { _NyaaFin = value; Save(); } }
         internal bool JavFin { get { return _JavFin; } set { _JavFin = value; Save(); } }
-        internal string MiMiaiAddress { get { return _MiMiaiAddress; } set { _MiMiaiAddress = value; Save(); } }
+        internal bool MiMiFin { get { return _MiMiFin; } set { _MiMiFin = value; Save(); } }
+        internal string MiMiAiAddress { get { return _MiMiAiAddress; } set { _MiMiAiAddress = value; Save(); } }
+
         internal int MiMiAiPageIndex { get { return _MiMiAiPageIndex; } set { _MiMiAiPageIndex = value; Save(); } }
-        internal bool MiMiAiCheck { get { return _MiMiAiCheck; } set { _MiMiAiCheck = value; Save(); } }
+
+        [OnDeserialized]
+        private void OnDeserialized(StreamingContext context)
+        {
+            if (string.IsNullOrEmpty(_NyaaAddress)) _NyaaAddress = "https://sukebei.nyaa.si/?p=";
+            if (string.IsNullOrEmpty(_JavAddress)) _JavAddress = "https://www.141jav.com/new?page=";
+            if (string.IsNullOrEmpty(_MiMiAiAddress)) _MiMiAiAddress = "http://www.mmbuff.com/forumdisplay.php?fid=55&page=";
+            if (string.IsNullOrEmpty(_ssr_url)) _ssr_url = "ssr://MTkzLjExMC4yMDMuMjI6MzQxMTI6YXV0aF9jaGFpbl9hOmFlcy0yNTYtY2ZiOmh0dHBfc2ltcGxlOk5qWTRPRGMzTmpVLz9vYmZzcGFyYW09JnByb3RvcGFyYW09JnJlbWFya3M9NmFhWjVyaXZJR1FnTFNCYjU1UzFMLWlCbENfbnA3dGRJRU5PTWl0T1ZGUSZncm91cD00NEdUNDRHdjQ0S0xMdWlRak9PQmlBJnVkcHBvcnQ9MCZ1b3Q9MA";
+        }
 
         internal GlobalSet()
         {
@@ -230,6 +243,22 @@ namespace SpiderServerInLinux
         public string Date { get; set; }
         public string[] Tags { get; set; }
         public string[] Actress { get; set; }
+    }
+
+    internal class MiMiAiData
+    {
+        public string id { get; set; }
+        public string Date { get; set; }
+        public int Index { get; set; }
+        public List<BasicData> InfoList { get; set; }
+        public bool Status { get; set; }
+
+        internal class BasicData
+        {
+            public string Type { get; set; }
+            public string info { get; set; }
+            public byte[] Data { get; set; }
+        }
     }
 
     public class MiMiAiNetData

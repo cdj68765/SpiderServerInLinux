@@ -1,4 +1,5 @@
 ﻿using HtmlAgilityPack;
+using LiteDB;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -14,11 +15,10 @@ namespace SpiderServerInLinux
 {
     public class DownloadManage : IDisposable
     {
-        public CancellationTokenSource NyaaNewDownloadCancel = new CancellationTokenSource();
-        public CancellationTokenSource NyaaOldDownloadCancel = new CancellationTokenSource();
-        public System.Timers.Timer GetNyaaNewDataTiner = new System.Timers.Timer();
-        public CancellationTokenSource JavOldDownloadCancel = new CancellationTokenSource();
-        public CancellationTokenSource JavNewDownloadCancel = new CancellationTokenSource();
+        public CancellationTokenSource NyaaDownloadCancel = new CancellationTokenSource();
+        public CancellationTokenSource MiMiDownloadCancel = new CancellationTokenSource();
+        public System.Timers.Timer GetNyaaNewDataTimer = new System.Timers.Timer();
+        public CancellationTokenSource JavDownloadCancel = new CancellationTokenSource();
         public bool JavOldDownloadRunning = false;
 
         public DownloadManage()
@@ -37,7 +37,7 @@ namespace SpiderServerInLinux
         private async void Load()
         {
             Loger.Instance.LocalInfo("初始化下载");
-            await Task.WhenAll(GetJavNewData(), GetNyaaNewData(), GetOldDate());
+            await Task.WhenAll(/*GetJavNewData(), GetNyaaNewData(), */GetOldDate());
         }
 
         private Task GetNyaaNewData()
@@ -45,21 +45,21 @@ namespace SpiderServerInLinux
             return Task.Run(() =>
             {
                 {
-                    GetNyaaNewDataTiner = new System.Timers.Timer(10000);
-                    GetNyaaNewDataTiner.Elapsed += async delegate
+                    GetNyaaNewDataTimer = new System.Timers.Timer(10000);
+                    GetNyaaNewDataTimer.Elapsed += async delegate
                     {
                         Loger.Instance.LocalInfo("开始获取新Nyaa信息");
-                        NyaaNewDownloadCancel = new CancellationTokenSource();
-                        GetNyaaNewDataTiner.Stop();
+                        NyaaDownloadCancel = new CancellationTokenSource();
+                        GetNyaaNewDataTimer.Stop();
                         var DownloadCollect = new BlockingCollection<Tuple<int, string>>();
                         //await Task.WhenAll(DownloadLoop(Setting._GlobalSet.NyaaAddress, Setting._GlobalSet.NyaaFin ? 0 : Setting._GlobalSet.NyaaLastPageIndex, DownloadCollect, NyaaNewDownloadCancel), HandlerNyaaHtml(DownloadCollect));
-                        await Task.WhenAll(DownloadLoop(Setting._GlobalSet.NyaaAddress, 0, DownloadCollect, NyaaNewDownloadCancel), HandlerNyaaHtml(DownloadCollect));
-                        GetNyaaNewDataTiner.Interval = new Random().Next(2, 12) * 3600 * 1000;
-                        Setting.NyaaDownLoadNow = DateTime.Now.AddMilliseconds(GetNyaaNewDataTiner.Interval).ToString("MM-dd|HH:mm");
+                        await Task.WhenAll(DownloadLoop(Setting._GlobalSet.NyaaAddress, 0, DownloadCollect, NyaaDownloadCancel), HandlerNyaaHtml(DownloadCollect));
+                        GetNyaaNewDataTimer.Interval = new Random().Next(2, 12) * 3600 * 1000;
+                        Setting.NyaaDownLoadNow = DateTime.Now.AddMilliseconds(GetNyaaNewDataTimer.Interval).ToString("MM-dd|HH:mm");
                         Loger.Instance.LocalInfo($"下次获得新数据为{Setting.NyaaDownLoadNow}");
-                        GetNyaaNewDataTiner.Start();
+                        GetNyaaNewDataTimer.Start();
                     };
-                    GetNyaaNewDataTiner.Enabled = true;
+                    GetNyaaNewDataTimer.Enabled = true;
                 }
             });
         }
@@ -84,7 +84,7 @@ namespace SpiderServerInLinux
                                     {
                                         Loger.Instance.LocalInfo($"当前保存Nyaa下载日期{item.Item2.First().Day}");
                                         Loger.Instance.LocalInfo($"判断Nyaa下载完成");
-                                        NyaaNewDownloadCancel.Cancel();
+                                        NyaaDownloadCancel.Cancel();
                                         downloadCollect.CompleteAdding();
                                         break;
                                     }
@@ -92,13 +92,13 @@ namespace SpiderServerInLinux
                                     {
                                         Loger.Instance.LocalInfo($"当前保存Nyaa下载日期{item.Item2.First().Day}");
                                         Loger.Instance.LocalInfo($"判断Nyaa下载完成");
-                                        NyaaNewDownloadCancel.Cancel();
+                                        NyaaDownloadCancel.Cancel();
                                         downloadCollect.CompleteAdding();
                                         break;
                                         Loger.Instance.LocalInfo($"检测到时间轴到达上一时间点");
                                         Loger.Instance.LocalInfo($"判断Nyaa下载完成");
                                         Setting._GlobalSet.NyaaFin = true;
-                                        NyaaNewDownloadCancel.Cancel();
+                                        NyaaDownloadCancel.Cancel();
                                         downloadCollect.CompleteAdding();
                                         break;
                                     }
@@ -121,7 +121,7 @@ namespace SpiderServerInLinux
                             break;
                         }
                     }
-                    NyaaNewDownloadCancel.Cancel();
+                    NyaaDownloadCancel.Cancel();
                     downloadCollect.CompleteAdding();
                 }
             });
@@ -139,7 +139,7 @@ namespace SpiderServerInLinux
                     try
                     {
                         var TempSave = new List<NyaaInfo>();
-                        foreach (var item in HtmlDoc.DocumentNode.SelectNodes(@"/html/body/div[1]/div[2]/table/tbody/tr"))
+                        foreach (var item in HtmlDoc.DocumentNode.SelectNodes(@"//div[@class='table-responsive']/table/tbody/tr"))
                         {
                             var TempData = new NyaaInfo();
                             var temp = HtmlNode.CreateNode(item.OuterHtml);
@@ -173,6 +173,7 @@ namespace SpiderServerInLinux
                     }
                     catch (Exception e)
                     {
+                        File.WriteAllText("BugNyaaPage", Page.Item2);
                         Loger.Instance.LocalInfo($"Nyaa解析失败，失败原因{e}");
                         break;
                     }
@@ -193,10 +194,10 @@ namespace SpiderServerInLinux
                     GetJavNewDataTimer.Elapsed += async delegate
                     {
                         Loger.Instance.LocalInfo("开始获取新Jav信息");
-                        JavNewDownloadCancel = new CancellationTokenSource();
+                        JavDownloadCancel = new CancellationTokenSource();
                         GetJavNewDataTimer.Stop();
                         var DownloadCollect = new BlockingCollection<Tuple<int, string>>();
-                        await Task.WhenAll(DownloadLoop(Setting._GlobalSet.JavAddress, 0, DownloadCollect, JavNewDownloadCancel), HandlerJavHtml(DownloadCollect, true));
+                        await Task.WhenAll(DownloadLoop(Setting._GlobalSet.JavAddress, 0, DownloadCollect, JavDownloadCancel), HandlerJavHtml(DownloadCollect, true));
                         GetJavNewDataTimer.Interval = new Random().Next(6, 18) * 3600 * 1000;
                         Setting.JavDownLoadNow = DateTime.Now.AddMilliseconds(GetJavNewDataTimer.Interval).ToString("MM-dd|HH:mm");
                         Loger.Instance.LocalInfo($"下次获得新数据为{Setting.JavDownLoadNow}");
@@ -211,12 +212,19 @@ namespace SpiderServerInLinux
         {
             return Task.Run(() =>
             {
+                if (!Setting._GlobalSet.MiMiFin)
+                {
+                    var DownloadCollect = new BlockingCollection<Tuple<int, string>>();
+                    MiMiDownloadCancel = new CancellationTokenSource();
+                    //DownloadLoop(Setting._GlobalSet.MiMiAiAddress, Setting._GlobalSet.MiMiAiPageIndex, DownloadCollect, MiMiDownloadCancel, true);
+                    HandlerMiMiHtml(DownloadCollect);
+                }
                 return;
                 if (!Setting._GlobalSet.NyaaFin)
                 {
                     var DownloadCollect = new BlockingCollection<Tuple<int, string>>();
-                    NyaaOldDownloadCancel = new CancellationTokenSource();
-                    DownloadLoop(Setting.NyaaAddress, Setting._GlobalSet.NyaaLastPageIndex, DownloadCollect, NyaaOldDownloadCancel);
+                    NyaaDownloadCancel = new CancellationTokenSource();
+                    DownloadLoop(Setting.NyaaAddress, Setting._GlobalSet.NyaaLastPageIndex, DownloadCollect, NyaaDownloadCancel);
                     HandlerOldNyaaHtml(DownloadCollect);
                 }
                 else
@@ -226,14 +234,204 @@ namespace SpiderServerInLinux
                 if (Setting._GlobalSet.JavFin)
                 {
                     var DownloadCollect = new BlockingCollection<Tuple<int, string>>();
-                    DownloadLoop(Setting._GlobalSet.JavAddress, Setting._GlobalSet.JavLastPageIndex, DownloadCollect, JavOldDownloadCancel);
+                    DownloadLoop(Setting._GlobalSet.JavAddress, Setting._GlobalSet.JavLastPageIndex, DownloadCollect, JavDownloadCancel);
                     HandlerJavHtml(DownloadCollect);
                 }
                 else
                 {
                     Loger.Instance.LocalInfo($"JAV下载完毕，跳过旧数据获取");
                 }
-            }, JavOldDownloadCancel.Token);
+            }, JavDownloadCancel.Token);
+        }
+
+        private Task HandlerMiMiHtml(BlockingCollection<Tuple<int, string>> downloadCollect)
+        {
+            return Task.WhenAny(Task.Run(() =>
+             {
+                 return;
+                 var HtmlDoc = new HtmlDocument();
+                 foreach (var _Temp in downloadCollect.GetConsumingEnumerable())
+                 {
+                     try
+                     {
+                         HtmlDoc.LoadHtml(_Temp.Item2);
+                         foreach (var item in HtmlDoc.DocumentNode.SelectNodes(@"/html/body/center/form/div[1]/div/table"))
+                         {
+                             var TempData = new string[]
+                             {
+                            item.SelectSingleNode("tr/td[1]/a").Attributes["href"].Value,
+                            item.SelectSingleNode("tr/td[3]/a[1]").InnerText,
+                            item.SelectSingleNode("tr/td[4]/a").InnerText,
+                            item.SelectSingleNode("tr/td[4]/span").InnerText,
+                            bool.FalseString
+                             };
+                             if (TempData[2] == "mimi")
+                             {
+                                 if (TempData[1].Contains("BT合集"))
+                                 {
+                                     DataBaseCommand.SaveToMiMiDataTablet(TempData);
+                                 }
+                             }
+                         }
+                         Setting._GlobalSet.MiMiAiPageIndex = _Temp.Item1;
+                     }
+                     catch (Exception ex)
+                     {
+                         Loger.Instance.LocalInfo($"MiMiAi页解析失败{ex.Message}");
+                         if (ex.Message == "Object reference not set to an instance of an object.")
+                         {
+                             Loger.Instance.LocalInfo($"判断下载完成,退出下载进程");
+                             Setting._GlobalSet.MiMiFin = true;
+                             MiMiDownloadCancel.Cancel();
+                             break;
+                         }
+                         continue;
+                     }
+                 }
+             }, MiMiDownloadCancel.Token), Task.Run(() =>
+              {
+                  void HandleMiMiPage(string PageData)
+                  {
+                      var HtmlDoc = new HtmlDocument();
+                      HtmlDoc.LoadHtml(PageData);
+                      List<MiMiAiData> ItemList = new List<MiMiAiData>();
+                      var Temp = new MiMiAiData();
+                      var Index = 0;
+                      foreach (var Child in HtmlDoc.DocumentNode.SelectNodes("//div[@class='t_msgfont']")[0].ChildNodes)
+                      {
+                          if (Temp.InfoList == null) Temp.InfoList = new List<MiMiAiData.BasicData>();
+                          switch (Child.Name)
+                          {
+                              case "a":
+                                  {
+                                      Temp.InfoList.Add(new MiMiAiData.BasicData() { Type = "torrent", info = Child.Attributes["href"].Value });
+                                      Temp.Index = Index;
+                                      Temp.Date = Setting.MiMiDay;
+                                      ItemList.Add(Temp);
+                                      Temp = new MiMiAiData();
+                                      Interlocked.Increment(ref Index);
+                                  }
+                                  break;
+
+                              case "#text":
+                                  {
+                                      var innerText = Child.InnerText.Replace("\r\n", "").Replace("&nbsp;", "");
+                                      if (innerText.StartsWith(" ")) innerText = innerText.Remove(0, 1);
+                                      if (string.IsNullOrEmpty(Temp.id) && innerText != "\r\n")
+                                      {
+                                          Temp.id = innerText;
+                                          break;
+                                      }
+                                      if (!string.IsNullOrEmpty(innerText))
+                                          Temp.InfoList.Add(new MiMiAiData.BasicData() { Type = "text", info = innerText });
+                                  }
+                                  break;
+
+                              case "br":
+                                  break;
+
+                              case "img":
+                                  Temp.InfoList.Add(new MiMiAiData.BasicData() { Type = "img", info = Child.Attributes["src"].Value });
+                                  break;
+
+                              default:
+                                  break;
+                          }
+                      }
+                      DataBaseCommand.SaveToMiMiDataUnit(ItemList);
+                  }
+                  using (var request = new HttpRequest()
+                  {
+                      UserAgent = Http.ChromeUserAgent(),
+                      ConnectTimeout = 20000,
+                      CharacterSet = Encoding.GetEncoding("GBK")
+                  })
+                  {
+                      if (Setting._GlobalSet.SocksCheck) request.Proxy = Socks5ProxyClient.Parse($"127.0.0.1:{Setting.Socks5Point}");
+                      var ErrorCount = 0;
+                      while (!MiMiDownloadCancel.Token.IsCancellationRequested)
+                      {
+                          var PageInfo = DataBaseCommand.GetDataFromMiMi("TabletInfo") as BsonDocument;
+                          if (PageInfo != null)
+                          {
+                              try
+                              {
+                                  Setting.MiMiDay = PageInfo["_id"].AsDateTime.ToString("yyyy-MM-dd");
+                                  var downurl = new Uri($"http://{new Uri(Setting._GlobalSet.MiMiAiAddress).Host}/{PageInfo["Uri"].AsString}");
+                                  HttpResponse response = request.Get(downurl);
+                                  if (response.Address.Authority != downurl.Authority)
+                                  {
+                                      Loger.Instance.LocalInfo($"MiMiAi网址变更为{response.Address.Authority}");
+                                      Setting._GlobalSet.MiMiAiAddress.Replace(downurl.Authority, response.Address.Authority);
+                                  }
+                                  HandleMiMiPage(response.ToString());
+                                  PageInfo["Status"] = bool.TrueString;
+                                  DataBaseCommand.SaveToMiMiDataTablet(PageInfo);
+                              }
+                              catch (Exception ex)
+                              {
+                                  if (MiMiDownloadCancel.Token.IsCancellationRequested)
+                                  {
+                                      break;
+                                  }
+                                  Interlocked.Increment(ref ErrorCount);
+                                  Loger.Instance.LocalInfo($"{ex.Message}");
+                                  Loger.Instance.LocalInfo($"下载MiMiAi数据失败，计数{ErrorCount}次");
+                                  if (ex.Message.StartsWith("Cannot access a disposed object"))
+                                  {
+                                      Loger.Instance.LocalInfo($"SSR异常，退出全部下载进程");
+                                      MiMiDownloadCancel.Cancel();
+                                      break;
+                                  }
+                                  var time = new Random().Next(5000, 10000);
+                                  for (var i = time; i > 0; i -= 1000)
+                                  {
+                                      Loger.Instance.WaitTime(i / 1000);
+                                      Thread.Sleep(1000);
+                                  }
+                                  if (ErrorCount > 5)
+                                  {
+                                      ErrorCount = 0;
+                                      Loger.Instance.LocalInfo($"下载MIMiAi数据错误超过5次，退出下载进程");
+                                      if (!Setting.CheckOnline(Setting._GlobalSet.SocksCheck))
+                                      {
+                                          Loger.Instance.LocalInfo($"检测到网络连接异常，退出全部下载方式");
+                                          Setting.CancelSign.Cancel();
+                                      }
+                                      MiMiDownloadCancel.Cancel();
+                                      break;
+                                  }
+                              }
+                              finally
+                              {
+                                  ErrorCount = 0;
+                              }
+                          }
+                          else
+                          {
+                              Thread.Sleep(1000);
+                          }
+                      }
+                  }
+              }), Task.Run(() =>
+              {
+                  using (var request = new HttpRequest()
+                  {
+                      UserAgent = Http.ChromeUserAgent(),
+                      ConnectTimeout = 20000,
+                      CharacterSet = Encoding.GetEncoding("GBK")
+                  })
+                  {
+                      if (Setting._GlobalSet.SocksCheck) request.Proxy = Socks5ProxyClient.Parse($"127.0.0.1:{Setting.Socks5Point}");
+                      while (!MiMiDownloadCancel.Token.IsCancellationRequested)
+                      {
+                          var UnitInfo = DataBaseCommand.GetDataFromMiMi("UnitInfo") as MiMiAiData;
+                          if (UnitInfo != null)
+                          {
+                          }
+                      }
+                  }
+              }));
         }
 
         private Task HandlerOldNyaaHtml(BlockingCollection<Tuple<int, string>> downloadCollect)
@@ -315,7 +513,7 @@ namespace SpiderServerInLinux
                         break;
                     }
                 }
-                NyaaOldDownloadCancel.Cancel();
+                NyaaDownloadCancel.Cancel();
                 downloadCollect.CompleteAdding();
                 SaveData.CompleteAdding();
             });
@@ -375,7 +573,7 @@ namespace SpiderServerInLinux
                                 Loger.Instance.LocalInfo(ex);
                             }
                         }
-                        JavNewDownloadCancel.Cancel();
+                        JavDownloadCancel.Cancel();
                         downloadCollect.CompleteAdding();
                     }
                 });
@@ -508,23 +706,27 @@ namespace SpiderServerInLinux
                         Setting._GlobalSet.JavFin = false;
                         downloadCollect.CompleteAdding();
                         SaveData.CompleteAdding();
-                        JavOldDownloadCancel.Cancel();
+                        JavDownloadCancel.Cancel();
                     }
                 }
                 SaveData.CompleteAdding();
             });
         }
 
-        private Task DownloadLoop(string Address, int LastPageIndex, BlockingCollection<Tuple<int, string>> downloadCollect, CancellationTokenSource token)
+        private Task DownloadLoop(string Address, int LastPageIndex, BlockingCollection<Tuple<int, string>> downloadCollect, CancellationTokenSource token, bool CheckMiMiAiAddress = false)
         {
             return Task.Factory.StartNew(() =>
               {
                   using (var request = new HttpRequest()
                   {
                       UserAgent = Http.ChromeUserAgent(),
-                      ConnectTimeout = 20000
+                      ConnectTimeout = 20000,
                   })
                   {
+                      if (CheckMiMiAiAddress)
+                      {
+                          request.CharacterSet = Encoding.GetEncoding("GBK");
+                      }
                       int ErrorCount = 0;
                       if (Setting._GlobalSet.SocksCheck) request.Proxy = Socks5ProxyClient.Parse($"127.0.0.1:{Setting.Socks5Point}");
                       while (!token.Token.IsCancellationRequested)
@@ -536,6 +738,16 @@ namespace SpiderServerInLinux
                               HttpResponse response = request.Get(downurl);
                               downloadCollect.Add(new Tuple<int, string>(LastPageIndex, response.ToString()));
                               Interlocked.Increment(ref LastPageIndex);
+                              if (CheckMiMiAiAddress)
+                              {
+                                  if (response.Address.Authority != downurl.Authority)
+                                  {
+                                      Loger.Instance.LocalInfo($"MiMiAi网址变更为{response.Address.Authority}");
+                                      Setting._GlobalSet.MiMiAiAddress.Replace(downurl.Authority, response.Address.Authority);
+                                      Address = Setting._GlobalSet.MiMiAiAddress;
+                                  }
+                              }
+
                               ErrorCount = 0;
                           }
                           catch (Exception ex)
@@ -596,11 +808,11 @@ namespace SpiderServerInLinux
 
         public void Dispose()
         {
-            Setting.DownloadManage.JavNewDownloadCancel.Cancel();
-            Setting.DownloadManage.JavOldDownloadCancel.Cancel();
-            Setting.DownloadManage.NyaaOldDownloadCancel.Cancel();
+            Setting.DownloadManage.JavDownloadCancel.Cancel();
+            Setting.DownloadManage.NyaaDownloadCancel.Cancel();
+            Setting.DownloadManage.MiMiDownloadCancel.Cancel();
             GetJavNewDataTimer.Dispose();
-            while (!Setting.DownloadManage.JavOldDownloadRunning && !Setting.DownloadManage.JavNewDownloadCancel.IsCancellationRequested && !NyaaOldDownloadCancel.IsCancellationRequested)
+            while (!Setting.DownloadManage.JavOldDownloadRunning && !Setting.DownloadManage.JavDownloadCancel.IsCancellationRequested && !MiMiDownloadCancel.IsCancellationRequested)
             {
                 Thread.Sleep(1000);
             }
