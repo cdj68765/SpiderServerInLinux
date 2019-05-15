@@ -383,6 +383,48 @@ namespace SpiderServerInLinux
             }
         }
 
+        internal static void SaveToMiMiDataUnit(MiMiAiData Data)
+        {
+            using (var db = new LiteDatabase(@"MiMi.db"))
+            {
+                var MiMiDb = db.GetCollection<MiMiAiData>("MiMiDB");
+                try
+                {
+                    MiMiDb.Upsert(Data);
+                }
+                catch (LiteException ex)
+                {
+                    Loger.Instance.LocalInfo($"单独添加失败失败原因{ex.Message}");
+                }
+            }
+        }
+
+        internal static void SaveToMiMiDataErrorUnit(string[] ErrorInfo)
+        {
+            using (var db = new LiteDatabase(@"MiMi.db"))
+            {
+                var MiMiDb = db.GetCollection("Error");
+                try
+                {
+                    MiMiDb.Upsert(new BsonDocument
+                    {
+                        ["_id"] = ObjectId.NewObjectId().CreationTime.ToString("MM-dd HH:mm:ss:ff"),
+                        ["Date"] = ErrorInfo[0],
+                        ["UnitIndex"] = ErrorInfo[1],
+                        ["ListIndex"] = ErrorInfo[2],
+                        ["Type"] = ErrorInfo[3],
+                        ["Uri"] = ErrorInfo[4],
+                        ["ErrorInfo"] = ErrorInfo[5],
+                        ["Status"] = bool.Parse(ErrorInfo[6])
+                    });
+                }
+                catch (LiteException ex)
+                {
+                    Loger.Instance.LocalInfo($"错误信息添加失败,失败原因{ex.Message}");
+                }
+            }
+        }
+
         #endregion 保存到数据库
     }
 }

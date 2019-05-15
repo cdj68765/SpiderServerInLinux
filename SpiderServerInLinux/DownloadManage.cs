@@ -248,7 +248,6 @@ namespace SpiderServerInLinux
         {
             return Task.WhenAny(Task.Run(() =>
              {
-                 return;
                  var HtmlDoc = new HtmlDocument();
                  foreach (var _Temp in downloadCollect.GetConsumingEnumerable())
                  {
@@ -409,7 +408,7 @@ namespace SpiderServerInLinux
                           }
                           else
                           {
-                              Thread.Sleep(1000);
+                              Thread.Sleep(10000);
                           }
                       }
                   }
@@ -418,7 +417,7 @@ namespace SpiderServerInLinux
                   using (var request = new HttpRequest()
                   {
                       UserAgent = Http.ChromeUserAgent(),
-                      ConnectTimeout = 20000,
+                      ConnectTimeout = 10000,
                       CharacterSet = Encoding.GetEncoding("GBK")
                   })
                   {
@@ -428,6 +427,90 @@ namespace SpiderServerInLinux
                           var UnitInfo = DataBaseCommand.GetDataFromMiMi("UnitInfo") as MiMiAiData;
                           if (UnitInfo != null)
                           {
+                              foreach (var Item in UnitInfo.InfoList)
+                              {
+                                  switch (Item.Type)
+                                  {
+                                      case "img":
+                                          {
+                                              try
+                                              {
+                                                  var _PostData = request.Get(Item.info);
+                                                  if (!string.IsNullOrEmpty(_PostData.ToString()))
+                                                  {
+                                                      Item.Data = _PostData.Ret;
+                                                  }
+                                                  else
+                                                  {
+                                                      throw new Exception("Unknown Error");
+                                                  }
+                                              }
+                                              catch (Exception ex)
+                                              {
+                                                  DataBaseCommand.SaveToMiMiDataErrorUnit(new[]
+                                                    {
+                                                      UnitInfo.Date,
+                                                      UnitInfo.Index.ToString(),
+                                                      UnitInfo.InfoList.IndexOf(Item).ToString(),
+                                                      "img",
+                                                      Item.info,
+                                                      ex.Message,
+                                                      bool.FalseString
+                                                  });
+                                              }
+                                          }
+                                          break;
+
+                                      case "torrent":
+                                          {
+                                              var _TempUri = new Uri(Item.info);
+                                              try
+                                              {
+                                                  var _TempDownloadUri = _TempUri.Scheme + Uri.SchemeDelimiter + _TempUri.Authority + "/load.php";
+                                                  var _PostData = request.Post(_TempDownloadUri, new RequestParams()
+                                              {
+                                                  new KeyValuePair<string, string>("ref", _TempUri.Query.Split('=')[1]),
+                                                  new KeyValuePair<string, string>("submit ", "点击下载")
+                                              }).ToBytes();
+                                                  if (_PostData.Length > 1000)
+                                                  {
+                                                      Item.Data = _PostData;
+                                                  }
+                                                  else if (Encoding.Default.GetString(_PostData).StartsWith("No such file"))
+                                                  {
+                                                      throw new Exception("No such file");
+                                                  }
+                                                  else
+                                                  {
+                                                      throw new Exception("Unknown Error");
+                                                  }
+                                              }
+                                              catch (Exception ex)
+                                              {
+                                                  DataBaseCommand.SaveToMiMiDataErrorUnit(new[]
+                                                  {
+                                                      UnitInfo.Date,
+                                                      UnitInfo.Index.ToString(),
+                                                      UnitInfo.InfoList.IndexOf(Item).ToString(),
+                                                      "torrent",
+                                                      Item.info,
+                                                      ex.Message,
+                                                      bool.FalseString
+                                                  });
+                                              }
+                                          }
+                                          break;
+
+                                      default:
+                                          break;
+                                  }
+                              }
+                              UnitInfo.Status = true;
+                              DataBaseCommand.SaveToMiMiDataUnit(UnitInfo);
+                          }
+                          else
+                          {
+                              Thread.Sleep(60000);
                           }
                       }
                   }
