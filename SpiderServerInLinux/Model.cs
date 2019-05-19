@@ -1,4 +1,5 @@
-﻿using Shadowsocks.Controller;
+﻿using LiteDB;
+using Shadowsocks.Controller;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -12,6 +13,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using xNet;
+using FileMode = System.IO.FileMode;
 
 namespace SpiderServerInLinux
 {
@@ -73,7 +75,6 @@ namespace SpiderServerInLinux
                             return true;
                         }
                     }
-                    SSR.Stop();
                     SSR = null;
                     GC.Collect();
                 }
@@ -93,6 +94,8 @@ namespace SpiderServerInLinux
         private int _JavLastPageIndex = 0;
         private int _MiMiAiPageIndex = 0;
         private int _ConnectPoint = 2222;
+        private long _totalUploadBytes = 0;
+        private long _totalDownloadBytes = 0;
         private bool _SocksCheck = false;
         private bool _NyaaFin = false;
         private bool _JavFin = false;
@@ -110,6 +113,8 @@ namespace SpiderServerInLinux
         internal string MiMiAiAddress { get { return _MiMiAiAddress; } set { _MiMiAiAddress = value; Save(); } }
 
         internal int MiMiAiPageIndex { get { return _MiMiAiPageIndex; } set { _MiMiAiPageIndex = value; Save(); } }
+        internal long totalUploadBytes { get { return _totalUploadBytes; } set { _totalUploadBytes = value; Save(); } }
+        internal long totalDownloadBytes { get { return _totalDownloadBytes; } set { _totalDownloadBytes = value; Save(); } }
 
         [OnDeserialized]
         private void OnDeserialized(StreamingContext context)
@@ -247,7 +252,8 @@ namespace SpiderServerInLinux
 
     internal class MiMiAiData
     {
-        public string id { get; set; }
+        public int id { get; set; }
+        public string Title { get; set; }
         public string Date { get; set; }
         public int Index { get; set; }
         public List<BasicData> InfoList { get; set; }

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using SpiderServerInLinux;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
@@ -11,6 +12,7 @@ namespace Shadowsocks.Model
         public int times;
         public DateTime recvTime;
         public DateTime endTime;
+
         public TransLog(int s, DateTime t)
         {
             firstsize = s;
@@ -25,6 +27,7 @@ namespace Shadowsocks.Model
     {
         public int errno;
         public DateTime time;
+
         public ErrorLog(int no)
         {
             errno = no;
@@ -52,6 +55,7 @@ namespace Shadowsocks.Model
         public long avgUploadBytes;
         public long maxUploadBytes;
     }
+
     public class ServerSpeedLog
     {
         private long totalConnectTimes = 0;
@@ -69,6 +73,7 @@ namespace Shadowsocks.Model
         private long maxTransDownload = 0;
         private long maxTransUpload = 0;
         private int avgConnectTime = -1;
+
         //private List<TransLog> speedLog = null;
         private LinkedList<ErrorLog> errList = new LinkedList<ErrorLog>();
 
@@ -76,7 +81,6 @@ namespace Shadowsocks.Model
 
         public ServerSpeedLog()
         {
-
         }
 
         public ServerSpeedLog(long upload, long download)
@@ -122,6 +126,7 @@ namespace Shadowsocks.Model
             }
             return ret;
         }
+
         public long TotalConnectTimes
         {
             get
@@ -132,6 +137,7 @@ namespace Shadowsocks.Model
                 }
             }
         }
+
         public long TotalDisconnectTimes
         {
             get
@@ -142,6 +148,7 @@ namespace Shadowsocks.Model
                 }
             }
         }
+
         public long ErrorConnectTimes
         {
             get
@@ -152,6 +159,7 @@ namespace Shadowsocks.Model
                 }
             }
         }
+
         public long ErrorTimeoutTimes
         {
             get
@@ -162,6 +170,7 @@ namespace Shadowsocks.Model
                 }
             }
         }
+
         public long ErrorEncryptTimes
         {
             get
@@ -172,6 +181,7 @@ namespace Shadowsocks.Model
                 }
             }
         }
+
         public long ErrorContinurousTimes
         {
             get
@@ -182,6 +192,7 @@ namespace Shadowsocks.Model
                 }
             }
         }
+
         protected static long UpdateMaxTrans(long lastMaxTrans, List<TransLog> transAvgLog)
         {
             if (transAvgLog.Count > 1)
@@ -197,6 +208,7 @@ namespace Shadowsocks.Model
             }
             return lastMaxTrans;
         }
+
         public long AvgDownloadBytes
         {
             get
@@ -235,6 +247,7 @@ namespace Shadowsocks.Model
                 }
             }
         }
+
         public long AvgUploadBytes
         {
             get
@@ -275,6 +288,7 @@ namespace Shadowsocks.Model
                 }
             }
         }
+
         public long AvgConnectTime
         {
             get
@@ -282,6 +296,7 @@ namespace Shadowsocks.Model
                 return avgConnectTime;
             }
         }
+
         public void ClearError()
         {
             lock (this)
@@ -299,6 +314,7 @@ namespace Shadowsocks.Model
                 errorContinurousTimes = 0;
             }
         }
+
         public void ClearMaxSpeed()
         {
             lock (this)
@@ -307,6 +323,7 @@ namespace Shadowsocks.Model
                 maxTransUpload = 0;
             }
         }
+
         public void Clear()
         {
             lock (this)
@@ -329,6 +346,7 @@ namespace Shadowsocks.Model
                 maxTransUpload = 0;
             }
         }
+
         public void AddConnectTimes()
         {
             lock (this)
@@ -336,6 +354,7 @@ namespace Shadowsocks.Model
                 totalConnectTimes += 1;
             }
         }
+
         public void AddDisconnectTimes()
         {
             lock (this)
@@ -343,6 +362,7 @@ namespace Shadowsocks.Model
                 totalDisconnectTimes += 1;
             }
         }
+
         protected void Sweep()
         {
             while (errList.Count > 0)
@@ -370,6 +390,7 @@ namespace Shadowsocks.Model
                 }
             }
         }
+
         public void AddNoErrorTimes()
         {
             lock (this)
@@ -379,6 +400,7 @@ namespace Shadowsocks.Model
                 Sweep();
             }
         }
+
         public void AddErrorTimes()
         {
             lock (this)
@@ -389,6 +411,7 @@ namespace Shadowsocks.Model
                 Sweep();
             }
         }
+
         public void AddTimeoutTimes()
         {
             lock (this)
@@ -399,6 +422,7 @@ namespace Shadowsocks.Model
                 Sweep();
             }
         }
+
         public void AddErrorDecodeTimes()
         {
             lock (this)
@@ -409,6 +433,7 @@ namespace Shadowsocks.Model
                 Sweep();
             }
         }
+
         public void AddErrorEmptyTimes()
         {
             lock (this)
@@ -419,6 +444,7 @@ namespace Shadowsocks.Model
                 Sweep();
             }
         }
+
         protected static void UpdateTransLog(List<TransLog> transLog, int bytes, DateTime now, ref long maxTrans, bool updateMaxTrans)
         {
             if (transLog.Count > 0)
@@ -502,22 +528,29 @@ namespace Shadowsocks.Model
                 transLog.Add(new TransLog(bytes, now));
             }
         }
+
         public void AddUploadBytes(int bytes, DateTime now, bool updateMaxTrans)
         {
+            Setting._GlobalSet.totalUploadBytes += bytes;
+            return;
             lock (this)
             {
                 transUpload += bytes;
                 UpdateTransLog(upTransLog, bytes, now, ref maxTransUpload, updateMaxTrans);
             }
         }
+
         public void AddDownloadBytes(int bytes, DateTime now, bool updateMaxTrans)
         {
+            Setting._GlobalSet.totalDownloadBytes += bytes;
+            return;
             lock (this)
             {
                 transDownload += bytes;
                 UpdateTransLog(downTransLog, bytes, now, ref maxTransDownload, updateMaxTrans);
             }
         }
+
         public void AddDownloadRawBytes(long bytes)
         {
             lock (this)
@@ -525,6 +558,7 @@ namespace Shadowsocks.Model
                 transDownloadRaw += bytes;
             }
         }
+
         public void ResetErrorDecodeTimes()
         {
             lock (this)
@@ -534,6 +568,7 @@ namespace Shadowsocks.Model
                 errorContinurousTimes = 0;
             }
         }
+
         public void ResetContinurousTimes()
         {
             lock (this)
@@ -542,6 +577,7 @@ namespace Shadowsocks.Model
                 errorContinurousTimes = 0;
             }
         }
+
         public void ResetEmptyTimes()
         {
             lock (this)
@@ -549,6 +585,7 @@ namespace Shadowsocks.Model
                 errorEmptyTimes = 0;
             }
         }
+
         public void AddConnectTime(int millisecond)
         {
             lock (this)
@@ -573,5 +610,4 @@ namespace Shadowsocks.Model
             }
         }
     }
-
 }

@@ -30,6 +30,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Update="WebClientEx.cs">
+      <SubType>Component</SubType>
+    </Compile>
+  </ItemGroup>
+
+  <ItemGroup>
     <Reference Update="CefSharp">
       <Private>true</Private>
     </Reference>

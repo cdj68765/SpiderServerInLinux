@@ -58,11 +58,12 @@ namespace SpiderServerInLinux
                 if (!db.CollectionExists("MiMiDB"))
                 {
                     Loger.Instance.LocalInfo("创建MiMiAi数据库数据库");
-                    var NyaaDB = db.GetCollection<MiMiAiData>("MiMiDB");
-                    NyaaDB.EnsureIndex(x => x.id);
-                    NyaaDB.EnsureIndex(x => x.Date);
+                    var MiMiDB = db.GetCollection<MiMiAiData>("MiMiDB");
+                    MiMiDB.EnsureIndex(x => x.Title);
+                    MiMiDB.EnsureIndex(x => x.Date);
                     var _Table = db.GetCollection("WebPage");
                     _Table.EnsureIndex("_id", true);
+                    _Table.EnsureIndex("Uri", true);
                     _Table.EnsureIndex("Status");
                     Loger.Instance.LocalInfo("创建MiMiAi数据库成功");
                 }
@@ -326,24 +327,26 @@ namespace SpiderServerInLinux
             }
         }
 
-        internal static void SaveToMiMiDataTablet(string[] tempData)
+        internal static bool SaveToMiMiDataTablet(string[] tempData)
         {
             using (var db = new LiteDatabase(@"MiMi.db"))
             {
                 var _Table = db.GetCollection("WebPage");
-                if (tempData.Length == 5)
+                if (!_Table.Exists(X => X["Uri"] == tempData[0]))
                 {
                     _Table.Upsert(new BsonDocument { ["_id"] = DateTime.Parse(tempData[3]), ["Title"] = tempData[1], ["Uri"] = tempData[0], ["Status"] = bool.Parse(tempData[4]) });
+                    return true;
                 }
-                else if (tempData.Length == 2)
-                {
-                    var Ret = _Table.FindById(tempData[0]);
-                    if (Ret != null)
+                return false;
+                /*   else if (tempData.Length == 2)
                     {
-                        Ret["Status"] = bool.Parse(tempData[1]);
-                        _Table.Update(Ret);
-                    }
-                }
+                        var Ret = _Table.FindById(tempData[0]);
+                        if (Ret != null)
+                        {
+                            Ret["Status"] = bool.Parse(tempData[1]);
+                            _Table.Update(Ret);
+                        }
+                    }*/
             }
         }
 

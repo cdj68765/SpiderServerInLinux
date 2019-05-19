@@ -93,22 +93,7 @@ namespace Shadowsocks.Controller
             Config.server = GetIp(Config.server);
             Loger.Instance.ServerInfo("SSR", $"SSR地址解析完毕，IP:{Config.server}");
             _config.configs.Add(Config);
-            _transfer = ServerTransferTotal.Load();
-            foreach (Server server in _config.configs)
-            {
-                if (_transfer.servers.ContainsKey(server.server))
-                {
-                    SSRSpeedInfo = (ServerTrans)_transfer.servers[server.server];
-                    ServerSpeedLog log = new ServerSpeedLog(((ServerTrans)_transfer.servers[server.server]).totalUploadBytes, ((ServerTrans)_transfer.servers[server.server]).totalDownloadBytes);
-                    server.SetServerSpeedLog(log);
-                }
-                else
-                {
-                    _transfer.AddDownload(server.server, 0);
-                    ServerSpeedLog log = new ServerSpeedLog(((ServerTrans)_transfer.servers[server.server]).totalUploadBytes, ((ServerTrans)_transfer.servers[server.server]).totalDownloadBytes);
-                    server.SetServerSpeedLog(log);
-                }
-            }
+            Config.SetServerSpeedLog(new ServerSpeedLog(Setting._GlobalSet.totalUploadBytes, Setting._GlobalSet.totalDownloadBytes));
             Reload();
             /* if (Setting.CheckOnline())
                  Loger.Instance.ServerInfo("SSR", $"SSR工作正常");

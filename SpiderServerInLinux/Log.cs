@@ -247,7 +247,7 @@ namespace SpiderServerInLinux
                         Console.SetCursorPosition(1, 1);
                         var ShowJav = Setting._GlobalSet.JavFin ? $"当前Jav下载页面:{Setting._GlobalSet.JavLastPageIndex}" : $"Jav:{Setting.JavDownLoadNow}";
                         var ShowNyaa = !Setting._GlobalSet.NyaaFin ? $"Nyaa:{Setting.NyaaDownLoadNow}" : $"Nyaa:{Setting.NyaaDownLoadNow}";
-                        var ShowMiMi = Setting._GlobalSet.MiMiFin ? $"MiMi:{Setting.MiMiDownLoadNow}" : $"MiMi:{Setting.MiMiDay}";
+                        var ShowMiMi = Setting._GlobalSet.MiMiFin ? $"MiMi:{Setting.MiMiDownLoadNow}" : $"MiMi:{Setting._GlobalSet.MiMiAiPageIndex},{Setting.MiMiDay},{Setting.MiMiDownLoadNow}";
                         Console.Write($"{ShowNyaa} {ShowJav} {ShowMiMi}");
                     }
                     catch (Exception)
@@ -261,7 +261,7 @@ namespace SpiderServerInLinux
                         Console.SetCursorPosition(Console.WindowWidth / 2 + Console.WindowWidth / 3 - 3, 1);
                         try
                         {
-                            Console.Write($"SSR流量:{HumanReadableFilesize((double)Setting.SSR.SSRSpeedInfo.totalDownloadBytes)}");
+                            Console.Write($"SSR流量:{HumanReadableFilesize((double)Setting._GlobalSet.totalDownloadBytes)}");
                         }
                         catch (Exception)
                         {

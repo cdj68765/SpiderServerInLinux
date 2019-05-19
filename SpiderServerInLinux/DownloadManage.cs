@@ -37,7 +37,7 @@ namespace SpiderServerInLinux
         private async void Load()
         {
             Loger.Instance.LocalInfo("初始化下载");
-            await Task.WhenAll(/*GetJavNewData(), GetNyaaNewData(), */GetOldDate());
+            await Task.WhenAll(/*GetJavNewData(), GetNyaaNewData(), */GetMiMiDate());
         }
 
         private Task GetNyaaNewData()
@@ -208,7 +208,7 @@ namespace SpiderServerInLinux
             });
         }
 
-        private Task GetOldDate()
+        private Task GetMiMiDate()
         {
             return Task.Run(() =>
             {
@@ -216,7 +216,7 @@ namespace SpiderServerInLinux
                 {
                     var DownloadCollect = new BlockingCollection<Tuple<int, string>>();
                     MiMiDownloadCancel = new CancellationTokenSource();
-                    //DownloadLoop(Setting._GlobalSet.MiMiAiAddress, Setting._GlobalSet.MiMiAiPageIndex, DownloadCollect, MiMiDownloadCancel, true);
+                    DownloadLoop(Setting._GlobalSet.MiMiAiAddress, Setting._GlobalSet.MiMiAiPageIndex, DownloadCollect, MiMiDownloadCancel, true);
                     HandlerMiMiHtml(DownloadCollect);
                 }
                 return;
@@ -316,9 +316,9 @@ namespace SpiderServerInLinux
                                   {
                                       var innerText = Child.InnerText.Replace("\r\n", "").Replace("&nbsp;", "");
                                       if (innerText.StartsWith(" ")) innerText = innerText.Remove(0, 1);
-                                      if (string.IsNullOrEmpty(Temp.id) && innerText != "\r\n")
+                                      if (string.IsNullOrEmpty(Temp.Title) && innerText != "\r\n")
                                       {
-                                          Temp.id = innerText;
+                                          Temp.Title = innerText;
                                           break;
                                       }
                                       if (!string.IsNullOrEmpty(innerText))
@@ -353,22 +353,37 @@ namespace SpiderServerInLinux
                           var PageInfo = DataBaseCommand.GetDataFromMiMi("TabletInfo") as BsonDocument;
                           if (PageInfo != null)
                           {
+                              Setting.MiMiDay = PageInfo["_id"].AsDateTime.ToString("yyyy-MM-dd");
+                              var downurl = new Uri($"http://{new Uri(Setting._GlobalSet.MiMiAiAddress).Host}/{PageInfo["Uri"].AsString}");
                               try
                               {
-                                  Setting.MiMiDay = PageInfo["_id"].AsDateTime.ToString("yyyy-MM-dd");
-                                  var downurl = new Uri($"http://{new Uri(Setting._GlobalSet.MiMiAiAddress).Host}/{PageInfo["Uri"].AsString}");
                                   HttpResponse response = request.Get(downurl);
-                                  if (response.Address.Authority != downurl.Authority)
-                                  {
-                                      Loger.Instance.LocalInfo($"MiMiAi网址变更为{response.Address.Authority}");
-                                      Setting._GlobalSet.MiMiAiAddress.Replace(downurl.Authority, response.Address.Authority);
-                                  }
+                                  /* if (response.Address.Authority != downurl.Authority)
+                                   {
+                                       Loger.Instance.LocalInfo($"MiMiAi网址变更为{response.Address.Authority}");
+                                       Setting._GlobalSet.MiMiAiAddress.Replace(downurl.Authority, response.Address.Authority);
+                                   }*/
                                   HandleMiMiPage(response.ToString());
                                   PageInfo["Status"] = bool.TrueString;
                                   DataBaseCommand.SaveToMiMiDataTablet(PageInfo);
                               }
                               catch (Exception ex)
                               {
+                                  try
+                                  {
+                                      if (request.Response.RedirectAddress != null)
+                                      {
+                                          if (request.Response.RedirectAddress.Authority != downurl.Authority)
+                                          {
+                                              Loger.Instance.LocalInfo($"MiMiAi网址变更为{request.Response.RedirectAddress.Authority}");
+                                              Setting._GlobalSet.MiMiAiAddress = Setting._GlobalSet.MiMiAiAddress.Replace(downurl.Authority, request.Response.RedirectAddress.Authority);
+                                          }
+                                      }
+                                  }
+                                  catch (Exception)
+                                  {
+                                  }
+
                                   if (MiMiDownloadCancel.Token.IsCancellationRequested)
                                   {
                                       break;
@@ -427,6 +442,7 @@ namespace SpiderServerInLinux
                           var UnitInfo = DataBaseCommand.GetDataFromMiMi("UnitInfo") as MiMiAiData;
                           if (UnitInfo != null)
                           {
+                              Setting.MiMiDownLoadNow = UnitInfo.Date;
                               foreach (var Item in UnitInfo.InfoList)
                               {
                                   switch (Item.Type)
@@ -510,7 +526,7 @@ namespace SpiderServerInLinux
                           }
                           else
                           {
-                              Thread.Sleep(60000);
+                              Thread.Sleep(10000);
                           }
                       }
                   }
@@ -821,20 +837,28 @@ namespace SpiderServerInLinux
                               HttpResponse response = request.Get(downurl);
                               downloadCollect.Add(new Tuple<int, string>(LastPageIndex, response.ToString()));
                               Interlocked.Increment(ref LastPageIndex);
-                              if (CheckMiMiAiAddress)
-                              {
-                                  if (response.Address.Authority != downurl.Authority)
-                                  {
-                                      Loger.Instance.LocalInfo($"MiMiAi网址变更为{response.Address.Authority}");
-                                      Setting._GlobalSet.MiMiAiAddress.Replace(downurl.Authority, response.Address.Authority);
-                                      Address = Setting._GlobalSet.MiMiAiAddress;
-                                  }
-                              }
-
                               ErrorCount = 0;
                           }
                           catch (Exception ex)
                           {
+                              if (CheckMiMiAiAddress)
+                              {
+                                  try
+                                  {
+                                      if (request.Response.RedirectAddress != null)
+                                      {
+                                          if (request.Response.RedirectAddress.Authority != downurl.Authority)
+                                          {
+                                              Loger.Instance.LocalInfo($"MiMiAi网址变更为{request.Response.RedirectAddress.Authority}");
+                                              Address = Address.Replace(downurl.Authority, request.Response.RedirectAddress.Authority);
+                                              Setting._GlobalSet.MiMiAiAddress = Setting._GlobalSet.MiMiAiAddress;
+                                          }
+                                      }
+                                  }
+                                  catch (Exception)
+                                  {
+                                  }
+                              }
                               if (token.Token.IsCancellationRequested)
                               {
                                   break;

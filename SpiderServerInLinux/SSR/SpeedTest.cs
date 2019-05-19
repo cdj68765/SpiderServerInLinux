@@ -6,15 +6,16 @@ using Shadowsocks.Model;
 
 namespace Shadowsocks.Controller
 {
-
-    class SpeedTester
+    internal class SpeedTester
     {
 #if DEBUG
-        struct TransLog
+
+        private struct TrasLog
         {
             public int dir;
             public int size;
         }
+
 #endif
         public DateTime timeConnectBegin;
         public DateTime timeConnectEnd;
@@ -65,16 +66,17 @@ namespace Shadowsocks.Controller
                 transfer.AddDownload(server, size);
             }
 #if DEBUG
-            if (sizeTransfer.Count < 1024 * 128)
-            {
-                lock (sizeTransfer)
-                {
-                    sizeTransfer.Add(new TransLog { dir = 1, size = size });
-                }
-            }
+            /*   if (sizeTransfer.Count < 1024 * 128)
+               {
+                   lock (sizeTransfer)
+                   {
+                       sizeTransfer.Add(new TransLog { dir = 1, size = size });
+                   }
+               }*/
 #endif
             return sizeDownload > 1024 * 256 && sizeDownload > (DateTime.Now - timeConnectEnd).TotalSeconds * 1024 * 16;
         }
+
         public void AddProtocolRecvSize(int size)
         {
             sizeProtocolRecv += size;
@@ -93,13 +95,13 @@ namespace Shadowsocks.Controller
                 transfer.AddUpload(server, size);
             }
 #if DEBUG
-            if (sizeTransfer.Count < 1024 * 128)
-            {
-                lock (sizeTransfer)
-                {
-                    sizeTransfer.Add(new TransLog { dir = 0, size = size });
-                }
-            }
+            /*  if (sizeTransfer.Count < 1024 * 128)
+              {
+                  lock (sizeTransfer)
+                  {
+                      sizeTransfer.Add(new TransLog { dir = 0, size = size });
+                  }
+              }*/
 #endif
             return sizeUpload > 1024 * 256 && sizeUpload > (DateTime.Now - timeConnectEnd).TotalSeconds * 1024 * 16;
         }
@@ -108,22 +110,22 @@ namespace Shadowsocks.Controller
         {
             string ret = "";
 #if DEBUG
-            int lastdir = -1;
-            foreach (TransLog t in sizeTransfer)
-            {
-                if (t.dir != lastdir)
-                {
-                    lastdir = t.dir;
-                    ret += (t.dir == 0 ? " u" : " d");
-                }
-                ret += " " + t.size.ToString();
-            }
+            /* int lastdir = -1;
+             foreach (TransLog t in sizeTransfer)
+             {
+                 if (t.dir != lastdir)
+                 {
+                     lastdir = t.dir;
+                     ret += (t.dir == 0 ? " u" : " d");
+                 }
+                 ret += " " + t.size.ToString();
+             }*/
 #endif
             return ret;
         }
     }
 
-    class ProtocolResponseDetector
+    internal class ProtocolResponseDetector
     {
         public enum Protocol
         {
@@ -134,6 +136,7 @@ namespace Shadowsocks.Controller
             SOCKS4 = 4,
             SOCKS5 = 5,
         }
+
         protected Protocol protocol = Protocol.NOTBEGIN;
         protected byte[] send_buffer = new byte[0];
         protected byte[] recv_buffer = new byte[0];
@@ -186,6 +189,7 @@ namespace Shadowsocks.Controller
                 protocol = Protocol.UNKONWN;
             }
         }
+
         public int OnRecv(byte[] recv_data, int length)
         {
             if (protocol == Protocol.UNKONWN || protocol == Protocol.NOTBEGIN) return 0;
