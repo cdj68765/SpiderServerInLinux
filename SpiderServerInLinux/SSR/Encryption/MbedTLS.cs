@@ -109,10 +109,8 @@ namespace Shadowsocks.Encryption
 
         public static byte[] MD5(byte[] input)
         {
-            byte[] output = new byte[16];
             MD5CryptoServiceProvider _md5 = new MD5CryptoServiceProvider();
-            var r = _md5.ComputeHash(input);
-            return _md5.ComputeHash(input); ;
+            return _md5.ComputeHash(input);
             /*   byte[] output = new byte[16];
                md5(input, input.Length, output);
                return output;*/

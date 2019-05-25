@@ -611,8 +611,7 @@ namespace xNet
 
             if (HasError)
             {
-                throw new InvalidOperationException(
-                    Resources.InvalidOperationException_HttpResponse_HasError);
+                throw new Exception("Http应答错误");
             }
 
             #endregion Проверка состояния
@@ -640,7 +639,8 @@ namespace xNet
 
                 if (ex is IOException || ex is InvalidOperationException)
                 {
-                    throw NewHttpException(Resources.HttpException_FailedReceiveMessageBody, ex);
+                    throw new Exception("HTTP错误:错误的接收信息体");
+                    // throw NewHttpException(Resources.HttpException_FailedReceiveMessageBody, ex);
                 }
 
                 throw;
@@ -1083,12 +1083,12 @@ namespace xNet
 
                 if (startingLine.Length == 0)
                 {
-                    HttpException exception =
-                        NewHttpException(Resources.HttpException_ReceivedEmptyResponse);
+                    /*   HttpException exception =
+                           NewHttpException(Resources.HttpException_ReceivedEmptyResponse);*/
 
-                    exception.EmptyMessageBody = true;
+                    //exception.EmptyMessageBody = true;
 
-                    throw exception;
+                    throw new Exception("空应答");
                 }
                 else if (startingLine == Http.NewLine)
                 {

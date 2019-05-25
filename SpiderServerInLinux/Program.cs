@@ -7,6 +7,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using xNet;
 
 namespace SpiderServerInLinux
 {
@@ -113,12 +114,17 @@ namespace SpiderServerInLinux
             Task.Run(() => DataBaseCommand.InitNyaaDataBase()),
             Task.Run(() => DataBaseCommand.InitJavDataBase()),
             Task.Run(() => DataBaseCommand.InitMiMiAiDataBase()),
-            Task.Run(() => { if (Setting._GlobalSet.SocksCheck) Setting.SSR = new ShadowsocksController(); }),
+            Task.Run(() =>
+            {
+                if (Setting._GlobalSet.SocksCheck) Setting.SSR = new ShadowsocksController();
+            }),
             Task.Run(() => Setting.server = new server())).ContinueWith(obj
             => Loger.Instance.LocalInfo("数据库初始化完毕")).
             ContinueWith(obj =>
             {
-                Setting.DownloadManage = new DownloadManage();
+                if (Setting._GlobalSet.AutoRun)
+                    Setting.DownloadManage = new DownloadManage();
+                else Loger.Instance.LocalInfo("自动运行关闭，等待命令");
                 /*var _controller = new ShadowsocksController();
                 _controller.Start();
                 using (var request = new HttpRequest())

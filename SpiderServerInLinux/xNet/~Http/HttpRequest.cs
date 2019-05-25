@@ -2654,7 +2654,7 @@ namespace xNet
                 if (!connectDoneEvent.Wait(_connectTimeout))
                 {
                     tcpClient.Close();
-                    Loger.Instance.Error("连接超时");
+                    //Loger.Instance.Error("连接超时");
                 }
 
                 if (connectException != null)

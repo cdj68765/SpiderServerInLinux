@@ -7,6 +7,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SpiderServerInLinux", "Spid
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Client", "Client\Client.csproj", "{CF164D0F-01B9-4AD0-86DE-0F26A9B4461D}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WpfClient", "WpfClient\WpfClient.csproj", "{F8893111-D041-4F13-8030-8293C318F479}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -56,6 +58,24 @@ Global
 		{CF164D0F-01B9-4AD0-86DE-0F26A9B4461D}.X64|x64.Build.0 = Release|x64
 		{CF164D0F-01B9-4AD0-86DE-0F26A9B4461D}.X64|x86.ActiveCfg = Release|Any CPU
 		{CF164D0F-01B9-4AD0-86DE-0F26A9B4461D}.X64|x86.Build.0 = Release|Any CPU
+		{F8893111-D041-4F13-8030-8293C318F479}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F8893111-D041-4F13-8030-8293C318F479}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F8893111-D041-4F13-8030-8293C318F479}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{F8893111-D041-4F13-8030-8293C318F479}.Debug|x64.Build.0 = Debug|Any CPU
+		{F8893111-D041-4F13-8030-8293C318F479}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{F8893111-D041-4F13-8030-8293C318F479}.Debug|x86.Build.0 = Debug|Any CPU
+		{F8893111-D041-4F13-8030-8293C318F479}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F8893111-D041-4F13-8030-8293C318F479}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F8893111-D041-4F13-8030-8293C318F479}.Release|x64.ActiveCfg = Release|Any CPU
+		{F8893111-D041-4F13-8030-8293C318F479}.Release|x64.Build.0 = Release|Any CPU
+		{F8893111-D041-4F13-8030-8293C318F479}.Release|x86.ActiveCfg = Release|Any CPU
+		{F8893111-D041-4F13-8030-8293C318F479}.Release|x86.Build.0 = Release|Any CPU
+		{F8893111-D041-4F13-8030-8293C318F479}.X64|Any CPU.ActiveCfg = Release|Any CPU
+		{F8893111-D041-4F13-8030-8293C318F479}.X64|Any CPU.Build.0 = Release|Any CPU
+		{F8893111-D041-4F13-8030-8293C318F479}.X64|x64.ActiveCfg = Release|Any CPU
+		{F8893111-D041-4F13-8030-8293C318F479}.X64|x64.Build.0 = Release|Any CPU
+		{F8893111-D041-4F13-8030-8293C318F479}.X64|x86.ActiveCfg = Release|Any CPU
+		{F8893111-D041-4F13-8030-8293C318F479}.X64|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

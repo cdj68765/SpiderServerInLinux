@@ -327,14 +327,15 @@ namespace SpiderServerInLinux
             }
         }
 
-        internal static bool SaveToMiMiDataTablet(string[] tempData)
+        internal static bool SaveToMiMiDataTablet(string[] tempData, bool Check = true)
         {
             using (var db = new LiteDatabase(@"MiMi.db"))
             {
                 var _Table = db.GetCollection("WebPage");
                 if (!_Table.Exists(X => X["Uri"] == tempData[0]))
                 {
-                    _Table.Upsert(new BsonDocument { ["_id"] = DateTime.Parse(tempData[3]), ["Title"] = tempData[1], ["Uri"] = tempData[0], ["Status"] = bool.Parse(tempData[4]) });
+                    if (Check)
+                        _Table.Upsert(new BsonDocument { ["_id"] = DateTime.Parse(tempData[3]), ["Title"] = tempData[1], ["Uri"] = tempData[0], ["Status"] = bool.Parse(tempData[4]) });
                     return true;
                 }
                 return false;
@@ -383,6 +384,7 @@ namespace SpiderServerInLinux
                         }
                     }
                 }
+                db.Dispose();
             }
         }
 

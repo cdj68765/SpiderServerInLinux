@@ -168,7 +168,7 @@ namespace SpiderServerInLinux
                         Console.SetCursorPosition(1, 1);
                         Console.Write($"当前下载页面:{0}");
                         Console.SetCursorPosition(Console.WindowWidth / 2 + 2, 1);
-                        Console.Write($"倒计时:{0}秒");
+                        //Console.Write($"倒计时:{0}秒");
                     }
                     else if (item.Item2 == 3)
                     {
@@ -193,7 +193,7 @@ namespace SpiderServerInLinux
                         Console.SetCursorPosition(item.Item1, item.Item2);
                         Console.Write("┅");
                     }
-                    else if (item.Item1 == Console.WindowWidth / 2)
+                    else if (item.Item1 == Console.WindowWidth / 2 && item.Item2 != 1)
                     {
                         Console.SetCursorPosition(item.Item1, item.Item2);
                         Console.Write("┆");

@@ -100,6 +100,7 @@ namespace SpiderServerInLinux
         private bool _NyaaFin = false;
         private bool _JavFin = false;
         private bool _MiMiFin = false;
+        private bool _AutoRun = false;
         internal string NyaaAddress { get { return _NyaaAddress; } set { _NyaaAddress = value; Save(); } }
         internal string JavAddress { get { return _JavAddress; } set { _JavAddress = value; Save(); } }
         internal string ssr_url { get { return _ssr_url; } set { _ssr_url = value; Save(); } }
@@ -110,6 +111,7 @@ namespace SpiderServerInLinux
         internal bool NyaaFin { get { return _NyaaFin; } set { _NyaaFin = value; Save(); } }
         internal bool JavFin { get { return _JavFin; } set { _JavFin = value; Save(); } }
         internal bool MiMiFin { get { return _MiMiFin; } set { _MiMiFin = value; Save(); } }
+        internal bool AutoRun { get { return _AutoRun; } set { _AutoRun = value; Save(); } }
         internal string MiMiAiAddress { get { return _MiMiAiAddress; } set { _MiMiAiAddress = value; Save(); } }
 
         internal int MiMiAiPageIndex { get { return _MiMiAiPageIndex; } set { _MiMiAiPageIndex = value; Save(); } }

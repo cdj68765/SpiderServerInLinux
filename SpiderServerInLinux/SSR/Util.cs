@@ -381,11 +381,12 @@ namespace Shadowsocks.Util
                 {
                     try
                     {
-                        GetHostEntryHandler callback = new GetHostEntryHandler(Dns.GetHostEntry);
-                        IAsyncResult result = callback.BeginInvoke(host, null, null);
-                        if (result.AsyncWaitHandle.WaitOne(10000, true))
+                        //GetHostEntryHandler callback = new GetHostEntryHandler(Dns.GetHostEntry);
+                        //IAsyncResult result = callback.BeginInvoke(host, null, null);
+                        //if (result.AsyncWaitHandle.WaitOne(10000, true))
                         {
-                            IPHostEntry ipHostEntry = callback.EndInvoke(result);
+                            //IPHostEntry ipHostEntry = callback.EndInvoke(result);
+                            IPHostEntry ipHostEntry = Dns.GetHostEntry(host);
                             foreach (IPAddress ad in ipHostEntry.AddressList)
                             {
                                 if (ad.AddressFamily == AddressFamily.InterNetwork)
