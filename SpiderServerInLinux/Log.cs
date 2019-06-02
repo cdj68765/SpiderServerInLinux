@@ -245,10 +245,13 @@ namespace SpiderServerInLinux
                             Console.Write(" ");
                         }
                         Console.SetCursorPosition(1, 1);
-                        var ShowJav = Setting._GlobalSet.JavFin ? $"当前Jav下载页面:{Setting._GlobalSet.JavLastPageIndex}" : $"Jav:{Setting.JavDownLoadNow}";
-                        var ShowNyaa = !Setting._GlobalSet.NyaaFin ? $"Nyaa:{Setting.NyaaDownLoadNow}" : $"Nyaa:{Setting.NyaaDownLoadNow}";
-                        var ShowMiMi = Setting._GlobalSet.MiMiFin ? $"MiMi:{Setting.MiMiDownLoadNow}" : $"MiMi:{Setting._GlobalSet.MiMiAiPageIndex},{Setting.MiMiDay},{Setting.MiMiDownLoadNow}";
-                        Console.Write($"{ShowNyaa} {ShowJav} {ShowMiMi}");
+                        if (Setting._GlobalSet != null)
+                        {
+                            var ShowJav = Setting._GlobalSet.JavFin ? $"当前Jav下载页面:{Setting._GlobalSet.JavLastPageIndex}" : $"Jav:{Setting.JavDownLoadNow}";
+                            var ShowNyaa = !Setting._GlobalSet.NyaaFin ? $"Nyaa:{Setting.NyaaDownLoadNow}" : $"Nyaa:{Setting.NyaaDownLoadNow}";
+                            var ShowMiMi = Setting._GlobalSet.MiMiFin ? $"MiMi:{Setting.MiMiDownLoadNow}" : $"MiMi:{Setting._GlobalSet.MiMiAiPageIndex},{Setting.MiMiDay},{Setting.MiMiDownLoadNow}";
+                            Console.Write($"{ShowNyaa} {ShowJav} {ShowMiMi}");
+                        }
                     }
                     catch (Exception)
                     {

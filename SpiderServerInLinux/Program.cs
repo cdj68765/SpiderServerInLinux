@@ -81,6 +81,7 @@ namespace SpiderServerInLinux
                */
 
             Setting._GlobalSet = new GlobalSet().Open();
+            Setting._GlobalSet.ssr_url = "ssr://aGsuaGt0MjE5Lmtva29oYXJ1LmNsdWI6MzQxMTI6YXV0aF9jaGFpbl9hOmFlcy0yNTYtY2ZiOmh0dHBfc2ltcGxlOk5qWTRPRGMzTmpVLz9vYmZzcGFyYW09JnByb3RvcGFyYW09JnJlbWFya3M9NmFhWjVyaXZJR0V5SUMwZ1ctZVV0U19ucDd0ZElFaExWQ0RwcHBubXVLX25sTFhvcnE4Jmdyb3VwPTQ0R1Q0NEd2NDRLTEx1aVFqT09CaUEmdWRwcG9ydD0wJnVvdD0w";
             await Init();
             return await Setting.ShutdownResetEvent.Task.ConfigureAwait(false);
         }
@@ -122,7 +123,7 @@ namespace SpiderServerInLinux
             => Loger.Instance.LocalInfo("数据库初始化完毕")).
             ContinueWith(obj =>
             {
-                if (Setting._GlobalSet.AutoRun)
+                if (!Setting._GlobalSet.AutoRun)
                     Setting.DownloadManage = new DownloadManage();
                 else Loger.Instance.LocalInfo("自动运行关闭，等待命令");
                 /*var _controller = new ShadowsocksController();

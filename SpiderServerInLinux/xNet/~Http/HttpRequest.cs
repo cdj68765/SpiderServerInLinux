@@ -2338,14 +2338,14 @@ namespace xNet
             }
             catch (SecurityException ex)
             {
-                Loger.Instance.Warn(ex);
+                //Loger.Instance.Warn(ex);
             }
             catch (IOException ex)
             {
                 if (CanReconnect())
                     return ReconnectAfterFail();
 
-                Loger.Instance.Warn(ex);
+                //Loger.Instance.Warn(ex);
             }
 
             #endregion Отправка запроса
@@ -2723,7 +2723,7 @@ namespace xNet
                 }
                 catch (Exception ex)
                 {
-                    Loger.Instance.Warn(ex);
+                    //Loger.Instance.Warn(ex);
                 }
             }
             else

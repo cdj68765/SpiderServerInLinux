@@ -40,7 +40,7 @@ namespace SpiderServerInLinux
         private async void Load()
         {
             Loger.Instance.LocalInfo("初始化下载");
-            await Task.WhenAll(GetJavNewData(), GetNyaaNewData(), GetMiMiDate());
+            await Task.WhenAll(GetJavNewData(), GetNyaaNewData(), GetMiMiData());
         }
 
         private Task GetNyaaNewData()
@@ -212,131 +212,125 @@ namespace SpiderServerInLinux
             });
         }
 
-        private Task GetMiMiDate()
+        private Task GetMiMiData()
         {
             MiMiDownloadCancel = new CancellationTokenSource();
             return Task.Run(() =>
             {
                 var HtmlDoc = new HtmlDocument();
                 MD5CryptoServiceProvider _md5 = new MD5CryptoServiceProvider();
-                using (var request = new HttpRequest()
+                GetMiMiNewDataTimer = new System.Timers.Timer(10000);
+                GetMiMiNewDataTimer.Elapsed += delegate
                 {
-                    UserAgent = Http.ChromeUserAgent(),
-                    ConnectTimeout = 20000,
-                    CharacterSet = Encoding.GetEncoding("GBK")
-                })
+                    Loger.Instance.LocalInfo("开始获取新MiMi信息");
+                    GetMiMiNewDataTimer.Stop();
+                    DownLoadWork(1);
+                    GetMiMiNewDataTimer.Interval = new Random().Next(12, 24) * 3600 * 1000;
+                    Setting.MiMiDownLoadNow = DateTime.Now.AddMilliseconds(GetMiMiNewDataTimer.Interval).ToString("MM-dd|HH:mm");
+                    Loger.Instance.LocalInfo($"下次获得新数据为{Setting.MiMiDownLoadNow}");
+                    GetMiMiNewDataTimer.Start();
+                };
+                GetMiMiNewDataTimer.Enabled = true;
+                /*  if (!Setting._GlobalSet.MiMiFin)
+                  {
+                      while (!MiMiDownloadCancel.IsCancellationRequested)
+                      {
+                          DownLoadWork(Setting._GlobalSet.MiMiAiPageIndex);
+                          Setting._GlobalSet.MiMiAiPageIndex += 1;
+                      }
+                  }*/
+                void DownLoadWork(int index)
                 {
-                    if (Setting._GlobalSet.SocksCheck) request.Proxy = Socks5ProxyClient.Parse($"127.0.0.1:{Setting.Socks5Point}");
-                    GetMiMiNewDataTimer = new System.Timers.Timer(10000);
-                    GetMiMiNewDataTimer.Elapsed += delegate
-                    {
-                        Loger.Instance.LocalInfo("开始获取新MiMi信息");
-                        DownLoadWork(1);
-                        GetMiMiNewDataTimer.Interval = new Random().Next(12, 24) * 3600 * 1000;
-                        Setting.MiMiDownLoadNow = DateTime.Now.AddMilliseconds(GetMiMiNewDataTimer.Interval).ToString("MM-dd|HH:mm");
-                        Loger.Instance.LocalInfo($"下次获得新数据为{Setting.MiMiDownLoadNow}");
-                    };
-                    GetMiMiNewDataTimer.AutoReset = true;
-                    GetMiMiNewDataTimer.Enabled = true;
-                    if (!Setting._GlobalSet.MiMiFin)
-                    {
-                        while (!MiMiDownloadCancel.IsCancellationRequested)
-                        {
-                            DownLoadWork(Setting._GlobalSet.MiMiAiPageIndex);
-                            Setting._GlobalSet.MiMiAiPageIndex += 1;
-                        }
-                    }
-                    void DownLoadWork(int index)
-                    {
-                        var RTemp = DownLoadNew(index);
-                        string RT = "";
-                        if (RTemp != null)
-                        {
-                            try
-                            {
-                                foreach (var tempData in AnalySysMainPage(RTemp.Item1))
-                                {
-                                    if (DataBaseCommand.SaveToMiMiDataTablet(tempData, false))
-                                    {
-                                        var rtemp = DownLoadNew(_Uri: $"http://{new Uri(Setting._GlobalSet.MiMiAiAddress).Host}/{tempData[0]}");
-                                        if (rtemp != null)
-                                        {
-                                            var Date = DateTime.Parse(tempData[3]);
-                                            Setting.MiMiDay = Date.ToString("yyyy-MM-dd");
-                                            RT = rtemp.Item1;
-                                            Stopwatch Time = new Stopwatch();
-                                            Time.Start();
-                                            var Now = Setting._GlobalSet.totalDownloadBytes;
-                                            HandleMiMiPage(rtemp.Item1);
-                                            Time.Stop();
-                                            tempData[4] = bool.TrueString;
-                                            Loger.Instance.LocalInfo($"MiMi:{Setting.MiMiDay}下载完毕,耗时{Time.Elapsed.ToString(@"mm\分ss\秒")},消耗流量{HumanReadableFilesize(Setting._GlobalSet.totalDownloadBytes - Now)}");
-                                            DataBaseCommand.SaveToMiMiDataTablet(tempData);
-                                        }
-                                        else DataBaseCommand.SaveToMiMiDataTablet(tempData);
-                                    }
-                                }
-                            }
-                            catch (Exception ex)
-                            {
-                                Loger.Instance.LocalInfo($"MiMiAi页解析失败{ex.Message}");
-                                File.WriteAllText("Error.html", RT);
-                                if (ex.Message == "Object reference not set to an instance of an object.")
-                                {
-                                    Loger.Instance.LocalInfo($"判断下载完成,退出下载进程");
-                                    Setting._GlobalSet.MiMiFin = true;
-                                    MiMiDownloadCancel.Cancel();
-                                }
-                            }
-                        }
-                    }
-                    String HumanReadableFilesize(double size)
-                    {
-                        var units = new[] { "B", "KB", "MB", "GB", "TB", "PB" };
-                        double mod = 1024.0;
-                        var DoubleCount = new List<double>();
-                        while (size >= mod)
-                        {
-                            size /= mod;
-                            DoubleCount.Add(size);
-                        }
-                        var Ret = "";
-                        for (int j = DoubleCount.Count; j > 0; j--)
-                        {
-                            if (j == DoubleCount.Count)
-                            {
-                                Ret += $"{Math.Floor(DoubleCount[j - 1])}{units[j]}";
-                            }
-                            else
-                            {
-                                Ret += $"{Math.Floor(DoubleCount[j - 1] - (Math.Floor(DoubleCount[j]) * 1024))}{units[j]}";
-                            }
-                        }
-                        return Ret;
-                    }
-                    void HandleMiMiPage(string PageData)
+                    var RTemp = DownLoadNew(index);
+                    string RT = "";
+                    if (RTemp != null)
                     {
                         try
                         {
-                            var _HtmlDoc = new HtmlDocument();
-                            _HtmlDoc.LoadHtml(PageData);
-                            List<MiMiAiData> ItemList = new List<MiMiAiData>();
-                            var Temp = new MiMiAiData();
-                            var Index = 0;
-                            foreach (var Child in _HtmlDoc.DocumentNode.SelectNodes("//div[@class='t_msgfont']")[0].ChildNodes)
+                            if (string.IsNullOrEmpty(RTemp.Item1)) return;
+                            foreach (var tempData in AnalySysMainPage(RTemp.Item1))
                             {
-                                if (Temp.InfoList == null) Temp.InfoList = new List<MiMiAiData.BasicData>();
-                                switch (Child.Name)
+                                if (DataBaseCommand.SaveToMiMiDataTablet(tempData, false))
                                 {
-                                    case "a":
+                                    var rtemp = DownLoadNew(_Uri: $"http://{new Uri(Setting._GlobalSet.MiMiAiAddress).Host}/{tempData[0]}");
+                                    if (rtemp != null)
+                                    {
+                                        var Date = DateTime.Parse(tempData[3]).ToString("yyyy-MM-dd");
+                                        Setting.MiMiDay = Date;
+                                        RT = rtemp.Item1;
+                                        Stopwatch Time = new Stopwatch();
+                                        Time.Start();
+                                        var Now = Setting._GlobalSet.totalDownloadBytes;
+                                        HandleMiMiPage(rtemp.Item1, Date);
+                                        Time.Stop();
+                                        tempData[4] = bool.TrueString;
+                                        Loger.Instance.LocalInfo($"MiMi:{Date}下载完毕,耗时{Time.Elapsed.ToString(@"mm\分ss\秒")},消耗流量{HumanReadableFilesize(Setting._GlobalSet.totalDownloadBytes - Now)}");
+                                        DataBaseCommand.SaveToMiMiDataTablet(tempData);
+                                    }
+                                    else DataBaseCommand.SaveToMiMiDataTablet(tempData);
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Loger.Instance.LocalInfo($"MiMiAi页解析失败{ex.Message}");
+                            File.WriteAllText("Error.html", RT);
+                            if (ex.Message == "Object reference not set to an instance of an object.")
+                            {
+                                Loger.Instance.LocalInfo($"判断MiMi下载完成,退出下载进程");
+                                Setting._GlobalSet.MiMiFin = true;
+                                MiMiDownloadCancel.Cancel();
+                            }
+                        }
+                    }
+                }
+                String HumanReadableFilesize(double size)
+                {
+                    var units = new[] { "B", "KB", "MB", "GB", "TB", "PB" };
+                    double mod = 1024.0;
+                    var DoubleCount = new List<double>();
+                    while (size >= mod)
+                    {
+                        size /= mod;
+                        DoubleCount.Add(size);
+                    }
+                    var Ret = "";
+                    for (int j = DoubleCount.Count; j > 0; j--)
+                    {
+                        if (j == DoubleCount.Count)
+                        {
+                            Ret += $"{Math.Floor(DoubleCount[j - 1])}{units[j]}";
+                        }
+                        else
+                        {
+                            Ret += $"{Math.Floor(DoubleCount[j - 1] - (Math.Floor(DoubleCount[j]) * 1024))}{units[j]}";
+                        }
+                    }
+                    return Ret;
+                }
+                void HandleMiMiPage(string PageData, string Date)
+                {
+                    try
+                    {
+                        var _HtmlDoc = new HtmlDocument();
+                        _HtmlDoc.LoadHtml(PageData);
+                        List<MiMiAiData> ItemList = new List<MiMiAiData>();
+                        var Temp = new MiMiAiData();
+                        var Index = 0;
+                        foreach (var Child in _HtmlDoc.DocumentNode.SelectNodes("//div[@class='t_msgfont']")[0].ChildNodes)
+                        {
+                            if (Temp.InfoList == null) Temp.InfoList = new List<MiMiAiData.BasicData>();
+                            switch (Child.Name)
+                            {
+                                case "a":
+                                    {
+                                        Temp.Index = Index;
+                                        Temp.Date = Date;
+                                        var DownloadData = DownLoadNew(Index: -3, _Uri: Child.Attributes["href"].Value, Mode: true);
+                                        if (!string.IsNullOrEmpty(DownloadData.Item1))
                                         {
-                                            Temp.Index = Index;
-                                            Temp.Date = Setting.MiMiDay;
-                                            var DownloadData = DownLoadNew(Index: -3, _Uri: Child.Attributes["href"].Value, Mode: true);
-                                            if (!string.IsNullOrEmpty(DownloadData.Item1))
-                                            {
-                                                DataBaseCommand.SaveToMiMiDataErrorUnit(new[]
-                                                         {
+                                            DataBaseCommand.SaveToMiMiDataErrorUnit(new[]
+                                                     {
                                         Temp.Date,
                                         Index.ToString(),
                                         Temp.InfoList.Count.ToString(),
@@ -345,43 +339,43 @@ namespace SpiderServerInLinux
                                         DownloadData.Item1,
                                         bool.FalseString
                                     });
-                                                Temp.InfoList.Add(new MiMiAiData.BasicData() { Type = "torrent", info = Child.Attributes["href"].Value });
-                                            }
-                                            else
-                                            {
-                                                Temp.InfoList.Add(new MiMiAiData.BasicData() { Type = "torrent", info = Child.Attributes["href"].Value, Data = DownloadData.Item2 });
-                                            }
-                                            ItemList.Add(Temp);
-                                            Temp = new MiMiAiData();
-                                            Interlocked.Increment(ref Index);
+                                            Temp.InfoList.Add(new MiMiAiData.BasicData() { Type = "torrent", info = Child.Attributes["href"].Value });
                                         }
-                                        break;
-
-                                    case "#text":
+                                        else
                                         {
-                                            var innerText = Child.InnerText.Replace("\r\n", "").Replace("&nbsp;", "");
-                                            if (innerText.StartsWith(" ")) innerText = innerText.Remove(0, 1);
-                                            if (string.IsNullOrEmpty(Temp.Title) && innerText != "\r\n")
-                                            {
-                                                Temp.Title = innerText;
-                                                break;
-                                            }
-                                            if (!string.IsNullOrEmpty(innerText))
-                                                Temp.InfoList.Add(new MiMiAiData.BasicData() { Type = "text", info = innerText });
+                                            Temp.InfoList.Add(new MiMiAiData.BasicData() { Type = "torrent", info = Child.Attributes["href"].Value, Data = DownloadData.Item2 });
                                         }
-                                        break;
+                                        ItemList.Add(Temp);
+                                        Temp = new MiMiAiData();
+                                        Interlocked.Increment(ref Index);
+                                    }
+                                    break;
 
-                                    case "br":
-                                        break;
-
-                                    case "img":
+                                case "#text":
+                                    {
+                                        var innerText = Child.InnerText.Replace("\r\n", "").Replace("&nbsp;", "");
+                                        if (innerText.StartsWith(" ")) innerText = innerText.Remove(0, 1);
+                                        if (string.IsNullOrEmpty(Temp.Title) && innerText != "\r\n")
                                         {
-                                            var DownloadData = DownLoadNew(Index: -2, _Uri: Child.Attributes["src"].Value, Mode: true);
-                                            if (DownloadData == null) break;
-                                            if (!string.IsNullOrEmpty(DownloadData.Item1))
-                                            {
-                                                DataBaseCommand.SaveToMiMiDataErrorUnit(new[]
-                                                      {
+                                            Temp.Title = innerText;
+                                            break;
+                                        }
+                                        if (!string.IsNullOrEmpty(innerText))
+                                            Temp.InfoList.Add(new MiMiAiData.BasicData() { Type = "text", info = innerText });
+                                    }
+                                    break;
+
+                                case "br":
+                                    break;
+
+                                case "img":
+                                    {
+                                        var DownloadData = DownLoadNew(Index: -2, _Uri: Child.Attributes["src"].Value, Mode: true);
+                                        if (DownloadData == null) break;
+                                        if (!string.IsNullOrEmpty(DownloadData.Item1))
+                                        {
+                                            DataBaseCommand.SaveToMiMiDataErrorUnit(new[]
+                                                  {
                                         Temp.Date,
                                         Index.ToString(),
                                         Temp.InfoList.Count.ToString(),
@@ -390,55 +384,70 @@ namespace SpiderServerInLinux
                                         DownloadData.Item1,
                                         bool.FalseString
                                     });
-                                                Temp.InfoList.Add(new MiMiAiData.BasicData() { Type = "img", info = Child.Attributes["src"].Value });
-                                            }
-                                            else
-                                            {
-                                                // _md5.ComputeHash(DownloadData.Item2);
-                                                Temp.InfoList.Add(new MiMiAiData.BasicData() { Type = "img", info = Child.Attributes["src"].Value, Data = DownloadData.Item2 });
-                                            }
+                                            Temp.InfoList.Add(new MiMiAiData.BasicData() { Type = "img", info = Child.Attributes["src"].Value });
                                         }
-                                        break;
+                                        else
+                                        {
+                                            // _md5.ComputeHash(DownloadData.Item2);
+                                            Temp.InfoList.Add(new MiMiAiData.BasicData() { Type = "img", info = Child.Attributes["src"].Value, Data = DownloadData.Item2 });
+                                        }
+                                    }
+                                    break;
 
-                                    default:
-                                        break;
-                                }
+                                default:
+                                    break;
                             }
-                            DataBaseCommand.SaveToMiMiDataUnit(ItemList);
-                            ItemList.Clear();
-                            ItemList = null;
-                            GC.Collect();
                         }
-                        catch (Exception ex)
-                        {
-                        }
+                        DataBaseCommand.SaveToMiMiDataUnit(ItemList);
+                        ItemList.Clear();
+                        ItemList = null;
+                        Temp = null;
+                        GC.Collect();
                     }
-                    IEnumerable<string[]> AnalySysMainPage(string Page)
+                    catch (Exception ex)
                     {
-                        HtmlDoc.LoadHtml(Page);
-                        foreach (var item in HtmlDoc.DocumentNode.SelectNodes(@"/html/body/center/form/div[1]/div/table"))
+                        Loger.Instance.LocalInfo($"MiMi页面解析错误");
+                    }
+                }
+                IEnumerable<string[]> AnalySysMainPage(string Page)
+                {
+                    if (string.IsNullOrEmpty(Page))
+                    {
+                        Loger.Instance.LocalInfo($"MiMi页面为空"); yield break;
+                    }
+                    HtmlDoc.LoadHtml(Page);
+                    foreach (var item in HtmlDoc.DocumentNode.SelectNodes(@"/html/body/center/form/div[1]/div/table"))
+                    {
+                        var TempData = new string[]
                         {
-                            var TempData = new string[]
-                            {
                         item.SelectSingleNode("tr/td[1]/a").Attributes["href"].Value,
                         item.SelectSingleNode("tr/td[3]/a[1]").InnerText,
                         item.SelectSingleNode("tr/td[4]/a").InnerText,
                         item.SelectSingleNode("tr/td[4]/span").InnerText,
                         bool.FalseString
-                            };
-                            if (TempData[2] == "mimi")
+                        };
+                        if (TempData[2] == "mimi")
+                        {
+                            yield return TempData;
+                            if (TempData[1].ToUpper().Contains("BT"))
                             {
-                                if (TempData[1].Contains("BT合集"))
-                                {
-                                    yield return TempData;
-                                }
+                                yield return TempData;
                             }
                         }
-                        yield break;
                     }
+                    yield break;
+                }
 
-                    Tuple<string, byte[]> DownLoadNew(int Index = -1, string _Uri = "", bool Mode = false)
+                Tuple<string, byte[]> DownLoadNew(int Index = -1, string _Uri = "", bool Mode = false)
+                {
+                    using (var request = new HttpRequest()
                     {
+                        UserAgent = Http.ChromeUserAgent(),
+                        ConnectTimeout = 5000,
+                        CharacterSet = Encoding.GetEncoding("GBK")
+                    })
+                    {
+                        if (Setting._GlobalSet.SocksCheck) request.Proxy = Socks5ProxyClient.Parse($"127.0.0.1:{Setting.Socks5Point}");
                         try
                         {
                             if (_Uri.StartsWith("images")) return null;
@@ -546,12 +555,11 @@ namespace SpiderServerInLinux
                             Loger.Instance.LocalInfo($"地址错误{UriError.Message}");
                             return new Tuple<string, byte[]>($"地址错误{UriError.Message}", null);
                         }
-
-                        return null;
                     }
+                    return null;
                 }
-            }, MiMiDownloadCancel.Token);
-
+            }
+            , MiMiDownloadCancel.Token);
             return Task.Run(() =>
             {
                 if (!Setting._GlobalSet.MiMiFin)
@@ -1122,19 +1130,28 @@ namespace SpiderServerInLinux
                             }
                             catch (Exception)
                             {
+                                Loger.Instance.LocalInfo($"Jav类型解析失败，退出下载");
+                                downloadCollect.CompleteAdding();
+                                SaveData.CompleteAdding();
+                                JavDownloadCancel.Cancel();
                             }
                             TempData.Tags = tags.ToArray();
                             TempData.Describe = temp.SelectSingleNode("div/div/div[2]/div/p[2]").InnerText.ReplaceEntities().Replace("\n", ""); ;
                             var Actress = new List<string>();
                             try
                             {
-                                foreach (var Tags in temp.SelectNodes(@"//div[@class='panel']/a"))
+                                //foreach (var Tags in temp.SelectNodes(@"//div[@class='panel']/a"))
+                                foreach (var Tags in temp.SelectNodes(@"div/div/div[2]/div/div[2]"))
                                 {
                                     Actress.Add(Tags.InnerText.Replace("\n", ""));
                                 }
                             }
                             catch (Exception)
                             {
+                                Loger.Instance.LocalInfo($"Jav人名解析失败，退出下载");
+                                downloadCollect.CompleteAdding();
+                                SaveData.CompleteAdding();
+                                JavDownloadCancel.Cancel();
                             }
                             TempData.Actress = Actress.ToArray();
                             TempData.Magnet = temp.SelectSingleNode("div/div/div[2]/div/a[1]").Attributes["href"].Value;
