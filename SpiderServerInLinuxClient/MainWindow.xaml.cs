@@ -21,8 +21,6 @@ namespace SpiderServerInLinuxClient
     /// </summary>
     public partial class MainWindow : Window
     {
-        public Page FrameSource { get; set; }
-
         public BaseCommand ChangeFrameSourceCommand
         {
             get
@@ -34,10 +32,13 @@ namespace SpiderServerInLinuxClient
         public void ChangeFrameSourceCommand_Executed(object para)
         {
             materialHamburger.IsChecked = false;
+
             switch (para)
             {
-                case "PageMain":
-                    materialFrame.Content = new Frame() { Content = new PageMain() }; break;
+                case "MainPage":
+                    materialFrame.Source = new Uri("/PageMain.xaml", UriKind.Relative); break;
+                case "141javPage":
+                    materialFrame.Source = new Uri("/JavPage.xaml", UriKind.Relative); break;
             }
         }
 
@@ -66,9 +67,14 @@ namespace SpiderServerInLinuxClient
         public MainWindow()
         {
             Licenser.LicenseKey = "WTK35-CMGPF-7AGTY-0BZA";
+
             InitializeComponent();
+
             DataContext = this;
-            materialFrame.Content = new Frame() { Content = new PageMain() };
+            Task.Factory.StartNew(() =>
+            {
+                materialFrame.Source = new Uri("/PageMain.xaml", UriKind.Relative);
+            }, new System.Threading.CancellationToken(), TaskCreationOptions.None, TaskScheduler.FromCurrentSynchronizationContext());
         }
     }
 }

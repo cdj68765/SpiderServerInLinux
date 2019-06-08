@@ -76,21 +76,16 @@ namespace SpiderServerInLinux
 
         #region 从数据库读取
 
-        internal static DateRecord GetDateInfo(string Date)
+        internal static DateRecord GetNyaaDateInfo(string Date)
         {
-            Stopwatch Time = new Stopwatch();
-            Loger.Instance.WithTimeStart("数据库读取中", Time);
             using (var db = new LiteDatabase(@"Nyaa.db"))
             {
                 var DateRecord = db.GetCollection<DateRecord>("DateRecord");
-                var FindData = DateRecord.FindOne(Dt => Convert.ToDateTime(Dt._id).ToString("yyyy-MM-dd") == Date);
+                var FindData = DateRecord.FindOne(Dt => Dt._id == Date);
                 if (FindData is DateRecord)
                 {
-                    Loger.Instance.WithTimeStart($"从数据库返回{Date}数据", Time);
                     return FindData;
                 }
-
-                Loger.Instance.WithTimeStop($"未在数据库找到{Date}数据", Time);
                 return null;
             }
         }
@@ -260,6 +255,22 @@ namespace SpiderServerInLinux
                 }
             }
             return false;
+        }
+
+        internal static void SaveToNyaaDateInfo(DateRecord Date)
+        {
+            if (string.IsNullOrWhiteSpace(Date._id)) return;
+            using (var db = new LiteDatabase(@"Nyaa.db"))
+            {
+                try
+                {
+                    var NyaaDB = db.GetCollection<DateRecord>("DateRecord");
+                    NyaaDB.Upsert(Date);
+                }
+                catch (Exception)
+                {
+                }
+            }
         }
 
         internal static bool SaveToNyaaDataBaseOneObject(NyaaInfo item2, bool Mode = true)

@@ -42,6 +42,15 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Update="libmbedcrypto.so">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="libsodium.so">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
     <Reference Update="CefSharp">
       <Private>true</Private>
     </Reference>

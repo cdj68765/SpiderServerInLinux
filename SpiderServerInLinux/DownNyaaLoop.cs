@@ -53,7 +53,7 @@ namespace SpiderServerInLinux
 
                 int PageInDateStatus(string Date)
                 {
-                    var Status = DataBaseCommand.GetDateInfo(Date);
+                    var Status = DataBaseCommand.GetNyaaDateInfo(Date);
                     if (Status == null)
                     {
                         return -1;

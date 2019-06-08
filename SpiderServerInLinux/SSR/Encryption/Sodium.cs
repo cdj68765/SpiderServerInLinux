@@ -1,4 +1,5 @@
 ﻿using Shadowsocks.Controller;
+using SpiderServerInLinux;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -9,18 +10,74 @@ namespace Shadowsocks.Encryption
 {
     public class Sodium
     {
-        private const string DLLNAME = "libsscrypto";
+        public static void crypto_stream_salsa20_xor_ic(byte[] c, byte[] m, ulong mlen, byte[] n, ulong ic, byte[] k)
+        {
+            if (Setting.Platform)
+            {
+                LibApi.crypto_stream_salsa20_xor_ic(c, m, mlen, n, ic, k);
+            }
+            else
+            {
+                LibApiArm.crypto_stream_salsa20_xor_ic(c, m, mlen, n, ic, k);
+            }
+        }
 
-        [DllImport("Kernel32.dll")]
-        private static extern IntPtr LoadLibrary(string path);
+        public static void crypto_stream_chacha20_xor_ic(byte[] c, byte[] m, ulong mlen, byte[] n, ulong ic, byte[] k)
+        {
+            if (Setting.Platform)
+            {
+                LibApi.crypto_stream_chacha20_xor_ic(c, m, mlen, n, ic, k);
+            }
+            else
+            {
+                LibApiArm.crypto_stream_chacha20_xor_ic(c, m, mlen, n, ic, k);
+            }
+        }
 
-        [DllImport(DLLNAME, CallingConvention = CallingConvention.Cdecl)]
-        public extern static void crypto_stream_salsa20_xor_ic(byte[] c, byte[] m, ulong mlen, byte[] n, ulong ic, byte[] k);
+        public static int crypto_stream_chacha20_ietf_xor_ic(byte[] c, byte[] m, ulong mlen, byte[] n, uint ic, byte[] k)
+        {
+            try
+            {
+                if (Setting.Platform)
+                {
+                    return LibApi.crypto_stream_chacha20_ietf_xor_ic(c, m, mlen, n, ic, k);
+                }
+                else
+                {
+                    return LibApiArm.crypto_stream_chacha20_ietf_xor_ic(c, m, mlen, n, ic, k);
+                }
+            }
+            catch (Exception e)
+            {
+                Loger.Instance.LocalInfo(e.Message);
+            }
+            return 0;
+        }
 
-        [DllImport(DLLNAME, CallingConvention = CallingConvention.Cdecl)]
-        public extern static void crypto_stream_chacha20_xor_ic(byte[] c, byte[] m, ulong mlen, byte[] n, ulong ic, byte[] k);
+        public class LibApi
+        {
+            [DllImport("libsscrypto64.dll", CallingConvention = CallingConvention.Cdecl)]
+            public extern static void crypto_stream_salsa20_xor_ic(byte[] c, byte[] m, ulong mlen, byte[] n, ulong ic, byte[] k);
 
-        [DllImport(DLLNAME, CallingConvention = CallingConvention.Cdecl)]
-        public extern static int crypto_stream_chacha20_ietf_xor_ic(byte[] c, byte[] m, ulong mlen, byte[] n, uint ic, byte[] k);
+            [DllImport("libsscrypto64.dll", CallingConvention = CallingConvention.Cdecl)]
+            public extern static void crypto_stream_chacha20_xor_ic(byte[] c, byte[] m, ulong mlen, byte[] n, ulong ic, byte[] k);
+
+            [DllImport("libsscrypto64.dll", CallingConvention = CallingConvention.Cdecl)]
+            public extern static int crypto_stream_chacha20_ietf_xor_ic(byte[] c, byte[] m, ulong mlen, byte[] n, uint ic, byte[] k);
+        }
+
+        public class LibApiArm
+        {
+            private const string DLLNAME = "./libsodium.so";
+
+            [DllImport(DLLNAME)]
+            public extern static void crypto_stream_salsa20_xor_ic(byte[] c, byte[] m, ulong mlen, byte[] n, ulong ic, byte[] k);
+
+            [DllImport(DLLNAME)]
+            public extern static void crypto_stream_chacha20_xor_ic(byte[] c, byte[] m, ulong mlen, byte[] n, ulong ic, byte[] k);
+
+            [DllImport(DLLNAME)]
+            public extern static int crypto_stream_chacha20_ietf_xor_ic(byte[] c, byte[] m, ulong mlen, byte[] n, uint ic, byte[] k);
+        }
     }
 }

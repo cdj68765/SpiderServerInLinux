@@ -164,13 +164,25 @@ namespace SpiderServerInLinux
             }
         }
 
+        [NonSerialized]
+        private bool SaveInUse = false;
+
         private GlobalSet Save()
         {
-            using (Stream stream = new FileStream("GlobalSet.dat", FileMode.OpenOrCreate))
+            if (SaveInUse == true) return this;
+            SaveInUse = true;
+            try
             {
-                IFormatter Fileformatter = new BinaryFormatter();
-                Fileformatter.Serialize(stream, this);
+                using (Stream stream = new FileStream("GlobalSet.dat", FileMode.OpenOrCreate))
+                {
+                    IFormatter Fileformatter = new BinaryFormatter();
+                    Fileformatter.Serialize(stream, this);
+                }
             }
+            catch (Exception)
+            {
+            }
+            SaveInUse = false;
             return this;
         }
 

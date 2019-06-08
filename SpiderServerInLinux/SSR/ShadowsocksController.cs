@@ -86,6 +86,7 @@ namespace Shadowsocks.Controller
                 if (!CheckIfPortInUse(_config.localPort)) break;
                 _config.localPort++;
             }
+            // _config.localPort = 7071;
             Loger.Instance.ServerInfo("SSR", $"SSR控制器建立，内部端口{_config.localPort}");
             Setting.Socks5Point = _config.localPort;
             var Config = new Server(Setting._GlobalSet.ssr_url, "");

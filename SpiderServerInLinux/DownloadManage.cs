@@ -19,6 +19,7 @@ namespace SpiderServerInLinux
     public class DownloadManage : IDisposable
     {
         public CancellationTokenSource NyaaDownloadCancel = new CancellationTokenSource();
+        public CancellationTokenSource NyaaOldDownloadCancel = new CancellationTokenSource();
         public CancellationTokenSource MiMiDownloadCancel = new CancellationTokenSource();
         public System.Timers.Timer GetNyaaNewDataTimer = new System.Timers.Timer();
         public CancellationTokenSource JavDownloadCancel = new CancellationTokenSource();
@@ -40,7 +41,7 @@ namespace SpiderServerInLinux
         private async void Load()
         {
             Loger.Instance.LocalInfo("初始化下载");
-            await Task.WhenAll(GetJavNewData(), GetNyaaNewData(), GetMiMiData());
+            await Task.WhenAll(GetJavNewData(), GetNyaaNewData(), GetMiMiData(), GetOldData());
         }
 
         private Task GetNyaaNewData()
@@ -74,47 +75,61 @@ namespace SpiderServerInLinux
             {
                 using (var request = new HttpRequest())
                 {
-                    var _Day = "";
+                    var FirstPageDay = "";
+                    var _DayF = "";
+                    var _DayL = "";
+                    var PageCount = 0;
                     foreach (var item in SaveData.GetConsumingEnumerable())
                     {
                         try
                         {
+                            PageCount += 1;
+                            Setting.NyaaDownLoadNow = $"当前下载页面：{item.Item1}";
+                            if (item.Item1 == 0)
+                            {
+                                FirstPageDay = item.Item2.First().Day;
+                            }
                             if (!DataBaseCommand.SaveToNyaaDataBaseRange(item.Item2))
                             {
                                 foreach (var AddTemp in item.Item2)
                                 {
-                                    if (!DataBaseCommand.SaveToNyaaDataBaseOneObject(AddTemp))
+                                    DataBaseCommand.SaveToNyaaDataBaseOneObject(AddTemp);
+                                }
+                            }
+                            if (item.Item1 > Setting._GlobalSet.NyaaLastPageIndex || true)
+                            {
+                                if (_DayL != item.Item2.Last().Day)
+                                {
+                                    PageCount = 0;
+                                    _DayL = item.Item2.Last().Day;
+                                    var Retdate = DataBaseCommand.GetNyaaDateInfo(_DayL);
+                                    if (_DayF != FirstPageDay)
                                     {
-                                        Loger.Instance.LocalInfo($"当前保存Nyaa下载日期{item.Item2.First().Day}");
-                                        Loger.Instance.LocalInfo($"判断Nyaa下载完成");
-                                        NyaaDownloadCancel.Cancel();
-                                        downloadCollect.CompleteAdding();
-                                        break;
+                                        DataBaseCommand.SaveToNyaaDateInfo(new DateRecord() { _id = _DayF, Page = PageCount, Status = true });
+                                    }
+                                    if (Retdate != null)
+                                    {
+                                        if (Retdate.Status)
+                                        {
+                                            Loger.Instance.LocalInfo($"判断Nyaa下载完成");
+                                            NyaaDownloadCancel.Cancel();
+                                            downloadCollect.CompleteAdding();
+                                        }
                                     }
                                     else
                                     {
-                                        Loger.Instance.LocalInfo($"当前保存Nyaa下载日期{item.Item2.First().Day}");
-                                        Loger.Instance.LocalInfo($"判断Nyaa下载完成");
-                                        NyaaDownloadCancel.Cancel();
-                                        downloadCollect.CompleteAdding();
-                                        break;
-                                        Loger.Instance.LocalInfo($"检测到时间轴到达上一时间点");
-                                        Loger.Instance.LocalInfo($"判断Nyaa下载完成");
-                                        Setting._GlobalSet.NyaaFin = true;
-                                        NyaaDownloadCancel.Cancel();
-                                        downloadCollect.CompleteAdding();
-                                        break;
+                                        DataBaseCommand.SaveToNyaaDateInfo(new DateRecord() { _id = _DayL, Status = false });
                                     }
                                 }
-                            }
-
-                            if (item.Item1 > Setting._GlobalSet.NyaaLastPageIndex)
-                            {
-                                Setting._GlobalSet.NyaaLastPageIndex = item.Item1;
-                                if (_Day != item.Item2.First().Day)
+                                if (_DayF != item.Item2.First().Day)
                                 {
-                                    _Day = item.Item2.First().Day;
-                                    Loger.Instance.LocalInfo($"当前保存Nyaa下载日期{_Day}");
+                                    _DayF = item.Item2.First().Day;
+                                    Loger.Instance.LocalInfo($"当前保存Nyaa下载日期{_DayF}");
+                                    var Retdate = DataBaseCommand.GetNyaaDateInfo(_DayF);
+                                    if (Retdate == null)
+                                    {
+                                        DataBaseCommand.SaveToNyaaDateInfo(new DateRecord() { _id = _DayF, Status = false });
+                                    }
                                 }
                             }
                         }
@@ -208,6 +223,53 @@ namespace SpiderServerInLinux
                         GetJavNewDataTimer.Start();
                     };
                     GetJavNewDataTimer.Enabled = true;
+                }
+            });
+        }
+
+        private Task GetOldData()
+        {
+            return Task.Run(() =>
+            {
+                {
+                    Loger.Instance.LocalInfo($"开始Nyaa旧数据下载");
+                    if (Setting._GlobalSet.NyaaFin) return;
+                    var DownloadCollect = new BlockingCollection<Tuple<int, string>>();
+                    NyaaOldDownloadCancel = new CancellationTokenSource();
+                    if (Setting._GlobalSet.NyaaLastPageIndex < 2600000) Setting._GlobalSet.NyaaLastPageIndex = 2600000;
+                    DownloadLoop(@"https://sukebei.nyaa.si/view/", Setting._GlobalSet.NyaaLastPageIndex, DownloadCollect, NyaaOldDownloadCancel);
+                    HandlerOldNyaaHtml(DownloadCollect);
+                }
+                return;
+
+                if (!Setting._GlobalSet.MiMiFin)
+                {
+                    var DownloadCollect = new BlockingCollection<Tuple<int, string>>();
+                    MiMiDownloadCancel = new CancellationTokenSource();
+                    /* DownloadLoop(Setting._GlobalSet.MiMiAiAddress, Setting._GlobalSet.MiMiAiPageIndex, DownloadCollect, MiMiDownloadCancel, true);
+                     HandlerMiMiHtml(DownloadCollect);*/
+                }
+
+                if (!Setting._GlobalSet.NyaaFin)
+                {
+                    var DownloadCollect = new BlockingCollection<Tuple<int, string>>();
+                    NyaaDownloadCancel = new CancellationTokenSource();
+                    DownloadLoop(Setting.NyaaAddress, Setting._GlobalSet.NyaaLastPageIndex, DownloadCollect, NyaaDownloadCancel);
+                    HandlerOldNyaaHtml(DownloadCollect);
+                }
+                else
+                {
+                    Loger.Instance.LocalInfo($"Nyaa下载完毕，跳过旧数据获取");
+                }
+                if (Setting._GlobalSet.JavFin)
+                {
+                    var DownloadCollect = new BlockingCollection<Tuple<int, string>>();
+                    DownloadLoop(Setting._GlobalSet.JavAddress, Setting._GlobalSet.JavLastPageIndex, DownloadCollect, JavDownloadCancel);
+                    HandlerJavHtml(DownloadCollect);
+                }
+                else
+                {
+                    Loger.Instance.LocalInfo($"JAV下载完毕，跳过旧数据获取");
                 }
             });
         }
@@ -560,38 +622,6 @@ namespace SpiderServerInLinux
                 }
             }
             , MiMiDownloadCancel.Token);
-            return Task.Run(() =>
-            {
-                if (!Setting._GlobalSet.MiMiFin)
-                {
-                    var DownloadCollect = new BlockingCollection<Tuple<int, string>>();
-                    MiMiDownloadCancel = new CancellationTokenSource();
-                    /* DownloadLoop(Setting._GlobalSet.MiMiAiAddress, Setting._GlobalSet.MiMiAiPageIndex, DownloadCollect, MiMiDownloadCancel, true);
-                     HandlerMiMiHtml(DownloadCollect);*/
-                }
-                return;
-                if (!Setting._GlobalSet.NyaaFin)
-                {
-                    var DownloadCollect = new BlockingCollection<Tuple<int, string>>();
-                    NyaaDownloadCancel = new CancellationTokenSource();
-                    DownloadLoop(Setting.NyaaAddress, Setting._GlobalSet.NyaaLastPageIndex, DownloadCollect, NyaaDownloadCancel);
-                    HandlerOldNyaaHtml(DownloadCollect);
-                }
-                else
-                {
-                    Loger.Instance.LocalInfo($"Nyaa下载完毕，跳过旧数据获取");
-                }
-                if (Setting._GlobalSet.JavFin)
-                {
-                    var DownloadCollect = new BlockingCollection<Tuple<int, string>>();
-                    DownloadLoop(Setting._GlobalSet.JavAddress, Setting._GlobalSet.JavLastPageIndex, DownloadCollect, JavDownloadCancel);
-                    HandlerJavHtml(DownloadCollect);
-                }
-                else
-                {
-                    Loger.Instance.LocalInfo($"JAV下载完毕，跳过旧数据获取");
-                }
-            }, JavDownloadCancel.Token);
         }
 
         private Task HandlerMiMiHtml(BlockingCollection<Tuple<int, string>> downloadCollect)
@@ -896,8 +926,10 @@ namespace SpiderServerInLinux
                         Save.Add(item.Item2);
                         if (item.Item2.Day != Setting.NyaaDay)
                         {
+                            DataBaseCommand.SaveToNyaaDateInfo(new DateRecord() { _id = Setting.NyaaDay, Status = true });
                             Setting.NyaaDay = item.Item2.Day;
                             Loger.Instance.LocalInfo($"当前保存Nyaa下载日期{Setting.NyaaDay}");
+                            Loger.Instance.LocalInfo($"当前保存Nyaa页面{Setting._GlobalSet.NyaaLastPageIndex}");
                         }
                         if (Save.Count > 25 || SaveData.IsCompleted)
                         {
@@ -911,7 +943,15 @@ namespace SpiderServerInLinux
                             Setting._GlobalSet.NyaaLastPageIndex = item.Item1;
                             Save.Clear();
                         }
+                        if (item.Item1 >= 2737376)
+                        {
+                            Loger.Instance.LocalInfo($"Nyaa旧数据下载完毕，退出下载进程");
+                            NyaaOldDownloadCancel.Cancel();
+                            Setting._GlobalSet.NyaaFin = true;
+                            SaveData.CompleteAdding();
+                        }
                     }
+
                     if (Save.Count != 0)
                     {
                         if (!DataBaseCommand.SaveToNyaaDataBaseRange(Save))
@@ -1201,12 +1241,17 @@ namespace SpiderServerInLinux
                                   break;
                               }
                               Interlocked.Increment(ref ErrorCount);
-                              if (Address == Setting.NyaaAddress)
+                              if (new Uri(Address).Host == new Uri(Setting.NyaaAddress).Host)
                               {
                                   if (ex.Message == "NotFound")
                                   {
                                       Interlocked.Increment(ref LastPageIndex);
                                       continue;
+                                  }
+                                  else if (ex.Message == "Forbidden")
+                                  {
+                                      Loger.Instance.LocalInfo($"检测到Nyaa下载页面超出50,结束下载进程");
+                                      break;
                                   }
                               }
                               if (ex.Message.StartsWith("Cannot access a disposed object"))

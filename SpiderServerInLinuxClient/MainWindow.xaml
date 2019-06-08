@@ -248,26 +248,30 @@
             </DataTemplate>
             <Grid x:Key="HamburgerMenu">
                 <xctk:MaterialHamburgerMenu x:Name="materialHamburgerMenu"
-                                            Header="总菜单"
+                                            Header="总览"
                                             HeaderTemplate="{x:Null}"
                                             CloseButtonLocation="Right"
                                             Padding="0"
                                             CloseButtonStyle="{StaticResource DefaultHamburgerMenuCloseButtonStyle}"
                                             IsAnimatingItems="True">
-                    <TextBlock Text="页面切换"
-                               Foreground="Gray"
-                               HorizontalAlignment="Center"
-                               Margin="5" />
-                    <xctk:IconButton Content="首页"
+                    <xctk:IconButton Content="主页"
                                      Command="{Binding ChangeFrameSourceCommand}"
                                      CommandParameter="MainPage"
-                                     Style="{StaticResource IconButtonStyle}"></xctk:IconButton>
+                                     Style="{StaticResource IconButtonStyle}">
+                        <xctk:IconButton.Icon>
+                            <Image Margin="0,0,5,0"
+                                   Source="/SpiderServerInLinuxClient;component/Resources/home.png"
+                                   Width="20"
+                                   Stretch="UniformToFill" />
+                        </xctk:IconButton.Icon>
+                    </xctk:IconButton>
                     <xctk:IconButton Content="141jav"
                                      Command="{Binding ChangeFrameSourceCommand}"
                                      CommandParameter="141javPage"
                                      Style="{StaticResource IconButtonStyle}">
                         <xctk:IconButton.Icon>
-                            <Image Source="/SpiderServerInLinuxClient;component/Resources/141jav.png"
+                            <Image Margin="0,0,5,0"
+                                   Source="/SpiderServerInLinuxClient;component/Resources/141jav.png"
                                    Width="20"
                                    Stretch="UniformToFill" />
                         </xctk:IconButton.Icon>
@@ -277,7 +281,8 @@
                                      CommandParameter="MimiPage"
                                      Style="{StaticResource IconButtonStyle}">
                         <xctk:IconButton.Icon>
-                            <Image Source="/SpiderServerInLinuxClient;component/Resources/Mimi.ico"
+                            <Image Margin="0,0,5,0"
+                                   Source="/SpiderServerInLinuxClient;component/Resources/Mimi.ico"
                                    Width="20"
                                    Stretch="UniformToFill" />
                         </xctk:IconButton.Icon>
@@ -287,7 +292,8 @@
                                      CommandParameter="NyaaPage"
                                      Style="{StaticResource IconButtonStyle}">
                         <xctk:IconButton.Icon>
-                            <Image Source="/SpiderServerInLinuxClient;component/Resources/Nyaa.ico"
+                            <Image Margin="0,0,5,0"
+                                   Source="/SpiderServerInLinuxClient;component/Resources/Nyaa.ico"
                                    Width="20"
                                    Stretch="UniformToFill" />
                         </xctk:IconButton.Icon>
@@ -306,17 +312,14 @@
         </ResourceDictionary>
     </Window.Resources>
     <Grid>
-        <xctk:MaterialFrame x:Name="materialFrame"
-                            HorizontalContentAlignment="Center"
-                            VerticalContentAlignment="Center"
-                            Z="2"
-                            ShadowDirection="315"
-                            ShadowDepth="10"
-                            ShadowBlurRadius="20"
-                            ShadowOpacity="0.7"
-                            ShadowColor="Blue"
-                            Content="{Binding FrameSource,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
-                            Margin="45,0,0,0" />
+        <Frame x:Name="materialFrame"
+               HorizontalContentAlignment="Center"
+               VerticalContentAlignment="Center"
+               NavigationUIVisibility="Hidden"
+               Content="{Binding FrameSource,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
+               Background="{x:Null}"
+               Margin="0"
+               Foreground="{x:Null}" />
         <xctk:MaterialHamburger x:Name="materialHamburger"
                                 MenuContent="{StaticResource HamburgerMenu}"
                                 Margin="5,5,0,0" />

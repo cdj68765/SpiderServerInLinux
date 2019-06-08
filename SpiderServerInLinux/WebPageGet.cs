@@ -24,7 +24,7 @@ namespace SpiderServerInLinux
 
         internal int PageInDateStatus(string Date)
         {
-            var Status = GetDateInfo(Date);
+            var Status = GetNyaaDateInfo(Date);
             if (Status == null) return -1;
             return Status.Status == false ? 0 : 1;
         }

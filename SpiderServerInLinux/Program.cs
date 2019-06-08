@@ -81,7 +81,9 @@ namespace SpiderServerInLinux
                */
 
             Setting._GlobalSet = new GlobalSet().Open();
-            Setting._GlobalSet.ssr_url = "ssr://aGsuaGt0MjE5Lmtva29oYXJ1LmNsdWI6MzQxMTI6YXV0aF9jaGFpbl9hOmFlcy0yNTYtY2ZiOmh0dHBfc2ltcGxlOk5qWTRPRGMzTmpVLz9vYmZzcGFyYW09JnByb3RvcGFyYW09JnJlbWFya3M9NmFhWjVyaXZJR0V5SUMwZ1ctZVV0U19ucDd0ZElFaExWQ0RwcHBubXVLX25sTFhvcnE4Jmdyb3VwPTQ0R1Q0NEd2NDRLTEx1aVFqT09CaUEmdWRwcG9ydD0wJnVvdD0w";
+            // Setting._GlobalSet.ssr_url = "ssr://eGlhamliYXFpbWluZ3ppLmhrZ2lhLmtva29oYXJ1LmNsdWI6MzQxMTI6YXV0aF9jaGFpbl9hOmNoYWNoYTIwLWlldGY6aHR0cF9zaW1wbGU6TmpZNE9EYzNOalUvP29iZnNwYXJhbT0mcHJvdG9wYXJhbT0mcmVtYXJrcz02YWFaNXJpdklHSXpJQzBnVy1lVXRTX29nWlF2NTZlN1hTRHBtTF9waDR6a3VwRWdSMGxCSUVOT01nJmdyb3VwPTQ0R1Q0NEd2NDRLTEx1aVFqT09CaUEmdWRwcG9ydD0xOTk2NDMyMzA0JnVvdD0yODg";
+            Setting._GlobalSet.MiMiFin = true;
+            Setting._GlobalSet.JavFin = false;
             await Init();
             return await Setting.ShutdownResetEvent.Task.ConfigureAwait(false);
         }
