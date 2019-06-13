@@ -104,6 +104,16 @@ namespace SpiderServerInLinux
             }
         }
 
+        internal static bool GetNyaaCheckPoint(int ID)
+        {
+            using (var db = new LiteDatabase(@"Nyaa.db"))
+            {
+                var DateRecord = db.GetCollection<NyaaInfo>("NyaaDB");
+                if (DateRecord.Exists(x => x.id == ID)) return true;
+                return false;
+            }
+        }
+
         #endregion 从数据库读取
 
         #region 数据库查找

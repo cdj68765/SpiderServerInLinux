@@ -41,7 +41,7 @@ namespace SpiderServerInLinux
         private async void Load()
         {
             Loger.Instance.LocalInfo("初始化下载");
-            await Task.WhenAll(GetJavNewData(), GetNyaaNewData(), GetMiMiData(), GetOldData());
+            await Task.WhenAll(GetJavNewData(), GetNyaaNewData(), GetMiMiData());
         }
 
         private Task GetNyaaNewData()
@@ -58,7 +58,8 @@ namespace SpiderServerInLinux
                         var DownloadCollect = new BlockingCollection<Tuple<int, string>>();
                         //await Task.WhenAll(DownloadLoop(Setting._GlobalSet.NyaaAddress, Setting._GlobalSet.NyaaFin ? 0 : Setting._GlobalSet.NyaaLastPageIndex, DownloadCollect, NyaaNewDownloadCancel), HandlerNyaaHtml(DownloadCollect));
                         await Task.WhenAll(DownloadLoop(Setting._GlobalSet.NyaaAddress, 0, DownloadCollect, NyaaDownloadCancel), HandlerNyaaHtml(DownloadCollect));
-                        GetNyaaNewDataTimer.Interval = new Random().Next(2, 12) * 3600 * 1000;
+                        Thread.Sleep(5000);
+                        GetNyaaNewDataTimer.Interval = new Random().Next(6, 12) * 3600 * 1000;
                         Setting.NyaaDownLoadNow = DateTime.Now.AddMilliseconds(GetNyaaNewDataTimer.Interval).ToString("MM-dd|HH:mm");
                         Loger.Instance.LocalInfo($"下次获得新数据为{Setting.NyaaDownLoadNow}");
                         GetNyaaNewDataTimer.Start();
@@ -237,7 +238,7 @@ namespace SpiderServerInLinux
                     var DownloadCollect = new BlockingCollection<Tuple<int, string>>();
                     NyaaOldDownloadCancel = new CancellationTokenSource();
                     if (Setting._GlobalSet.NyaaLastPageIndex < 2600000) Setting._GlobalSet.NyaaLastPageIndex = 2600000;
-                    DownloadLoop(@"https://sukebei.nyaa.si/view/", Setting._GlobalSet.NyaaLastPageIndex, DownloadCollect, NyaaOldDownloadCancel);
+                    DownloadLoop(@"https://sukebei.nyaa.si/view/", Setting._GlobalSet.NyaaLastPageIndex, DownloadCollect, NyaaOldDownloadCancel, true);
                     HandlerOldNyaaHtml(DownloadCollect);
                 }
                 return;
@@ -1157,7 +1158,8 @@ namespace SpiderServerInLinux
                             var temp = HtmlNode.CreateNode(item.OuterHtml);
                             TempData.ImgUrl = temp.SelectSingleNode("div/div/div[1]/img").Attributes["src"].Value;
                             TempData.ImgUrlError = temp.SelectSingleNode("div/div/div[1]/img").Attributes["onerror"].Value.Split('\'')[1];
-                            TempData.id = temp.SelectSingleNode("div/div/div[2]/div/h5/a").InnerText.Replace("\n", "");
+                            //TempData.id = temp.SelectSingleNode("div/div/div[2]/div/h5/a").InnerText.Replace("\n", "");
+                            TempData.id = temp.SelectSingleNode("div/div/div[2]/div/h5/a").Attributes["href"].Value.Replace(@"/torrent/", "");
                             TempData.Size = temp.SelectSingleNode("div/div/div[2]/div/h5/span").InnerText;
                             TempData.Date = $"{DateTime.Parse(temp.SelectSingleNode("div/div/div[2]/div/p[1]/a").Attributes["href"].Value.Substring(1)):yy-MM-dd}";
                             var tags = new List<string>();
@@ -1211,7 +1213,7 @@ namespace SpiderServerInLinux
             });
         }
 
-        private Task DownloadLoop(string Address, int LastPageIndex, BlockingCollection<Tuple<int, string>> downloadCollect, CancellationTokenSource token, bool CheckMiMiAiAddress = false)
+        private Task DownloadLoop(string Address, int LastPageIndex, BlockingCollection<Tuple<int, string>> downloadCollect, CancellationTokenSource token, bool CheckMode = false)
         {
             return Task.Factory.StartNew(() =>
               {
@@ -1225,6 +1227,14 @@ namespace SpiderServerInLinux
                       if (Setting._GlobalSet.SocksCheck) request.Proxy = Socks5ProxyClient.Parse($"127.0.0.1:{Setting.Socks5Point}");
                       while (!token.Token.IsCancellationRequested)
                       {
+                          if (CheckMode)
+                          {
+                              if (DataBaseCommand.GetNyaaCheckPoint(LastPageIndex))
+                              {
+                                  Interlocked.Increment(ref LastPageIndex);
+                                  continue;
+                              }
+                          }
                           var downurl = new Uri($"{Address}{LastPageIndex}");
                           try
                           {

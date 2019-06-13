@@ -19,11 +19,10 @@ namespace SpiderServerInLinux
              {
                  UserAgent = Http.ChromeUserAgent(),
                  ConnectTimeout = 20000,
-                 CharacterSet = Encoding.GetEncoding("GBK")
              })
              {
                  request.Proxy = Socks5ProxyClient.Parse($"127.0.0.1:7070");
-                 File.WriteAllText("MiMiS", request.Get("http://www.mmbuff.com/forumdisplay.php?fid=55&page=0").ToString());
+                 File.WriteAllText("OneJav", request.Get("https://onejav.com/new?page=1").ToString());
              }*/
             // HtmlDoc.LoadHtml(Encoding.GetEncoding("GBK").GetString(File.ReadAllBytes("MiMiS")));
             /*try
@@ -81,9 +80,7 @@ namespace SpiderServerInLinux
                */
 
             Setting._GlobalSet = new GlobalSet().Open();
-            // Setting._GlobalSet.ssr_url = "ssr://eGlhamliYXFpbWluZ3ppLmhrZ2lhLmtva29oYXJ1LmNsdWI6MzQxMTI6YXV0aF9jaGFpbl9hOmNoYWNoYTIwLWlldGY6aHR0cF9zaW1wbGU6TmpZNE9EYzNOalUvP29iZnNwYXJhbT0mcHJvdG9wYXJhbT0mcmVtYXJrcz02YWFaNXJpdklHSXpJQzBnVy1lVXRTX29nWlF2NTZlN1hTRHBtTF9waDR6a3VwRWdSMGxCSUVOT01nJmdyb3VwPTQ0R1Q0NEd2NDRLTEx1aVFqT09CaUEmdWRwcG9ydD0xOTk2NDMyMzA0JnVvdD0yODg";
-            Setting._GlobalSet.MiMiFin = true;
-            Setting._GlobalSet.JavFin = false;
+            Setting._GlobalSet.ssr_url = "ssr://aGt0Lm5vcy5vb286MzM4ODY6YXV0aF9hZXMxMjhfc2hhMTpjaGFjaGEyMC1pZXRmOnBsYWluOk1tRXhkbUZaLz9vYmZzcGFyYW09JnByb3RvcGFyYW09JnJlbWFya3M9NUxpdDVaeUw2YWFaNXJpdkxlbW1tZWE0ci1tYnUtaW9pZyZncm91cD00NEdmNDRHazQ0RzI0NEdo";
             await Init();
             return await Setting.ShutdownResetEvent.Task.ConfigureAwait(false);
         }
