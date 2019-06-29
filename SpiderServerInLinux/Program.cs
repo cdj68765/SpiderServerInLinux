@@ -15,15 +15,6 @@ namespace SpiderServerInLinux
     {
         private static async Task<int> Main(string[] args)
         {
-            /* using (var request = new HttpRequest()
-             {
-                 UserAgent = Http.ChromeUserAgent(),
-                 ConnectTimeout = 20000,
-             })
-             {
-                 request.Proxy = Socks5ProxyClient.Parse($"127.0.0.1:7070");
-                 File.WriteAllText("OneJav", request.Get("https://onejav.com/new?page=1").ToString());
-             }*/
             // HtmlDoc.LoadHtml(Encoding.GetEncoding("GBK").GetString(File.ReadAllBytes("MiMiS")));
             /*try
             {
@@ -122,7 +113,7 @@ namespace SpiderServerInLinux
             => Loger.Instance.LocalInfo("数据库初始化完毕")).
             ContinueWith(obj =>
             {
-                if (!Setting._GlobalSet.AutoRun)
+                if (Setting._GlobalSet.AutoRun)
                     Setting.DownloadManage = new DownloadManage();
                 else Loger.Instance.LocalInfo("自动运行关闭，等待命令");
                 /*var _controller = new ShadowsocksController();

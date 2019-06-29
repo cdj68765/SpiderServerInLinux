@@ -221,11 +221,12 @@ namespace SpiderServerInLinux
                 try
                 {
                     var JavDB = db.GetCollection<JavInfo>("JavDB");
-                    if (!JavDB.Exists(x => x.id == item2.id))
+                    if (JavDB.Update(item2))
                     {
-                        JavDB.Insert(item2);
                         return true;
                     }
+                    JavDB.Insert(item2);
+                    return false;
                 }
                 catch (Exception)
                 {

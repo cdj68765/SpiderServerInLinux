@@ -1224,7 +1224,8 @@ namespace SpiderServerInLinux
                   })
                   {
                       int ErrorCount = 0;
-                      if (Setting._GlobalSet.SocksCheck) request.Proxy = Socks5ProxyClient.Parse($"127.0.0.1:{Setting.Socks5Point}");
+                      if (Setting._GlobalSet.SocksCheck)
+                      { request.Proxy = Socks5ProxyClient.Parse($"127.0.0.1:{Setting.Socks5Point}"); }
                       while (!token.Token.IsCancellationRequested)
                       {
                           if (CheckMode)
@@ -1238,7 +1239,15 @@ namespace SpiderServerInLinux
                           var downurl = new Uri($"{Address}{LastPageIndex}");
                           try
                           {
-                              Thread.Sleep(500);
+                              var time = new Random().Next(5000, 600000);
+                              for (var i = time; i > 0; i -= 1000)
+                              {
+                                  if (token.Token.IsCancellationRequested)
+                                  {
+                                      break;
+                                  }
+                                  Thread.Sleep(1000);
+                              }
                               HttpResponse response = request.Get(downurl);
                               downloadCollect.Add(new Tuple<int, string>(LastPageIndex, response.ToString()));
                               Interlocked.Increment(ref LastPageIndex);
