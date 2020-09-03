@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "SpiderServerInLinux": {
+      "commandName": "Project",
+      "commandLineArgs": "ssr://NDUuMTM1LjEzNS4yMDE6MTUyMzA6b3JpZ2luOnJjNDpwbGFpbjpiRzVqYmk1dmNtY2djbkJvLz9vYmZzcGFyYW09JnJlbWFya3M9Nkk2cjVwYXY1NmVSVEEmZ3JvdXA9VEc1amJpNXZjbWM"
+    }
+  }
+}

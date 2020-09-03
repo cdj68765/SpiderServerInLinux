@@ -1,9 +1,11 @@
 ﻿using HtmlAgilityPack;
 using LiteDB;
+using Shadowsocks.Controller;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
@@ -41,7 +43,8 @@ namespace SpiderServerInLinux
         private async void Load()
         {
             Loger.Instance.LocalInfo("初始化下载");
-            await Task.WhenAll(GetJavNewData(), GetNyaaNewData(), GetMiMiData());
+            //await Task.WhenAll(GetJavNewData(), GetNyaaNewData(), GetMiMiData());
+            await Task.WhenAll(GetMiMiData());
         }
 
         private Task GetNyaaNewData()
@@ -112,7 +115,30 @@ namespace SpiderServerInLinux
                                     {
                                         if (Retdate.Status)
                                         {
-                                            Loger.Instance.LocalInfo($"判断Nyaa下载完成");
+                                            var TempDate = DateTime.Parse(_DayL);
+                                            var DateCount = -1;
+                                            do
+                                            {
+                                                Interlocked.Decrement(ref DateCount);
+                                                if (DateCount == -10)
+                                                {
+                                                    break;
+                                                }
+                                            } while (DataBaseCommand.GetWebInfoFromNyaa(TempDate.AddDays(DateCount).ToString("yyyy-MM-dd")));
+                                            if (DateCount == -10)
+                                            {
+                                                Loger.Instance.LocalInfo($"判断Nyaa下载完成");
+                                                NyaaDownloadCancel.Cancel();
+                                                downloadCollect.CompleteAdding();
+                                            }
+                                            else
+                                            {
+                                                Loger.Instance.LocalInfo($"检测到Nyaa|{TempDate.AddDays(DateCount).ToString("yy-MM-dd")}未下载完成，继续下载任务");
+                                            }
+                                        }
+                                        if (item.Item1 == 50)
+                                        {
+                                            Loger.Instance.LocalInfo($"到达最大Nyaa下载页面，停止下载");
                                             NyaaDownloadCancel.Cancel();
                                             downloadCollect.CompleteAdding();
                                         }
@@ -218,7 +244,7 @@ namespace SpiderServerInLinux
                         GetJavNewDataTimer.Stop();
                         var DownloadCollect = new BlockingCollection<Tuple<int, string>>();
                         await Task.WhenAll(DownloadLoop(Setting._GlobalSet.JavAddress, 0, DownloadCollect, JavDownloadCancel), HandlerJavHtml(DownloadCollect, true));
-                        GetJavNewDataTimer.Interval = new Random().Next(6, 18) * 3600 * 1000;
+                        GetJavNewDataTimer.Interval = new Random().Next(12, 24) * 3600 * 1000;
                         Setting.JavDownLoadNow = DateTime.Now.AddMilliseconds(GetJavNewDataTimer.Interval).ToString("MM-dd|HH:mm");
                         Loger.Instance.LocalInfo($"下次获得新数据为{Setting.JavDownLoadNow}");
                         GetJavNewDataTimer.Start();
@@ -281,7 +307,6 @@ namespace SpiderServerInLinux
             return Task.Run(() =>
             {
                 var HtmlDoc = new HtmlDocument();
-                MD5CryptoServiceProvider _md5 = new MD5CryptoServiceProvider();
                 GetMiMiNewDataTimer = new System.Timers.Timer(10000);
                 GetMiMiNewDataTimer.Elapsed += delegate
                 {
@@ -315,19 +340,20 @@ namespace SpiderServerInLinux
                             {
                                 if (DataBaseCommand.SaveToMiMiDataTablet(tempData, false))
                                 {
+                                    var Date = DateTime.Parse(tempData[3]).ToString("yyyy-MM-dd");
+                                    Setting.MiMiDay = Date;
                                     var rtemp = DownLoadNew(_Uri: $"http://{new Uri(Setting._GlobalSet.MiMiAiAddress).Host}/{tempData[0]}");
+                                    //DataBaseCommand.GetWebInfoFromMiMi(tempData[0]);
                                     if (rtemp != null)
                                     {
-                                        var Date = DateTime.Parse(tempData[3]).ToString("yyyy-MM-dd");
-                                        Setting.MiMiDay = Date;
                                         RT = rtemp.Item1;
                                         Stopwatch Time = new Stopwatch();
                                         Time.Start();
                                         var Now = Setting._GlobalSet.totalDownloadBytes;
-                                        HandleMiMiPage(rtemp.Item1, Date);
+                                        //HandleMiMiPage(rtemp.Item1, Date);
                                         Time.Stop();
                                         tempData[4] = bool.TrueString;
-                                        Loger.Instance.LocalInfo($"MiMi:{Date}下载完毕,耗时{Time.Elapsed.ToString(@"mm\分ss\秒")},消耗流量{HumanReadableFilesize(Setting._GlobalSet.totalDownloadBytes - Now)}");
+                                        Loger.Instance.LocalInfo($"MiMi:{Date}下载完毕,耗时{Time.Elapsed:mm\\分ss\\秒},消耗流量{HumanReadableFilesize(Setting._GlobalSet.totalDownloadBytes - Now)}");
                                         DataBaseCommand.SaveToMiMiDataTablet(tempData);
                                     }
                                     else DataBaseCommand.SaveToMiMiDataTablet(tempData);
@@ -347,7 +373,7 @@ namespace SpiderServerInLinux
                         }
                     }
                 }
-                String HumanReadableFilesize(double size)
+                string HumanReadableFilesize(double size)
                 {
                     var units = new[] { "B", "KB", "MB", "GB", "TB", "PB" };
                     double mod = 1024.0;
@@ -380,8 +406,10 @@ namespace SpiderServerInLinux
                         List<MiMiAiData> ItemList = new List<MiMiAiData>();
                         var Temp = new MiMiAiData();
                         var Index = 0;
+                        Setting.MiMiDownLoadNow = "0";
                         foreach (var Child in _HtmlDoc.DocumentNode.SelectNodes("//div[@class='t_msgfont']")[0].ChildNodes)
                         {
+                            Setting.MiMiDownLoadNow = ((double)Child.StreamPosition / _HtmlDoc.RemainderOffset).ToString("p");
                             if (Temp.InfoList == null) Temp.InfoList = new List<MiMiAiData.BasicData>();
                             switch (Child.Name)
                             {
@@ -491,7 +519,6 @@ namespace SpiderServerInLinux
                         };
                         if (TempData[2] == "mimi")
                         {
-                            yield return TempData;
                             if (TempData[1].ToUpper().Contains("BT"))
                             {
                                 yield return TempData;
@@ -1051,12 +1078,36 @@ namespace SpiderServerInLinux
                                 {
                                     Loger.Instance.LocalInfo($"当前保存Jav下载日期{item.Item2.Date}");
                                     NewDate = item.Item2.Date;
+                                    if (DataBaseCommand.GetOrSaveWebInfoFromJav(item.Item2.Date))
+                                    {
+                                        var TempDate = DateTime.ParseExact(item.Item2.Date, "yy-MM-dd", CultureInfo.InvariantCulture);
+                                        var DateCount = -1;
+                                        do
+                                        {
+                                            Interlocked.Decrement(ref DateCount);
+                                            if (DateCount == -10)
+                                            {
+                                                break;
+                                            }
+                                        } while (DataBaseCommand.GetWebInfoFromJav(TempDate.AddDays(DateCount).ToString("yy-MM-dd")));
+                                        if (DateCount == -10)
+                                        {
+                                            Loger.Instance.LocalInfo($"检测到Jav下载完毕，退出下载进程");
+                                            break;
+                                        }
+                                        else
+                                        {
+                                            Loger.Instance.LocalInfo($"检测到Jav|{TempDate.AddDays(DateCount).ToString("yy-MM-dd")}未下载完成，继续下载任务");
+                                        }
+                                    }
+                                    /* if (NewDate == "19-09-01")
+                                     {
+                                         Loger.Instance.LocalInfo($"记录时间到达，退出下载进程");
+                                         break;
+                                     }*/
                                 }
-                                if (!DataBaseCommand.SaveToJavDataBaseOneObject(item.Item2))
-                                {
-                                    Loger.Instance.LocalInfo($"找到重复Jav项退出当前下载项");
-                                    break;
-                                }
+                                Setting.JavDownLoadNow = $"{ item.Item1} | {item.Item2.Date}";
+                                DataBaseCommand.SaveToJavDataBaseOneObject(item.Item2);
                             }
                             catch (Exception ex)
                             {
@@ -1156,6 +1207,7 @@ namespace SpiderServerInLinux
                         {
                             var TempData = new JavInfo();
                             var temp = HtmlNode.CreateNode(item.OuterHtml);
+                            if (string.IsNullOrEmpty(temp.GetClasses().FirstOrDefault())) continue;
                             TempData.ImgUrl = temp.SelectSingleNode("div/div/div[1]/img").Attributes["src"].Value;
                             TempData.ImgUrlError = temp.SelectSingleNode("div/div/div[1]/img").Attributes["onerror"].Value.Split('\'')[1];
                             //TempData.id = temp.SelectSingleNode("div/div/div[2]/div/h5/a").InnerText.Replace("\n", "");
@@ -1170,6 +1222,7 @@ namespace SpiderServerInLinux
                                     tags.Add(Tags.InnerText.Replace("\n", "").Replace("\r", ""));
                                 }
                             }
+                            catch (NullReferenceException) { }
                             catch (Exception)
                             {
                                 Loger.Instance.LocalInfo($"Jav类型解析失败，退出下载");
@@ -1182,18 +1235,17 @@ namespace SpiderServerInLinux
                             var Actress = new List<string>();
                             try
                             {
-                                //foreach (var Tags in temp.SelectNodes(@"//div[@class='panel']/a"))
-                                foreach (var Tags in temp.SelectNodes(@"div/div/div[2]/div/div[2]"))
+                                foreach (var Tags in temp.SelectNodes(@"//div[@class='panel']/a"))
+                                //foreach (var Tags in temp.SelectNodes(@"div/div/div[2]/div/div[2]"))
                                 {
                                     Actress.Add(Tags.InnerText.Replace("\n", ""));
                                 }
                             }
+                            catch (NullReferenceException) { }
                             catch (Exception)
                             {
-                                Loger.Instance.LocalInfo($"Jav人名解析失败，退出下载");
-                                downloadCollect.CompleteAdding();
-                                SaveData.CompleteAdding();
-                                JavDownloadCancel.Cancel();
+                                Loger.Instance.LocalInfo($"Jav人名解析失败");
+                                File.WriteAllText($"错误{DateTime.Now:mm-dd}.html", Page.Item2);
                             }
                             TempData.Actress = Actress.ToArray();
                             TempData.Magnet = temp.SelectSingleNode("div/div/div[2]/div/a[1]").Attributes["href"].Value;
@@ -1203,6 +1255,9 @@ namespace SpiderServerInLinux
                     catch (Exception)
                     {
                         Loger.Instance.LocalInfo($"Jav解析失败，推测下载完毕");
+
+                        File.WriteAllText($"错误{Guid.NewGuid().ToString()}.html", Page.Item2);
+
                         Setting._GlobalSet.JavFin = false;
                         downloadCollect.CompleteAdding();
                         SaveData.CompleteAdding();
@@ -1228,6 +1283,11 @@ namespace SpiderServerInLinux
                       { request.Proxy = Socks5ProxyClient.Parse($"127.0.0.1:{Setting.Socks5Point}"); }
                       while (!token.Token.IsCancellationRequested)
                       {
+                          if (downloadCollect.Count > 3)
+                          {
+                              Task.Delay(10000);
+                              continue;
+                          }
                           if (CheckMode)
                           {
                               if (DataBaseCommand.GetNyaaCheckPoint(LastPageIndex))
@@ -1239,7 +1299,7 @@ namespace SpiderServerInLinux
                           var downurl = new Uri($"{Address}{LastPageIndex}");
                           try
                           {
-                              var time = new Random().Next(5000, 600000);
+                              var time = new Random().Next(2000, 10000);
                               for (var i = time; i > 0; i -= 1000)
                               {
                                   if (token.Token.IsCancellationRequested)
@@ -1259,6 +1319,9 @@ namespace SpiderServerInLinux
                               {
                                   break;
                               }
+                              Setting.SSR.Stop();
+                              Setting.SSR.Start();
+
                               Interlocked.Increment(ref ErrorCount);
                               if (new Uri(Address).Host == new Uri(Setting.NyaaAddress).Host)
                               {

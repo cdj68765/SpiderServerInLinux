@@ -86,10 +86,10 @@ namespace SpiderServerInLinux
     [Serializable]
     internal class GlobalSet
     {
-        private string _NyaaAddress;
-        private string _JavAddress;
-        private string _MiMiAiAddress;
-        private string _ssr_url;
+        private string _NyaaAddress = "https://sukebei.nyaa.si/?p=";
+        private string _JavAddress = "https://www.141jav.com/new?page=";
+        private string _MiMiAiAddress = "http://www.mmfhd.com/forumdisplay.php?fid=55&page=";
+        private string _ssr_url = "";
         private int _NyaaLastPageIndex = 0;
         private int _JavLastPageIndex = 0;
         private int _MiMiAiPageIndex = 0;
@@ -123,31 +123,54 @@ namespace SpiderServerInLinux
         {
             if (string.IsNullOrEmpty(_NyaaAddress)) _NyaaAddress = "https://sukebei.nyaa.si/?p=";
             if (string.IsNullOrEmpty(_JavAddress)) _JavAddress = "https://www.141jav.com/new?page=";
-            if (string.IsNullOrEmpty(_MiMiAiAddress)) _MiMiAiAddress = "http://www.mmbuff.com/forumdisplay.php?fid=55&page=";
-            if (string.IsNullOrEmpty(_ssr_url)) _ssr_url = "ssr://MTkzLjExMC4yMDMuMjI6MzQxMTI6YXV0aF9jaGFpbl9hOmFlcy0yNTYtY2ZiOmh0dHBfc2ltcGxlOk5qWTRPRGMzTmpVLz9vYmZzcGFyYW09JnByb3RvcGFyYW09JnJlbWFya3M9NmFhWjVyaXZJR1FnTFNCYjU1UzFMLWlCbENfbnA3dGRJRU5PTWl0T1ZGUSZncm91cD00NEdUNDRHdjQ0S0xMdWlRak9PQmlBJnVkcHBvcnQ9MCZ1b3Q9MA";
+            if (string.IsNullOrEmpty(_MiMiAiAddress)) _MiMiAiAddress = "http://www.mmbutt.com/forumdisplay.php?fid=55&page=";
+            if (string.IsNullOrEmpty(_ssr_url)) _ssr_url = "";
         }
 
         internal GlobalSet()
         {
         }
 
-        internal GlobalSet Open()
+        static internal GlobalSet Open()
         {
-            if (File.Exists("GlobalSet.dat"))
+            using var db = new LiteDatabase(@"GlobalSet.db");
+            if (!db.CollectionExists("GlobalSet"))
             {
-                Loger.Instance.LocalInfo($"找到配置文件，路径{new FileInfo("GlobalSet.dat").FullName}");
-                using (Stream stream = new FileStream("GlobalSet.dat", FileMode.Open))
+                Loger.Instance.LocalInfo($"未找到配置文件，正在新建");
+                var globalSet = new GlobalSet();
+                using var stream = new MemoryStream();
+                IFormatter Fileformatter = new BinaryFormatter();
+                Fileformatter.Serialize(stream, globalSet);
+                db.GetCollection("GlobalSet").Upsert(new BsonDocument
                 {
-                    IFormatter Formatter = new BinaryFormatter();
-                    Formatter.Binder = new UBinder();
-                    return Formatter.Deserialize(stream) as GlobalSet;
-                }
+                    ["_id"] = 0,
+                    ["Data"] = stream.ToArray()
+                });
+                return globalSet;
             }
             else
             {
-                Loger.Instance.LocalInfo($"未找到配置文件，正在新建");
+                Loger.Instance.LocalInfo($"正在加载配置文件");
+                var Date = db.GetCollection("GlobalSet").FindById(0)["Data"].AsBinary;
+                using var stream = new MemoryStream(Date);
+                IFormatter Formatter = new BinaryFormatter();
+                Formatter.Binder = new UBinder();
+                return Formatter.Deserialize(stream) as GlobalSet;
             }
-            return new GlobalSet().Save();
+            /* if (File.Exists("GlobalSet.dat"))
+             {
+                 using (Stream stream = new FileStream("GlobalSet.dat", FileMode.Open))
+                 {
+                     IFormatter Formatter = new BinaryFormatter();
+                     Formatter.Binder = new UBinder();
+                     return Formatter.Deserialize(stream) as GlobalSet;
+                 }
+             }
+             else
+             {
+                 Loger.Instance.LocalInfo($"未找到配置文件，正在新建");
+             }
+             return new GlobalSet().Save();*/
         }
 
         public void Open(byte[] Data)
@@ -173,11 +196,20 @@ namespace SpiderServerInLinux
             SaveInUse = true;
             try
             {
-                using (Stream stream = new FileStream("GlobalSet.dat", FileMode.OpenOrCreate))
+                /* using (Stream stream = new FileStream("GlobalSet.dat", FileMode.OpenOrCreate))
+                 {
+                     IFormatter Fileformatter = new BinaryFormatter();
+                     Fileformatter.Serialize(stream, this);
+                 }*/
+                using var db = new LiteDatabase(@"GlobalSet.db");
+                using var stream = new MemoryStream();
+                IFormatter Fileformatter = new BinaryFormatter();
+                Fileformatter.Serialize(stream, this);
+                db.GetCollection("GlobalSet").Upsert(new BsonDocument
                 {
-                    IFormatter Fileformatter = new BinaryFormatter();
-                    Fileformatter.Serialize(stream, this);
-                }
+                    ["_id"] = 0,
+                    ["Data"] = stream.ToArray()
+                });
             }
             catch (Exception)
             {

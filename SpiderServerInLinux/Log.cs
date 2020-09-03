@@ -249,7 +249,7 @@ namespace SpiderServerInLinux
                         {
                             var ShowJav = Setting._GlobalSet.JavFin ? $"当前Jav下载页面:{Setting._GlobalSet.JavLastPageIndex}" : $"Jav:{Setting.JavDownLoadNow}";
                             var ShowNyaa = !Setting._GlobalSet.NyaaFin ? $"Nyaa:{Setting.NyaaDownLoadNow}" : $"Nyaa:{Setting.NyaaDownLoadNow}";
-                            var ShowMiMi = Setting._GlobalSet.MiMiFin ? $"MiMi:{Setting.MiMiDownLoadNow}" : $"MiMi:{Setting._GlobalSet.MiMiAiPageIndex},{Setting.MiMiDay},{Setting.MiMiDownLoadNow}";
+                            var ShowMiMi = Setting._GlobalSet.MiMiFin ? $"MiMi:{Setting.MiMiDownLoadNow},{Setting.MiMiDay}" : $"MiMi:{Setting._GlobalSet.MiMiAiPageIndex},{Setting.MiMiDay},{Setting.MiMiDownLoadNow}";
                             Console.Write($"{ShowNyaa} {ShowJav} {ShowMiMi}");
                         }
                     }
@@ -274,6 +274,11 @@ namespace SpiderServerInLinux
                 catch (Exception e)
                 {
                     Loger.Instance.ServerInfo("SSR", e);
+                    Init();
+                    DrawLocal();
+                    DrawRemote();
+                    WindowHeight = Console.WindowHeight;
+                    WindowWidth = Console.WindowWidth;
                 }
                 String HumanReadableFilesize(double size)
                 {

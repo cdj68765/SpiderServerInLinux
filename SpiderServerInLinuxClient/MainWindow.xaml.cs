@@ -71,10 +71,10 @@ namespace SpiderServerInLinuxClient
             InitializeComponent();
 
             DataContext = this;
-            Task.Factory.StartNew(() =>
-            {
-                materialFrame.Source = new Uri("/PageMain.xaml", UriKind.Relative);
-            }, new System.Threading.CancellationToken(), TaskCreationOptions.None, TaskScheduler.FromCurrentSynchronizationContext());
+            /*   Task.Factory.StartNew(() =>
+               {
+                   materialFrame.Source = new Uri("/PageMain.xaml", UriKind.Relative);
+               }, new System.Threading.CancellationToken(), TaskCreationOptions.None, TaskScheduler.FromCurrentSynchronizationContext());*/
         }
     }
 }

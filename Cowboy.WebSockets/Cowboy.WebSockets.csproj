@@ -1,0 +1,188 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{3A79448C-5D23-4325-8076-576E64BA65BE}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>Cowboy.WebSockets</RootNamespace>
+    <AssemblyName>Cowboy.WebSockets</AssemblyName>
+    <TargetFrameworks>netcoreapp2.1;net472</TargetFrameworks>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <FileAlignment>512</FileAlignment>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <TargetFrameworkProfile />
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <DefineConstants />
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Buffer\BufferValidator.cs" />
+    <Compile Include="Buffer\ISegmentBufferManager.cs" />
+    <Compile Include="Buffer\SegmentBufferDeflector.cs" />
+    <Compile Include="Buffer\SegmentBufferManager.cs" />
+    <Compile Include="Buffer\UnableToAllocateBufferException.cs" />
+    <Compile Include="Buffer\UnableToCreateMemoryException .cs" />
+    <Compile Include="Client\AsyncWebSocketClientConfiguration.cs" />
+    <Compile Include="Client\AsyncWebSocketClient.cs" />
+    <Compile Include="Extensions\IWebSocketExtensionNegotiator.cs" />
+    <Compile Include="Extensions\Parameters\AgreedExtensionParameter.cs" />
+    <Compile Include="Extensions\Parameters\ExtensionParameterType.cs" />
+    <Compile Include="Extensions\Parameters\ExtensionParameter.cs" />
+    <Compile Include="Extensions\Parameters\AbsentableValueParameter.cs" />
+    <Compile Include="Extensions\Parameters\AgreedSingleParameter.cs" />
+    <Compile Include="Extensions\Parameters\AgreedValuableParameter.cs" />
+    <Compile Include="Extensions\PerMessageExtensions\PMCE\DeflateCompression.cs" />
+    <Compile Include="Extensions\PerMessageExtensions\PMCE\PerMessageCompressionExtensionNegotiator.cs" />
+    <Compile Include="Extensions\PerMessageExtensions\PMCE\PerMessageCompressionExtensionParameters.cs" />
+    <Compile Include="Extensions\PerMessageExtensions\PMCE\PerMessageCompressionExtension.cs" />
+    <Compile Include="Extensions\Parameters\ValuableParameter.cs" />
+    <Compile Include="Extensions\Parameters\SingleParameter.cs" />
+    <Compile Include="Extensions\WebSocketExtensionOfferDescription.cs" />
+    <Compile Include="Framing\BinaryFragmentationFrame.cs" />
+    <Compile Include="Framing\Builder\IFrameBuilder.cs" />
+    <Compile Include="Framing\Builder\WebSocketFrameBuilder.cs" />
+    <Compile Include="Framing\Header\Header.cs" />
+    <Compile Include="Framing\PingFrame.cs" />
+    <Compile Include="Framing\PongFrame.cs" />
+    <Compile Include="Framing\CloseFrame.cs" />
+    <Compile Include="Framing\ControlFrame.cs" />
+    <Compile Include="Framing\DataFrame.cs" />
+    <Compile Include="Framing\TextFrame.cs" />
+    <Compile Include="Framing\BinaryFrame.cs" />
+    <Compile Include="Framing\Frame.cs" />
+    <Compile Include="Framing\OpCode.cs" />
+    <Compile Include="Client\IAsyncWebSocketClientMessageDispatcher.cs" />
+    <Compile Include="Client\InternalAsyncWebSocketClientMessageDispatcherImplementation.cs" />
+    <Compile Include="Helpers\Consts.cs" />
+    <Compile Include="Helpers\HttpKnownHeaderNames.cs" />
+    <Compile Include="Helpers\KeepAliveTracker.cs" />
+    <Compile Include="Extensions\IWebSocketExtension.cs" />
+    <Compile Include="Helpers\StringBuilderExtensions.cs" />
+    <Compile Include="Helpers\TplExtensions.cs" />
+    <Compile Include="InfoEvent.cs" />
+    <Compile Include="Server\WebSocketServerHandshaker.cs" />
+    <Compile Include="Server\AsyncWebSocketServerConfiguration.cs" />
+    <Compile Include="Server\AsyncWebSocketServer.cs" />
+    <Compile Include="Server\AsyncWebSocketSession.cs" />
+    <Compile Include="Server\Module\IAsyncWebSocketServerMessageDispatcher.cs" />
+    <Compile Include="Server\Module\AsyncWebSocketServerModule.cs" />
+    <Compile Include="Server\Module\AsyncWebSocketServerModuleCatalog.cs" />
+    <Compile Include="Server\Module\AsyncWebSocketRouteResolver.cs" />
+    <Compile Include="Starksoft.Aspen\ArrayBuilder.cs" />
+    <Compile Include="Starksoft.Aspen\ArrayUtils.cs" />
+    <Compile Include="Starksoft.Aspen\Crc16.cs" />
+    <Compile Include="Starksoft.Aspen\Crc32.cs" />
+    <Compile Include="Starksoft.Aspen\Ftps\EventArgs\ConnectionClosedEventArgs.cs" />
+    <Compile Include="Starksoft.Aspen\Ftps\EventArgs\FtpsRequestEventArgs.cs" />
+    <Compile Include="Starksoft.Aspen\Ftps\EventArgs\FtpsResponseEventArgs.cs" />
+    <Compile Include="Starksoft.Aspen\Ftps\EventArgs\FxpCopyAsyncCompletedEventArgs.cs" />
+    <Compile Include="Starksoft.Aspen\Ftps\EventArgs\GetDirListAsyncCompletedEventArgs.cs" />
+    <Compile Include="Starksoft.Aspen\Ftps\EventArgs\GetDirListDeepAsyncCompletedEventArgs.cs" />
+    <Compile Include="Starksoft.Aspen\Ftps\EventArgs\GetFileAsyncCompletedEventArgs.cs" />
+    <Compile Include="Starksoft.Aspen\Ftps\EventArgs\OpenAsyncCompletedEventArgs.cs" />
+    <Compile Include="Starksoft.Aspen\Ftps\EventArgs\PutFileAsyncCompletedEventArgs.cs" />
+    <Compile Include="Starksoft.Aspen\Ftps\EventArgs\TransferCompleteEventArgs.cs" />
+    <Compile Include="Starksoft.Aspen\Ftps\EventArgs\TransferProgressEventArgs.cs" />
+    <Compile Include="Starksoft.Aspen\Ftps\EventArgs\ValidateServerCertificateEventArgs.cs" />
+    <Compile Include="Starksoft.Aspen\Ftps\Exceptions\FtpsAsynchronousOperationException.cs" />
+    <Compile Include="Starksoft.Aspen\Ftps\Exceptions\FtpsAuthenticationException.cs" />
+    <Compile Include="Starksoft.Aspen\Ftps\Exceptions\FtpsBusyException.cs" />
+    <Compile Include="Starksoft.Aspen\Ftps\Exceptions\FtpsCertificateValidationException.cs" />
+    <Compile Include="Starksoft.Aspen\Ftps\Exceptions\FtpsCommandNotSupportedException.cs" />
+    <Compile Include="Starksoft.Aspen\Ftps\Exceptions\FtpsCommandResponseTimeoutException.cs" />
+    <Compile Include="Starksoft.Aspen\Ftps\Exceptions\FtpsConnectionBrokenException.cs" />
+    <Compile Include="Starksoft.Aspen\Ftps\Exceptions\FtpsConnectionClosedException.cs" />
+    <Compile Include="Starksoft.Aspen\Ftps\Exceptions\FtpsConnectionOpenException.cs" />
+    <Compile Include="Starksoft.Aspen\Ftps\Exceptions\FtpsDataCompressionException.cs" />
+    <Compile Include="Starksoft.Aspen\Ftps\Exceptions\FtpsDataConnectionException.cs" />
+    <Compile Include="Starksoft.Aspen\Ftps\Exceptions\FtpsDataConnectionTimeoutException.cs" />
+    <Compile Include="Starksoft.Aspen\Ftps\Exceptions\FtpsDataTransferException.cs" />
+    <Compile Include="Starksoft.Aspen\Ftps\Exceptions\FtpSecureConnectionException.cs" />
+    <Compile Include="Starksoft.Aspen\Ftps\Exceptions\FtpsException.cs" />
+    <Compile Include="Starksoft.Aspen\Ftps\Exceptions\FtpsFeatureException.cs" />
+    <Compile Include="Starksoft.Aspen\Ftps\Exceptions\FtpsHashingException.cs" />
+    <Compile Include="Starksoft.Aspen\Ftps\Exceptions\FtpsHashingInvalidAlgorithmException.cs" />
+    <Compile Include="Starksoft.Aspen\Ftps\Exceptions\FtpsHashingServerBusyException.cs" />
+    <Compile Include="Starksoft.Aspen\Ftps\Exceptions\FtpsItemParsingException.cs" />
+    <Compile Include="Starksoft.Aspen\Ftps\Exceptions\FtpsLoginException.cs" />
+    <Compile Include="Starksoft.Aspen\Ftps\Exceptions\FtpsNetworkVersionException.cs" />
+    <Compile Include="Starksoft.Aspen\Ftps\Exceptions\FtpsResponseException.cs" />
+    <Compile Include="Starksoft.Aspen\Ftps\FtpsBase.cs" />
+    <Compile Include="Starksoft.Aspen\Ftps\FtpsClient.cs" />
+    <Compile Include="Starksoft.Aspen\Ftps\FtpsFeature.cs" />
+    <Compile Include="Starksoft.Aspen\Ftps\FtpsFeatureArgument.cs" />
+    <Compile Include="Starksoft.Aspen\Ftps\FtpsFeatureArgumentCollection.cs" />
+    <Compile Include="Starksoft.Aspen\Ftps\FtpsFeatureCollection.cs" />
+    <Compile Include="Starksoft.Aspen\Ftps\FtpsItem.cs" />
+    <Compile Include="Starksoft.Aspen\Ftps\FtpsItemCollection.cs" />
+    <Compile Include="Starksoft.Aspen\Ftps\FtpsListItemParser.cs" />
+    <Compile Include="Starksoft.Aspen\Ftps\FtpsMlsxItem.cs" />
+    <Compile Include="Starksoft.Aspen\Ftps\FtpsMlsxItemParser.cs" />
+    <Compile Include="Starksoft.Aspen\Ftps\FtpsRequest.cs" />
+    <Compile Include="Starksoft.Aspen\Ftps\FtpsResponse.cs" />
+    <Compile Include="Starksoft.Aspen\Ftps\FtpsResponseCollection.cs" />
+    <Compile Include="Starksoft.Aspen\Ftps\FtpsResponseQueue.cs" />
+    <Compile Include="Starksoft.Aspen\Ftps\FtpsUtilities.cs" />
+    <Compile Include="Starksoft.Aspen\Ftps\IFtpsItemParser.cs" />
+    <Compile Include="Starksoft.Aspen\GnuPG\DecryptAsyncCompletedEventArgs.cs" />
+    <Compile Include="Starksoft.Aspen\GnuPG\EncryptAsyncCompletedEventArgs.cs" />
+    <Compile Include="Starksoft.Aspen\GnuPG\Gpg.cs" />
+    <Compile Include="Starksoft.Aspen\GnuPG\GpgBadPassphraseException.cs" />
+    <Compile Include="Starksoft.Aspen\GnuPG\GpgException.cs" />
+    <Compile Include="Starksoft.Aspen\GnuPG\GpgKey.cs" />
+    <Compile Include="Starksoft.Aspen\GnuPG\GpgKeyCollection.cs" />
+    <Compile Include="Starksoft.Aspen\GnuPG\GpgVersion.cs" />
+    <Compile Include="Starksoft.Aspen\GnuPG\GpgVersionParser.cs" />
+    <Compile Include="Starksoft.Aspen\GnuPG\SignAsyncCompletedEventArgs.cs" />
+    <Compile Include="Starksoft.Aspen\Lrc.cs" />
+    <Compile Include="Starksoft.Aspen\Proxy\EventArgs\CreateConnectionAsyncCompletedEventArgs.cs" />
+    <Compile Include="Starksoft.Aspen\Proxy\Exceptions\ProxyException.cs" />
+    <Compile Include="Starksoft.Aspen\Proxy\HttpProxyClient.cs" />
+    <Compile Include="Starksoft.Aspen\Proxy\IProxyClient.cs" />
+    <Compile Include="Starksoft.Aspen\Proxy\ProxyClientFactory.cs" />
+    <Compile Include="Starksoft.Aspen\Proxy\Socks4aProxyClient.cs" />
+    <Compile Include="Starksoft.Aspen\Proxy\Socks4ProxyClient.cs" />
+    <Compile Include="Starksoft.Aspen\Proxy\Socks5ProxyClient.cs" />
+    <Compile Include="Starksoft.Aspen\Proxy\Utils.cs" />
+    <Compile Include="Starksoft.Aspen\Smartcard\SCard.cs" />
+    <Compile Include="Starksoft.Aspen\Smartcard\SCardAdpu.cs" />
+    <Compile Include="Starksoft.Aspen\Smartcard\SCardAdpuRecv.cs" />
+    <Compile Include="Starksoft.Aspen\Smartcard\SCardAdpuSend.cs" />
+    <Compile Include="Starksoft.Aspen\Smartcard\SCardAdpuSendRecv.cs" />
+    <Compile Include="Starksoft.Aspen\Smartcard\SCardDll.cs" />
+    <Compile Include="Starksoft.Aspen\Smartcard\SCardException.cs" />
+    <Compile Include="SubProtocols\IWebSocketSubProtocol.cs" />
+    <Compile Include="SubProtocols\IWebSocketSubProtocolNegotiator.cs" />
+    <Compile Include="SubProtocols\WebSocketSubProtocolRequestDescription.cs" />
+    <Compile Include="WebSocketCloseCode.cs" />
+    <Compile Include="Exceptions\WebSocketHandshakeException.cs" />
+    <Compile Include="Exceptions\WebSocketException.cs" />
+    <Compile Include="Client\WebSocketClientHandshaker.cs" />
+    <Compile Include="Helpers\WebSocketHelpers.cs" />
+    <Compile Include="WebSocketState.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Starksoft.Aspen\Starksoft.Aspen.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Starksoft.Aspen\obj\Debug\TempPE\" />
+    <Folder Include="Starksoft.Aspen\obj\Release\" />
+  </ItemGroup>
+
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it.
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>

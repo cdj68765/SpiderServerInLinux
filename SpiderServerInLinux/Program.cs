@@ -1,20 +1,114 @@
-﻿using HtmlAgilityPack;
+﻿using Cowboy.WebSockets;
+using HtmlAgilityPack;
 using Shadowsocks.Controller;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
+using System.Linq;
+using System.Net;
 using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using xNet;
 
+// netsh winsock reset
 namespace SpiderServerInLinux
 {
     internal static class Program
     {
         private static async Task<int> Main(string[] args)
         {
+            Setting._GlobalSet = GlobalSet.Open();
+            if (args.Length != 0 && !string.IsNullOrEmpty(args[0]))
+            {
+                Setting._GlobalSet.ssr_url = args[0].ToString();
+                Setting._GlobalSet.SocksCheck = true;
+            }
+            Setting._GlobalSet.MiMiFin = true;
+            await Init();
+            return await Setting.ShutdownResetEvent.Task.ConfigureAwait(false);
+
+            await Task.Run(async () =>
+             {
+                 var config = new AsyncWebSocketClientConfiguration();
+                 //var uri = new Uri("ws://163.43.82.141:31424/");
+                 var uri = new Uri("ws://127.0.0.1:1200/Set");
+                 var _client = new AsyncWebSocketClient(uri,
+                                       (client, text) =>
+                                       {
+                                           return Task.CompletedTask;/*OnServerTextReceived*/
+                                       },
+                                      (client, data, offset, count) =>
+                                      {
+                                          return Task.CompletedTask; /*OnServerBinaryReceived*/
+                                      },
+                                        (client) =>
+                                        {
+                                            return Task.CompletedTask;/* OnServerConnected*/
+                                        },
+                                       (client) =>
+                                       {
+                                           return Task.CompletedTask; /*OnServerDisconnected*/
+                                       },
+                                        config);
+
+                 await _client.Connect();
+             });
+
+            return await Setting.ShutdownResetEvent.Task.ConfigureAwait(false);
+            /*  {
+                  var HtmlDoc = new HtmlDocument();
+                  HtmlDoc.Load(@"C:\Users\cdj68\Desktop\无标题.html");
+                  try
+                  {
+                      foreach (var item in HtmlDoc.DocumentNode.SelectNodes(@"/html/body/div[1]/div"))
+                      {
+                          var TempData = new JavInfo();
+                          var temp = HtmlNode.CreateNode(item.OuterHtml);
+                          TempData.ImgUrl = temp.SelectSingleNode("div/div/div[1]/img").Attributes["src"].Value;
+                          TempData.ImgUrlError = temp.SelectSingleNode("div/div/div[1]/img").Attributes["onerror"].Value.Split('\'')[1];
+                          //TempData.id = temp.SelectSingleNode("div/div/div[2]/div/h5/a").InnerText.Replace("\n", "");
+                          TempData.id = temp.SelectSingleNode("div/div/div[2]/div/h5/a").Attributes["href"].Value.Replace(@"/torrent/", "");
+                          TempData.Size = temp.SelectSingleNode("div/div/div[2]/div/h5/span").InnerText;
+                          TempData.Date = $"{DateTime.Parse(temp.SelectSingleNode("div/div/div[2]/div/p[1]/a").Attributes["href"].Value.Substring(1)):yy-MM-dd}";
+                          var tags = new List<string>();
+                          try
+                          {
+                              foreach (var Tags in temp.SelectNodes(@"//div[@class='tags']/a"))
+                              {
+                                  tags.Add(Tags.InnerText.Replace("\n", "").Replace("\r", ""));
+                              }
+                          }
+                          catch (Exception)
+                          {
+                          }
+                          TempData.Tags = tags.ToArray();
+                          TempData.Describe = temp.SelectSingleNode("div/div/div[2]/div/p[2]").InnerText.ReplaceEntities().Replace("\n", ""); ;
+                          var Actress = new List<string>();
+                          try
+                          {
+                              foreach (var Tags in temp.SelectNodes(@"//div[@class='panel']/a"))
+                              //foreach (var Tags in temp.SelectNodes(@"div/div/div[2]/div/div[2]/a"))
+                              {
+                                  Actress.Add(Tags.InnerText.Replace("\n", ""));
+                              }
+                          }
+                          catch (System.NullReferenceException e)
+                          {
+                          }
+                          catch (Exception e)
+                          {
+                          }
+                          TempData.Actress = Actress.ToArray();
+                          TempData.Magnet = temp.SelectSingleNode("div/div/div[2]/div/a[1]").Attributes["href"].Value;
+                      }
+                  }
+                  catch (Exception e)
+                  {
+                  }
+              }*/
             // HtmlDoc.LoadHtml(Encoding.GetEncoding("GBK").GetString(File.ReadAllBytes("MiMiS")));
             /*try
             {
@@ -70,10 +164,69 @@ namespace SpiderServerInLinux
                   }
                */
 
-            Setting._GlobalSet = new GlobalSet().Open();
-            Setting._GlobalSet.ssr_url = "ssr://aGt0Lm5vcy5vb286MzM4ODY6YXV0aF9hZXMxMjhfc2hhMTpjaGFjaGEyMC1pZXRmOnBsYWluOk1tRXhkbUZaLz9vYmZzcGFyYW09JnByb3RvcGFyYW09JnJlbWFya3M9NUxpdDVaeUw2YWFaNXJpdkxlbW1tZWE0ci1tYnUtaW9pZyZncm91cD00NEdmNDRHazQ0RzI0NEdo";
+            Setting._GlobalSet = GlobalSet.Open();
+            if (args.Length != 0 && !string.IsNullOrEmpty(args[0]))
+            {
+                Setting._GlobalSet.ssr_url = args[0].ToString();
+                Setting._GlobalSet.SocksCheck = true;
+            }
+            Setting._GlobalSet.MiMiFin = true;
             await Init();
             return await Setting.ShutdownResetEvent.Task.ConfigureAwait(false);
+        }
+
+        private static void DebugJav()
+        {
+            var HtmlDoc = new HtmlDocument();
+
+            HtmlDoc.LoadHtml(File.ReadAllText("Error.html"));
+            try
+            {
+                foreach (var item in HtmlDoc.DocumentNode.SelectNodes(@"/html/body/div[1]/div"))
+                {
+                    var TempData = new JavInfo();
+                    var temp = HtmlNode.CreateNode(item.OuterHtml);
+                    TempData.ImgUrl = temp.SelectSingleNode("div/div/div[1]/img").Attributes["src"].Value;
+                    TempData.ImgUrlError = temp.SelectSingleNode("div/div/div[1]/img").Attributes["onerror"].Value.Split('\'')[1];
+                    //TempData.id = temp.SelectSingleNode("div/div/div[2]/div/h5/a").InnerText.Replace("\n", "");
+                    TempData.id = temp.SelectSingleNode("div/div/div[2]/div/h5/a").Attributes["href"].Value.Replace(@"/torrent/", "");
+                    TempData.Size = temp.SelectSingleNode("div/div/div[2]/div/h5/span").InnerText;
+                    TempData.Date = $"{DateTime.Parse(temp.SelectSingleNode("div/div/div[2]/div/p[1]/a").Attributes["href"].Value.Substring(1)):yy-MM-dd}";
+                    var tags = new List<string>();
+                    try
+                    {
+                        foreach (var Tags in temp.SelectNodes(@"//div[@class='tags']/a"))
+                        {
+                            tags.Add(Tags.InnerText.Replace("\n", "").Replace("\r", ""));
+                        }
+                    }
+                    catch (NullReferenceException) { }
+                    catch (Exception)
+                    {
+                    }
+                    TempData.Tags = tags.ToArray();
+                    TempData.Describe = temp.SelectSingleNode("div/div/div[2]/div/p[2]").InnerText.ReplaceEntities().Replace("\n", ""); ;
+                    var Actress = new List<string>();
+                    try
+                    {
+                        foreach (var Tags in temp.SelectNodes(@"//div[@class='panel']/a"))
+                        //foreach (var Tags in temp.SelectNodes(@"div/div/div[2]/div/div[2]"))
+                        {
+                            Actress.Add(Tags.InnerText.Replace("\n", ""));
+                        }
+                    }
+                    catch (NullReferenceException) { }
+                    catch (Exception)
+                    {
+                        Loger.Instance.LocalInfo($"Jav人名解析失败");
+                    }
+                    TempData.Actress = Actress.ToArray();
+                    TempData.Magnet = temp.SelectSingleNode("div/div/div[2]/div/a[1]").Attributes["href"].Value;
+                }
+            }
+            catch (Exception)
+            {
+            }
         }
 
         private static async Task Init()
@@ -113,9 +266,11 @@ namespace SpiderServerInLinux
             => Loger.Instance.LocalInfo("数据库初始化完毕")).
             ContinueWith(obj =>
             {
-                if (Setting._GlobalSet.AutoRun)
+                //Task.Run(() => DataBaseCommand.ChangeJavActress());
+                if (!Setting._GlobalSet.AutoRun)
                     Setting.DownloadManage = new DownloadManage();
                 else Loger.Instance.LocalInfo("自动运行关闭，等待命令");
+
                 /*var _controller = new ShadowsocksController();
                 _controller.Start();
                 using (var request = new HttpRequest())

@@ -109,10 +109,17 @@ namespace Shadowsocks.Controller
             {
                 if (!IPAddress.TryParse(domain, out IPAddress ip))
                 {
-                    domain = domain.Replace("http://", "").Replace("https://", "");
-                    IPHostEntry hostEntry = Dns.GetHostEntry(domain);
-                    IPEndPoint ipEndPoint = new IPEndPoint(hostEntry.AddressList[0], 0);
-                    return ipEndPoint.Address.ToString();
+                    try
+                    {
+                        domain = domain.Replace("http://", "").Replace("https://", "");
+                        IPHostEntry hostEntry = Dns.GetHostEntry(domain);
+                        IPEndPoint ipEndPoint = new IPEndPoint(hostEntry.AddressList[0], 0);
+                        return ipEndPoint.Address.ToString();
+                    }
+                    catch (Exception)
+                    {
+                        Loger.Instance.ServerInfo("SSR", $"获得服务器IP地址失败");
+                    }
                 }
                 return domain;
             }

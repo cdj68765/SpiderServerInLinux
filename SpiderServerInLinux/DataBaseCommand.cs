@@ -42,6 +42,9 @@ namespace SpiderServerInLinux
                     NyaaDB.EnsureIndex(x => x.id);
                     NyaaDB.EnsureIndex(x => x.Date);
                     NyaaDB.EnsureIndex(x => x.Size);
+                    var _Table = db.GetCollection("WebPage");
+                    _Table.EnsureIndex("_id", true);
+                    _Table.EnsureIndex("Status");
                     Loger.Instance.LocalInfo("创建JAV数据库成功");
                 }
                 else
@@ -87,6 +90,22 @@ namespace SpiderServerInLinux
                     return FindData;
                 }
                 return null;
+            }
+        }
+
+        internal static bool GetWebInfoFromNyaa(string Date)
+        {
+            using (var db = new LiteDatabase(@"Nyaa.db"))
+            {
+                var DateRecord = db.GetCollection<DateRecord>("DateRecord");
+                if (DateRecord.Exists(x => x._id == Date))
+                {
+                    if (DateRecord.FindOne(Dt => Dt._id == Date).Status)
+                    {
+                        return true;
+                    }
+                }
+                return false;
             }
         }
 
@@ -149,6 +168,63 @@ namespace SpiderServerInLinux
             return null;
         }
 
+        internal static BsonDocument GetWebInfoFromMiMi(string Code)
+        {
+            using (var db = new LiteDatabase(@"MiMi.db"))
+            {
+                var _Table = db.GetCollection("WebPage");
+                var F = _Table.Find(x => x["_id"] == Code);
+            }
+            return null;
+        }
+
+        internal static bool GetWebInfoFromJav(string Date)
+        {
+            using (var db = new LiteDatabase(@"Jav.db"))
+            {
+                var _Table = db.GetCollection("WebPage");
+                if (_Table.Exists(x => x["_id"] == Date))
+                {
+                    var Ret = _Table.FindOne(X => X["_id"] == Date);
+                    if (Ret["Status"] == "True")
+                    {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        internal static bool GetOrSaveWebInfoFromJav(string Code)
+        {
+            using (var db = new LiteDatabase(@"Jav.db"))
+            {
+                var _Table = db.GetCollection("WebPage");
+                if (_Table.Exists(x => x["_id"] == Code))
+                {
+                    var Ret = _Table.FindOne(X => X["_id"] == Code);
+                    if (Ret["Status"] == "True")
+                    {
+                        return true;
+                    }
+                    else
+                    {
+                        Ret["Status"] = bool.TrueString;
+                        _Table.Upsert(Ret);
+                    }
+                }
+                else
+                {
+                    _Table.Upsert(new BsonDocument
+                    {
+                        ["_id"] = Code,
+                        ["Status"] = bool.FalseString
+                    });
+                }
+            }
+            return false;
+        }
+
         #endregion 数据库查找
 
         #region 保存到数据库
@@ -185,6 +261,88 @@ namespace SpiderServerInLinux
             }
 
             Loger.Instance.WithTimeStop("数据库操作完毕", Time);
+        }
+
+        internal static void ChangeJavActress()
+        {
+            bool CompareChar(string c) => (char.Parse(c) >= 'A' && char.Parse(c) <= 'Z');
+            using (var db = new LiteDatabase(@"Jav.db"))
+            {
+                var JavDB = db.GetCollection<JavInfo>("JavDB");
+                {
+                    Loger.Instance.ServerInfo("Jav", $"启动命名切换");
+                    var DateNow = "";
+                    Stopwatch TimeCount = new Stopwatch();
+                    TimeCount.Start();
+                    // foreach (var item in JavDB.FindAll())
+                    foreach (var item in JavDB.Find(x => x.Date == "19-07-26"))
+                    {
+                        if (DateNow != item.Date)
+                        {
+                            if (!string.IsNullOrEmpty(DateNow))
+                            {
+                                Loger.Instance.ServerInfo("Jav", $"当前处理日期{DateNow},耗时{TimeCount.ElapsedMilliseconds / 1000}秒");
+                                TimeCount.Restart();
+                            }
+                            DateNow = item.Date;
+                        }
+                        if (item.Actress.Length == 1 && item.Actress[0] != null)
+                        {
+                            var SaveS = new List<string>();
+                            var TempS = new StringBuilder();
+                            foreach (var item1 in item.Actress[0].Replace(" ", "").Select(x => x.ToString()))
+                            {
+                                if (CompareChar(item1))
+                                {
+                                    if (TempS.Length != 0)
+                                        SaveS.Add(TempS.ToString());
+                                    TempS.Clear();
+                                    TempS.Append(item1);
+                                }
+                                else
+                                {
+                                    TempS.Append(item1);
+                                }
+                            }
+                            SaveS.Add(TempS.ToString());
+                            var SaveS2 = new List<string>();
+                            TempS.Clear();
+                            var Flag = false;//单个单词组合用
+                            foreach (var item2 in SaveS)
+                            {
+                                if (item2.Length > 1)
+                                {
+                                    if (Flag)
+                                    {
+                                        SaveS2.Add(TempS.ToString());
+                                        TempS.Clear();
+                                        Flag = false;
+                                    }
+                                    if (TempS.Length == 0)
+                                    {
+                                        TempS.Append(item2);
+                                    }
+                                    else
+                                    {
+                                        TempS.Append($" {item2}");
+                                        SaveS2.Add(TempS.ToString());
+                                        TempS.Clear();
+                                    }
+                                }
+                                else if (item2.Length == 1)
+                                {
+                                    TempS.Append(item2);
+                                    Flag = true;
+                                }
+                            }
+                            if (Flag && TempS.Length != 0)
+                            {
+                                SaveS2.Add(TempS.ToString());
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         internal static void SaveToDataBaseOneByOne(ICollection<NyaaInfo> Data, int Page, bool Mode = false)
@@ -228,8 +386,9 @@ namespace SpiderServerInLinux
                     JavDB.Insert(item2);
                     return false;
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
+                    Loger.Instance.LocalInfo($"Jav添加到数据库失败,失败原因{ex.Message}");
                 }
                 return false;
             }
@@ -357,9 +516,18 @@ namespace SpiderServerInLinux
                 if (!_Table.Exists(X => X["Uri"] == tempData[0]))
                 {
                     if (Check)
+                    {
                         _Table.Upsert(new BsonDocument { ["_id"] = DateTime.Parse(tempData[3]), ["Title"] = tempData[1], ["Uri"] = tempData[0], ["Status"] = bool.Parse(tempData[4]) });
+                        db.Dispose();
+                    }
                     return true;
                 }
+
+                if (Check)
+                {
+                    _Table.Upsert(new BsonDocument { ["_id"] = DateTime.Parse(tempData[3]), ["Title"] = tempData[1], ["Uri"] = tempData[0], ["Status"] = bool.Parse(tempData[4]) });
+                }
+
                 return false;
                 /*   else if (tempData.Length == 2)
                     {

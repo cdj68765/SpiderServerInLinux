@@ -14,8 +14,21 @@ namespace Client
     {
         private static AsyncWebSocketClient _client;
 
-        public static void Main(string[] args)
+        public static async Task Main(string[] args)
         {
+            await Task.Run(async () =>
+            {
+                var config = new AsyncWebSocketClientConfiguration();
+                var uri = new Uri("ws://127.0.0.1:1200/");
+                var _client = new AsyncWebSocketClient(uri,
+                                       OnServerTextReceived,
+                                       OnServerBinaryReceived,
+                                       OnServerConnected,
+                                       OnServerDisconnected,
+                                       config);
+                await _client.Connect();
+            });
+
             Application.Run(new Form1());
             return;
             Task.Run(async () =>
