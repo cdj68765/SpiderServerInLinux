@@ -466,18 +466,18 @@ namespace Cowboy.WebSockets
 
                                     default:
                                         {
-                                            // Incoming data MUST always be validated by both clients
-                                            // and servers. If, at any time, an endpoint is faced
-                                            // with data that it does not understand or that violates
-                                            // some criteria by which the endpoint determines safety
-                                            // of input, or when the endpoint sees an opening
-                                            // handshake that does not correspond to the values it is
-                                            // expecting (e.g., incorrect path or origin in the
-                                            // client request), the endpoint MAY drop the TCP
-                                            // connection. If the invalid data was received after a
-                                            // successful WebSocket handshake, the endpoint SHOULD
-                                            // send a Close frame with an appropriate status code
-                                            // (Section 7.4) before proceeding to _Close the
+                                            // Incoming data MUST always be validated by both
+                                            // clients and servers. If, at any time, an endpoint is
+                                            // faced with data that it does not understand or that
+                                            // violates some criteria by which the endpoint
+                                            // determines safety of input, or when the endpoint sees
+                                            // an opening handshake that does not correspond to the
+                                            // values it is expecting (e.g., incorrect path or
+                                            // origin in the client request), the endpoint MAY drop
+                                            // the TCP connection. If the invalid data was received
+                                            // after a successful WebSocket handshake, the endpoint
+                                            // SHOULD send a Close frame with an appropriate status
+                                            // code (Section 7.4) before proceeding to _Close the
                                             // WebSocket Connection_. Use of a Close frame with an
                                             // appropriate status code can help in diagnosing the
                                             // problem. If the invalid data is sent during the
@@ -683,9 +683,9 @@ namespace Cowboy.WebSockets
                     "Server received unfinished frame [{0}] from remote [{1}].", frameHeader.OpCode, RemoteEndPoint));
             }
 
-            // If an endpoint receives a Ping frame and has not yet sent Pong frame(s) in response to
-            // previous Ping frame(s), the endpoint MAY elect to send a Pong frame for only the most
-            // recently processed Ping frame.
+            // If an endpoint receives a Ping frame and has not yet sent Pong frame(s) in response
+            // to previous Ping frame(s), the endpoint MAY elect to send a Pong frame for only the
+            // most recently processed Ping frame.
             //
             // A Pong frame MAY be sent unsolicited. This serves as a unidirectional heartbeat. A
             // response to an unsolicited Pong frame is not expected.
@@ -777,9 +777,9 @@ namespace Cowboy.WebSockets
         {
             // The correct way to shut down the connection (especially if you are in a full-duplex
             // conversation) is to call socket.Shutdown(SocketShutdown.Send) and give the remote
-            // party some time to close their send channel. This ensures that you receive any pending
-            // data instead of slamming the connection shut. ObjectDisposedException should never be
-            // part of the normal application flow.
+            // party some time to close their send channel. This ensures that you receive any
+            // pending data instead of slamming the connection shut. ObjectDisposedException should
+            // never be part of the normal application flow.
             if (_tcpClient != null && _tcpClient.Connected)
             {
                 _tcpClient.Client.Shutdown(SocketShutdown.Send);
@@ -868,8 +868,8 @@ namespace Cowboy.WebSockets
             // connection closed and MUST close the underlying TCP connection. The server MUST close
             // the underlying TCP connection immediately; the client SHOULD wait for the server to
             // close the connection but MAY close the connection at any time after sending and
-            // receiving a Close message, e.g., if it has not received a TCP Close from the server in
-            // a reasonable time period.
+            // receiving a Close message, e.g., if it has not received a TCP Close from the server
+            // in a reasonable time period.
             InfoEvent.CowbotEvent.Message = string.Format("Session [{0}] closing timer timeout [{1}] then close automatically.", this, CloseTimeout);
             await InternalClose(true); // close timeout
         }
@@ -995,19 +995,17 @@ namespace Cowboy.WebSockets
             {
                 throw new ArgumentNullException("frame");
             }
-            if (State != WebSocketState.Open)
+            if (State == WebSocketState.Open)
             {
-                throw new InvalidOperationException("This websocket session has not connected.");
-            }
-
-            try
-            {
-                await _stream.WriteAsync(frame, 0, frame.Length);
-                _keepAliveTracker.OnDataSent();
-            }
-            catch (Exception ex)
-            {
-                await HandleSendOperationException(ex);
+                try
+                {
+                    await _stream.WriteAsync(frame, 0, frame.Length);
+                    _keepAliveTracker.OnDataSent();
+                }
+                catch (Exception ex)
+                {
+                    await HandleSendOperationException(ex);
+                }
             }
         }
 
@@ -1078,8 +1076,8 @@ namespace Cowboy.WebSockets
 
             // Note that the order of extensions is significant. Any interactions between multiple
             // extensions MAY be defined in the documents defining the extensions. In the absence of
-            // such definitions, the interpretation is that the header fields listed by the client in
-            // its request represent a preference of the header fields it wishes to use, with the
+            // such definitions, the interpretation is that the header fields listed by the client
+            // in its request represent a preference of the header fields it wishes to use, with the
             // first options listed being most preferable. The extensions listed by the server in
             // response represent the extensions actually in use for the connection. Should the
             // extensions modify the data and/or framing, the order of operations on the data should
@@ -1119,9 +1117,9 @@ namespace Cowboy.WebSockets
             }
 
             // A server MUST NOT accept a PMCE extension negotiation offer together with another
-            // extension if the PMCE will conflict with the extension on their use of the RSV1 bit. A
-            // client that received a response accepting a PMCE extension negotiation offer together
-            // with such an extension MUST _Fail the WebSocket Connection_.
+            // extension if the PMCE will conflict with the extension on their use of the RSV1 bit.
+            // A client that received a response accepting a PMCE extension negotiation offer
+            // together with such an extension MUST _Fail the WebSocket Connection_.
             bool isRsv1BitOccupied = false;
             bool isRsv2BitOccupied = false;
             bool isRsv3BitOccupied = false;

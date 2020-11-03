@@ -531,7 +531,7 @@ namespace Shadowsocks.Model
 
         public void AddUploadBytes(int bytes, DateTime now, bool updateMaxTrans)
         {
-            Setting._GlobalSet.totalUploadBytes += bytes;
+            //Setting._GlobalSet.totalUploadBytes += bytes;
             return;
             lock (this)
             {
@@ -542,7 +542,7 @@ namespace Shadowsocks.Model
 
         public void AddDownloadBytes(int bytes, DateTime now, bool updateMaxTrans)
         {
-            Setting._GlobalSet.totalDownloadBytes += bytes;
+            // Setting._GlobalSet.totalDownloadBytes += bytes;
             return;
             lock (this)
             {

@@ -1,5 +1,6 @@
 ﻿using Cowboy.WebSockets;
 using System;
+using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Net.Sockets;
@@ -16,18 +17,18 @@ namespace Client
 
         public static async Task Main(string[] args)
         {
-            await Task.Run(async () =>
-            {
-                var config = new AsyncWebSocketClientConfiguration();
-                var uri = new Uri("ws://127.0.0.1:1200/");
-                var _client = new AsyncWebSocketClient(uri,
-                                       OnServerTextReceived,
-                                       OnServerBinaryReceived,
-                                       OnServerConnected,
-                                       OnServerDisconnected,
-                                       config);
-                await _client.Connect();
-            });
+            /* await Task.Run(async () =>
+             {
+                 var config = new AsyncWebSocketClientConfiguration();
+                 var uri = new Uri("ws://127.0.0.1:2222/Online");
+                 var _client = new AsyncWebSocketClient(uri,
+                                        OnServerTextReceived,
+                                        OnServerBinaryReceived,
+                                        OnServerConnected,
+                                        OnServerDisconnected,
+                                        config);
+                 await _client.Connect();
+             });*/
 
             Application.Run(new Form1());
             return;

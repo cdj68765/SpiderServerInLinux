@@ -10,5 +10,6 @@ namespace Client
     internal class Class1
     {
         internal static Form1 MainForm;
+        internal static OnlineOpera OnlineOpera;
     }
 }

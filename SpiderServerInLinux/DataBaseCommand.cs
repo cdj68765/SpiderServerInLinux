@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
@@ -10,71 +11,115 @@ namespace SpiderServerInLinux
 {
     internal static class DataBaseCommand
     {
-        internal static void InitNyaaDataBase()
+        internal static void InitDataBase()
         {
-            using (var db = new LiteDatabase(@"Nyaa.db"))
+            void InitNyaaDataBase()
             {
-                if (!db.CollectionExists("NyaaDB"))
+                using (var db = new LiteDatabase(@"Nyaa.db"))
                 {
-                    Loger.Instance.LocalInfo("正在创建Nyaa数据库");
-                    var NyaaDB = db.GetCollection<NyaaInfo>("NyaaDB");
-                    NyaaDB.EnsureIndex(x => x.Catagory);
-                    NyaaDB.EnsureIndex(x => x.Date);
-                    NyaaDB.EnsureIndex(x => x.id);
-                    // NyaaDB.EnsureIndex(x => x.Title);
-                    Loger.Instance.LocalInfo("创建Nyaa数据库成功");
-                }
-                else
-                {
-                    Loger.Instance.LocalInfo("打开Nyaa数据库正常");
+                    if (!db.CollectionExists("NyaaDB"))
+                    {
+                        Loger.Instance.LocalInfo("正在创建Nyaa数据库");
+                        var NyaaDB = db.GetCollection<NyaaInfo>("NyaaDB");
+                        NyaaDB.EnsureIndex(x => x.Catagory);
+                        NyaaDB.EnsureIndex(x => x.Date);
+                        NyaaDB.EnsureIndex(x => x.id);
+                        // NyaaDB.EnsureIndex(x => x.Title);
+                        Loger.Instance.LocalInfo("创建Nyaa数据库成功");
+                    }
+                    else
+                    {
+                        Loger.Instance.LocalInfo("打开Nyaa数据库正常");
+                    }
                 }
             }
-        }
+            void InitJavDataBase()
+            {
+                using (var db = new LiteDatabase(@"Jav.db"))
+                {
+                    if (!db.CollectionExists("JavDB"))
+                    {
+                        Loger.Instance.LocalInfo("创建JavDB数据库");
+                        var NyaaDB = db.GetCollection<JavInfo>("JavDB");
+                        NyaaDB.EnsureIndex(x => x.id);
+                        NyaaDB.EnsureIndex(x => x.Date);
+                        NyaaDB.EnsureIndex(x => x.Size);
+                        var _Table = db.GetCollection("WebPage");
+                        _Table.EnsureIndex("_id", true);
+                        _Table.EnsureIndex("Status");
+                        Loger.Instance.LocalInfo("创建JAV数据库成功");
+                    }
+                    else
+                    {
+                        Loger.Instance.LocalInfo("打开Jav数据库正常");
+                    }
+                }
+            }
+            void InitMiMiAiDataBase()
+            {
+                using (var db = new LiteDatabase(@"MiMi.db"))
+                {
+                    if (!db.CollectionExists("MiMiDB"))
+                    {
+                        Loger.Instance.LocalInfo("创建MiMiAi数据库");
+                        var MiMiDB = db.GetCollection<MiMiAiData>("MiMiDB");
+                        MiMiDB.EnsureIndex(x => x.Title);
+                        MiMiDB.EnsureIndex(x => x.Date);
+                        var _Table = db.GetCollection("WebPage");
+                        _Table.EnsureIndex("_id", true);
+                        _Table.EnsureIndex("Uri", true);
+                        _Table.EnsureIndex("Status");
+                        Loger.Instance.LocalInfo("创建MiMiAi数据库成功");
+                    }
+                    else
+                    {
+                        Loger.Instance.LocalInfo("打开MiMiAi数据库正常");
+                    }
+                }
+            }
+            void InitMiMiAiStoryDataBase()
+            {
+                using (var db = new LiteDatabase(@"MiMi.db"))
+                {
+                    if (!db.CollectionExists("MiMiStory"))
+                    {
+                        Loger.Instance.LocalInfo("创建MiMiAi小说数据库");
+                        var MiMiDB = db.GetCollection<MiMiAiStory>("MiMiStory");
+                        MiMiDB.EnsureIndex(x => x.Title);
+                        MiMiDB.EnsureIndex(x => x.Uri);
 
-        internal static void InitJavDataBase()
-        {
-            using (var db = new LiteDatabase(@"Jav.db"))
-            {
-                if (!db.CollectionExists("JavDB"))
-                {
-                    Loger.Instance.LocalInfo("创建JavDB数据库");
-                    var NyaaDB = db.GetCollection<JavInfo>("JavDB");
-                    NyaaDB.EnsureIndex(x => x.id);
-                    NyaaDB.EnsureIndex(x => x.Date);
-                    NyaaDB.EnsureIndex(x => x.Size);
-                    var _Table = db.GetCollection("WebPage");
-                    _Table.EnsureIndex("_id", true);
-                    _Table.EnsureIndex("Status");
-                    Loger.Instance.LocalInfo("创建JAV数据库成功");
-                }
-                else
-                {
-                    Loger.Instance.LocalInfo("打开Jav数据库正常");
+                        Loger.Instance.LocalInfo("创建MiMiAi小说数据库成功");
+                    }
+                    else
+                    {
+                        Loger.Instance.LocalInfo("打开MiMiAi小说数据库正常");
+                    }
                 }
             }
-        }
-
-        internal static void InitMiMiAiDataBase()
-        {
-            using (var db = new LiteDatabase(@"MiMi.db"))
+            void InitT66yDataBase()
             {
-                if (!db.CollectionExists("MiMiDB"))
+                using (var db = new LiteDatabase(@"T66y.db"))
                 {
-                    Loger.Instance.LocalInfo("创建MiMiAi数据库数据库");
-                    var MiMiDB = db.GetCollection<MiMiAiData>("MiMiDB");
-                    MiMiDB.EnsureIndex(x => x.Title);
-                    MiMiDB.EnsureIndex(x => x.Date);
-                    var _Table = db.GetCollection("WebPage");
-                    _Table.EnsureIndex("_id", true);
-                    _Table.EnsureIndex("Uri", true);
-                    _Table.EnsureIndex("Status");
-                    Loger.Instance.LocalInfo("创建MiMiAi数据库成功");
-                }
-                else
-                {
-                    Loger.Instance.LocalInfo("打开MiMiAi数据库正常");
+                    if (!db.CollectionExists("T66y"))
+                    {
+                        Loger.Instance.LocalInfo("创建T66y数据库");
+                        var MiMiDB = db.GetCollection<T66yData>("T66yData");
+                        MiMiDB.EnsureIndex(x => x.Title);
+                        MiMiDB.EnsureIndex(x => x.Uri);
+                        MiMiDB.EnsureIndex(x => x.Date);
+                        Loger.Instance.LocalInfo("创建T66y数据库成功");
+                    }
+                    else
+                    {
+                        Loger.Instance.LocalInfo("打开T66y数据库正常");
+                    }
                 }
             }
+            InitNyaaDataBase();
+            InitJavDataBase();
+            InitMiMiAiDataBase();
+            InitMiMiAiStoryDataBase();
+            InitT66yDataBase();
         }
 
         #region 从数据库读取
@@ -146,7 +191,7 @@ namespace SpiderServerInLinux
             }
         }
 
-        internal static dynamic GetDataFromMiMi(string Code)
+        internal static dynamic GetDataFromMiMi(string Code, Cowboy.WebSockets.AsyncWebSocketSession session = null, params string[] Data)
         {
             using (var db = new LiteDatabase(@"MiMi.db"))
             {
@@ -154,18 +199,72 @@ namespace SpiderServerInLinux
                 {
                     case "TabletInfo":
                         {
-                            var _Table = db.GetCollection("WebPage");
-                            return _Table.FindOne(Query.And(Query.All("_id", Query.Descending), Query.EQ("Status", false)));
+                            // var _Table = db.GetCollection("WebPage");
+                            // return _Table.FindOne(Query.And(Query.All("_id", Query.Descending), Query.EQ("Status", false)));
                             //return _Table.FindOne(x => x["Status"] == false);
                         }
+                        break;
+
                     case "UnitInfo":
                         {
-                            var _Table = db.GetCollection<MiMiAiData>("MiMiDB");
-                            return _Table.FindOne(Query.And(Query.All("Date", Query.Descending), Query.EQ("Status", false)));
+                            //var _Table = db.GetCollection<MiMiAiData>("MiMiDB");
+                            // return _Table.FindOne(Query.And(Query.All("Date", Query.Descending), Query.EQ("Status", false)));
                         }
+                        break;
+
+                    case "CheckMiMiStoryLastPage":
+                        {
+                            var _Table = db.GetCollection<MiMiAiStory>("MiMiStory");
+                            return _Table.Exists(X => X.id == 140503);
+                        }
+                        break;
+
+                    case "GetNullStory":
+                        {
+                            Task.Factory.StartNew(async () =>
+                            {
+                                try
+                                {
+                                    var _Table = db.GetCollection<MiMiAiStory>("MiMiStory");
+                                    var Time = new Stopwatch();
+                                    Time.Start();
+                                    var Search = _Table.Find(x => string.IsNullOrEmpty(x.Story));
+                                    Loger.Instance.ServerInfo("主机", $"搜索MiMiStory完毕{Time.ElapsedMilliseconds}ms");
+                                    // Loger.Instance.ServerInfo("数据库", $"搜索GetNullStory命令返回结果{Search.Count()}条");
+                                    foreach (var item in Search)
+                                    {
+                                        await session.SendBinaryAsync(item.ToByte());
+                                    }
+                                }
+                                catch (Exception)
+                                {
+                                }
+                            });
+                        }
+                        break;
+
+                    case "GetStory":
+                        {
+                            Task.Factory.StartNew(async () =>
+                            {
+                                var _Table = db.GetCollection<MiMiAiStory>("MiMiStory");
+                                var Time = new Stopwatch();
+                                Time.Start();
+                                var Search = _Table.Find(x => x.Story.Contains(Data[0]));
+                                if (Data[0] == "*")
+                                    Search = _Table.FindAll();
+                                Loger.Instance.ServerInfo("主机", $"搜索MiMiStory完毕{Time.ElapsedMilliseconds}ms");
+                                // Loger.Instance.ServerInfo("数据库", $"搜索GetNullStory命令返回结果{Search.Count()}条");
+                                foreach (var item in Search)
+                                {
+                                    await session.SendBinaryAsync(item.ToByte());
+                                }
+                            });
+                        }
+                        break;
                 }
             }
-            return null;
+            return Task.CompletedTask;
         }
 
         internal static BsonDocument GetWebInfoFromMiMi(string Code)
@@ -508,26 +607,31 @@ namespace SpiderServerInLinux
             }
         }
 
-        internal static bool SaveToMiMiDataTablet(string[] tempData, bool Check = true)
+        internal static bool SaveToMiMiDataTablet(string[] tempData, bool UseSave = true)
         {
             using (var db = new LiteDatabase(@"MiMi.db"))
             {
                 var _Table = db.GetCollection("WebPage");
-                if (!_Table.Exists(X => X["Uri"] == tempData[0]))
+                if (!_Table.Exists(X => X["Uri"] == tempData[0]))//以链接检查是否存在，不存在则进入
                 {
-                    if (Check)
+                    if (UseSave)
                     {
                         _Table.Upsert(new BsonDocument { ["_id"] = DateTime.Parse(tempData[3]), ["Title"] = tempData[1], ["Uri"] = tempData[0], ["Status"] = bool.Parse(tempData[4]) });
                         db.Dispose();
                     }
-                    return true;
+
+                    return true;//返回True表示不存在 要添加
                 }
 
-                if (Check)
+                if (UseSave)
                 {
                     _Table.Upsert(new BsonDocument { ["_id"] = DateTime.Parse(tempData[3]), ["Title"] = tempData[1], ["Uri"] = tempData[0], ["Status"] = bool.Parse(tempData[4]) });
                 }
-
+                var Date = DateTime.Parse(tempData[3]).ToString("yyyy-MM-dd");
+                var MiMiDb = db.GetCollection<MiMiAiData>("MiMiDB");
+                var Find = MiMiDb.FindOne(x => x.Date == Date);
+                if (Find == null) return true;
+                if (Find.InfoList.Count == 0) return true;
                 return false;
                 /*   else if (tempData.Length == 2)
                     {
@@ -575,6 +679,80 @@ namespace SpiderServerInLinux
                     }
                 }
                 db.Dispose();
+            }
+        }
+
+        internal static bool SaveToMiMiStoryDataUnit(ICollection<MiMiAiStory> Data = null, MiMiAiStory UnitData = null)
+        {
+            using (var db = new LiteDatabase(@"MiMi.db"))
+            {
+                var MiMiDb = db.GetCollection<MiMiAiStory>("MiMiStory");
+                if (UnitData != null)
+                {
+                    return MiMiDb.Upsert(UnitData);
+                }
+                else
+                {
+                    try
+                    {
+                        MiMiDb.InsertBulk(Data);
+                        return true;
+                    }
+                    catch (LiteException e)
+                    {
+                        Loger.Instance.LocalInfo("集群添加失败，转入单独添加");
+                        foreach (var VARIABLE in Data)
+                        {
+                            try
+                            {
+                                MiMiDb.Upsert(VARIABLE);
+                            }
+                            catch (LiteException ex)
+                            {
+                                Loger.Instance.LocalInfo($"单独添加失败失败原因{ex.Message}");
+                            }
+                        }
+                        return false;
+                    }
+                }
+
+                db.Dispose();
+            }
+        }
+
+        internal static bool SaveToT66yDataUnit(ICollection<T66yData> Data = null, T66yData UnitData = null)
+        {
+            using (var db = new LiteDatabase(@"T66y.db"))
+            {
+                var T66yDb = db.GetCollection<T66yData>("T66yData");
+                if (UnitData != null)
+                {
+                    return T66yDb.Upsert(UnitData);
+                }
+                else
+                {
+                    try
+                    {
+                        T66yDb.InsertBulk(Data);
+                        return true;
+                    }
+                    catch (LiteException e)
+                    {
+                        Loger.Instance.LocalInfo("集群添加失败，转入单独添加");
+                        foreach (var VARIABLE in Data)
+                        {
+                            try
+                            {
+                                T66yDb.Upsert(VARIABLE);
+                            }
+                            catch (LiteException ex)
+                            {
+                                Loger.Instance.LocalInfo($"单独添加失败失败原因{ex.Message}");
+                            }
+                        }
+                        return false;
+                    }
+                }
             }
         }
 

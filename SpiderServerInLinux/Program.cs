@@ -1,13 +1,19 @@
 ﻿using Cowboy.WebSockets;
 using HtmlAgilityPack;
+using LiteDB;
 using Shadowsocks.Controller;
 using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.ComponentModel;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net;
 using System.Reflection;
+using System.Runtime.Serialization;
+using System.Runtime.Serialization.Formatters.Binary;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -20,7 +26,58 @@ namespace SpiderServerInLinux
     {
         private static async Task<int> Main(string[] args)
         {
+            Directory.SetCurrentDirectory(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location));
+            Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+
+            using var request = new HttpRequest()
+            {
+                UserAgent = Http.ChromeUserAgent(),
+                ConnectTimeout = 1000,
+                CharacterSet = Encoding.GetEncoding("GBK"),
+                AllowAutoRedirect = true
+            };
+
+            request.Proxy = Socks5ProxyClient.Parse($"127.0.0.1:7070");
+
+            var HtmlDoc = new HtmlDocument();
+            HtmlDoc.Load(new FileStream("Html", System.IO.FileMode.Open), Encoding.GetEncoding("GBK"));
+            int year = 0;
+            int Month = 0;
+            foreach (var item in HtmlDoc.DocumentNode.SelectNodes(@"/html/body/div[2]/div[2]/table[1]/tbody[1]/tr").Reverse())
+            {
+                if (string.IsNullOrEmpty(item.InnerHtml)) continue;
+                if (item.InnerLength < 50)
+                    continue;
+                if (item.Attributes["class"].Value == "tr3 t_one tac" && item.SelectSingleNode("td[1]").InnerHtml.Contains(".::"))
+                {
+                    var temp = HtmlNode.CreateNode(item.OuterHtml);
+                    var Url = temp.SelectSingleNode("td[2]/h3/a").Attributes["href"].Value;
+                    if (Url.StartsWith("htm"))
+                    {
+                        var UrlS = Url.Replace("htm_data", "").Replace(".html", "").Split('/');
+                        year = int.Parse(UrlS[1]);
+                        Month = int.Parse(UrlS[2]);
+                    }
+                    else
+                    {
+                        Url = $"htm_data/{year}/{Month}/{Url.Split('=')[1]}.html";
+                        // HttpResponse response = request.Get($"http://t66y.com/{Url}");
+                        HttpResponse response = request.Get($"http://t66y.com/htm_data/2011/25/4165230.html");
+                        var RetS = response.ToString();
+                        Console.WriteLine();
+                    }
+                    var TempData = new string[]
+                    {
+                        Url,
+                        temp.SelectSingleNode("td[2]/h3/a").InnerHtml,
+                        temp.SelectSingleNode("td[3]/div/span").Attributes["title"].Value.Split(' ')[2],
+                        bool.FalseString
+                    };
+                }
+            }
+
             Setting._GlobalSet = GlobalSet.Open();
+
             if (args.Length != 0 && !string.IsNullOrEmpty(args[0]))
             {
                 Setting._GlobalSet.ssr_url = args[0].ToString();
@@ -231,11 +288,9 @@ namespace SpiderServerInLinux
 
         private static async Task Init()
         {
-            Directory.SetCurrentDirectory(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location));
-            Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
             AppDomain.CurrentDomain.ProcessExit += delegate
             {
-                Setting.DownloadManage.Dispose();
+                Setting.DownloadManage?.Dispose();
                 Console.Clear();
                 Console.WriteLine("程序退出");
             };
@@ -244,10 +299,9 @@ namespace SpiderServerInLinux
                 Console.Clear();
                 Console.WriteLine("程序异常");
             };
-            TaskScheduler.UnobservedTaskException += delegate
+            TaskScheduler.UnobservedTaskException += (s, e) =>
             {
-                Console.Clear();
-                Console.WriteLine("线程异常");
+                Loger.Instance.ServerInfo("主机", "线程异常");
             };
             await InitCoreAsync().ConfigureAwait(false);
         }
@@ -255,21 +309,36 @@ namespace SpiderServerInLinux
         private static async Task InitCoreAsync()
         {
             await Task.WhenAll(
-            Task.Run(() => DataBaseCommand.InitNyaaDataBase()),
-            Task.Run(() => DataBaseCommand.InitJavDataBase()),
-            Task.Run(() => DataBaseCommand.InitMiMiAiDataBase()),
+            Task.Run(() => DataBaseCommand.InitDataBase()),
             Task.Run(() =>
             {
-                if (Setting._GlobalSet.SocksCheck) Setting.SSR = new ShadowsocksController();
+                Setting.SSR = new ShadowsocksController();
+                Setting.Socks5Point = Setting.SSR.SocksPort;
+                Setting.SSR.CheckOnline();
+                Setting.NyaaSSR = new ShadowsocksController(Setting._GlobalSet.ssr4Nyaa);
+                Setting.NyaaSocks5Point = Setting.NyaaSSR.SocksPort;
+                Setting.NyaaSSR.CheckOnline(@"https://sukebei.nyaa.si/");
             }),
             Task.Run(() => Setting.server = new server())).ContinueWith(obj
             => Loger.Instance.LocalInfo("数据库初始化完毕")).
             ContinueWith(obj =>
             {
+                /*if (Setting.CheckOnline(Setting._GlobalSet.SocksCheck))
+                {
+                    Loger.Instance.LocalInfo("网络连接正常，正在加载下载进程");
+                }
+                else
+                {
+                    Loger.Instance.LocalInfo("外网访问失败，等待操作");
+                }*/
+                /* while (true)
+                 {
+                     Thread.Sleep(100);
+                     Loger.Instance.LocalInfo("Text");
+                     Loger.Instance.ServerInfo("", "Text");
+                 }*/
                 //Task.Run(() => DataBaseCommand.ChangeJavActress());
-                if (!Setting._GlobalSet.AutoRun)
-                    Setting.DownloadManage = new DownloadManage();
-                else Loger.Instance.LocalInfo("自动运行关闭，等待命令");
+                if (Setting._GlobalSet.AutoRun) Setting.DownloadManage = new DownloadManage(); else Loger.Instance.LocalInfo("自动运行关闭，等待命令");
 
                 /*var _controller = new ShadowsocksController();
                 _controller.Start();

@@ -4,153 +4,123 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
+using System.Windows.Forms;
 
 namespace Client
 {
-    [Serializable]
-    internal class GlobalSet
-    {
-        private string _NyaaAddress;
-        private string _JavAddress;
-        private int _NyaaLastPageIndex;
-        private int _JavLastPageIndex;
-        private int _ConnectPoint;
-        private int _Socks5Point;
-        private bool _SocksCheck = false;
-        internal string NyaaAddress { get { return _NyaaAddress; } set { _NyaaAddress = value; } }
-        internal string JavAddress { get { return _JavAddress; } set { _JavAddress = value; } }
-        internal int NyaaLastPageIndex { get { return _NyaaLastPageIndex; } }
-        internal int JavLastPageIndex { get { return _JavLastPageIndex; } }
-        internal int ConnectPoint { get { return _ConnectPoint; } set { _ConnectPoint = value; } }
-        internal int Socks5Point { get { return _Socks5Point; } set { _Socks5Point = value; } }
-        internal bool SocksCheck { get { return _SocksCheck; } set { _SocksCheck = value; } }
-
-        internal GlobalSet()
-        {
-        }
-
-        internal GlobalSet Open(byte[] Data)
-        {
-            using (Stream stream = new MemoryStream(Data))
-            {
-                IFormatter Formatter = new BinaryFormatter();
-                Formatter.Binder = new UBinder();
-                return (GlobalSet)Formatter.Deserialize(stream);
-            }
-        }
-
-        internal void Save(server _server)
-        {
-            if (_server?._client.State == WebSocketState.Open)
-            {
-                using (MemoryStream stream = new MemoryStream())
-                {
-                    IFormatter Fileformatter = new BinaryFormatter();
-                    Fileformatter.Serialize(stream, this);
-                    _server._client.SendBinaryAsync(stream.ToArray());
-                    Class1.MainForm.ShowStatus("配置发送完毕");
-                }
-            }
-            else
-            {
-                Class1.MainForm.ShowStatus("服务器连接错误，发送失败");
-            }
-        }
-
-        public class UBinder : SerializationBinder
-        {
-            public override Type BindToType(string assemblyName, string typeName)
-            {
-                if (typeName.EndsWith("GlobalSet"))
-                {
-                    return typeof(GlobalSet);
-                }
-                return (Assembly.GetExecutingAssembly()).GetType(typeName);
-            }
-        }
-    }
-
     internal class server : IDisposable
     {
         internal AsyncWebSocketClient _client;
+
+        //internal AsyncWebSocketClient _setclient;
 
         internal server(string IP, string Point)
         {
             Task.Factory.StartNew(async () =>
             {
-                var uri = new Uri($"ws://{IP}:{Point}/");
-                _client = new AsyncWebSocketClient(uri, new ServerDateOperation());
+                var Online = new Uri($"ws://{IP}:{Point}/Online");
+                _client = new AsyncWebSocketClient(Online, new ServerDateOperation());
                 await _client.Connect();
             });
-
-            /* Task.Factory.StartNew(async () =>
-             {
-                 try
-                 {
-                     var uri = new Uri($"ws://{IP}:{Point}/");
-                     _client = new AsyncWebSocketClient(uri, new ServerDateOperation());
-                     await _client.Connect();
-                     if (_client.State == WebSocketState.Open)
-                     {
-                         Class1.MainForm.Connecting(true);
-                         return;
-                     }
-                 }
-                 catch (Exception ex)
-                 {
-                     Class1.MainForm.ShowStatus(ex.ToString());
-                     Class1.MainForm.Connecting(false);
-                 }
-             });*/
         }
 
-        internal void Connect3Set()
+        internal Task Connect3Set()
         {
             Task.Factory.StartNew(async () =>
             {
                 var uri = new Uri($"ws://{Settings.Default.ip}:{Settings.Default.point}/Data");
                 var client = new AsyncWebSocketClient(uri, new ServerDataBaseOperation());
                 await client.Connect();
-                await client.SendTextAsync("Get");
+                await client.SendTextAsync("GetNullStory");
             });
+            return Task.CompletedTask;
         }
 
-        internal void Connect2Set()
+        internal Task Connect2SetAsync(string v)
         {
-            Task.Factory.StartNew(async () =>
+            ThreadPool.QueueUserWorkItem(async (object state) =>
             {
-                var uri = new Uri($"ws://{Settings.Default.ip}:{Settings.Default.point}/set");
-                var client = new AsyncWebSocketClient(uri, (c, s) =>
-                {
-                    Console.WriteLine();
-                    return Task.CompletedTask;
-                }, (c, a, b, d) =>
-                {
-                    Console.WriteLine();
-                    return Task.CompletedTask;
-                }, null, null, null);
-                await client.Connect();
+                var seturi = new Uri($"ws://{Settings.Default.ip}:{Settings.Default.point}/set");
+                using var _setclient = new AsyncWebSocketClient(seturi, null, null, null, null, null);
+                //_setclient = new AsyncWebSocketClient(seturi, new ServerDataBaseOperation());
+                await _setclient.Connect();
+                await _setclient.SendTextAsync(v);
             });
+            return Task.CompletedTask;
         }
 
-        public void Dispose()
+        public async void Dispose()
         {
-            _client.Close(WebSocketCloseCode.NormalClosure);
+            await _client.Close(WebSocketCloseCode.NormalClosure);
             _client.Dispose();
+        }
+    }
+
+    [Serializable]
+    internal class MiMiAiStory
+    {
+        public int id { get; set; }
+        public string Uri { get; set; }
+        public string Title { get; set; }
+        public string Story { get; set; }
+        public byte[] Data { get; set; }
+
+        public byte[] ToByte()
+        {
+            using var stream = new MemoryStream();
+            IFormatter Fileformatter = new BinaryFormatter();
+            Fileformatter.Serialize(stream, this);
+            return stream.ToArray();
+        }
+
+        public static MiMiAiStory ToClass(byte[] data)
+        {
+            using var stream = new MemoryStream(data);
+            IFormatter Fileformatter = new BinaryFormatter();
+            Fileformatter.Binder = new UBinder();
+            return Fileformatter.Deserialize(stream) as MiMiAiStory;
+        }
+
+        public class UBinder : SerializationBinder
+        {
+            public override Type BindToType(string assemblyName, string typeName)
+            {
+                if (typeName.EndsWith("MiMiAiStory"))
+                {
+                    return typeof(MiMiAiStory);
+                }
+                return (Assembly.GetExecutingAssembly()).GetType(typeName);
+            }
         }
     }
 
     internal class ServerDataBaseOperation : IAsyncWebSocketClientMessageDispatcher
     {
-        public Task OnServerBinaryReceived(AsyncWebSocketClient client, byte[] data, int offset, int count)
+        public async Task OnServerBinaryReceived(AsyncWebSocketClient client, byte[] data, int offset, int count)
         {
-            File.WriteAllBytes("jav.db", data);
-            return Task.CompletedTask;
+            //File.WriteAllBytes("jav.db", data);
+            var New = MiMiAiStory.ToClass(data);
+            await client.SendTextAsync("SetMiMiAiStory");
+            var _HtmlDoc = new HtmlAgilityPack.HtmlDocument();
+            var Text = Encoding.UTF8.GetString(New.Data);
+            _HtmlDoc.LoadHtml(Text);
+            Text = Text.Replace("<br>", "");
+            Text = Text.Replace("&nbsp;", "");
+            Text = Text.Replace("&quot;", "\"");
+            Text = Text.Replace("quot;", "\"");
+
+            Text = Text.Replace("\r\n\r\n", "\r\n");
+            Text = Text.Replace("\r\n", Environment.NewLine);
+            File.WriteAllText(@"C:\Users\cdj68\Desktop\无标题2.txt", Text);
+            //await client.SendBinaryAsync(New.ToByte());
         }
 
         public Task OnServerConnected(AsyncWebSocketClient client)
@@ -184,22 +154,89 @@ namespace Client
         }
     }
 
+    [Serializable]
+    public class OnlineOpera
+    {
+        internal string NyaaAddress;
+        internal string JavAddress;
+        internal string MiMiAiAddress;
+        internal string ssr_url;
+        internal string ssr4Nyaa;
+        internal string MiMiInterval;
+        internal string JavInterval;
+        internal string NyaaInterval;
+        internal string MiMiStoryInterval;
+        internal string Memory;
+        internal TimeSpan MiMiSpan;
+        internal TimeSpan JavSpan;
+        internal TimeSpan NyaaSpan;
+        internal TimeSpan MiMiStorySpan;
+
+        internal int ConnectPoint;
+        internal int SSRPoint;
+        internal int SocksPoint;
+        internal int NyaaSSRPoint;
+        internal int NyaaSocksPoint;
+        internal long TotalUploadBytes;
+        internal long TotalDownloadBytes;
+        internal List<string> LocalInfo;
+        internal List<string> RemoteInfo;
+        internal bool SocksCheck;
+        internal bool NyaaSocksCheck;
+
+        internal bool OnlyList = true;
+        internal bool AutoRun;
+
+        public static void Open(byte[] data)
+        {
+            var stream = new MemoryStream(data);
+            IFormatter Formatter = new BinaryFormatter();
+            Formatter.Binder = new UBinder();
+            Class1.OnlineOpera = Formatter.Deserialize(stream) as OnlineOpera;
+        }
+
+        public class UBinder : SerializationBinder
+        {
+            public override Type BindToType(string assemblyName, string typeName)
+            {
+                if (typeName.EndsWith("OnlineOpera"))
+                {
+                    return typeof(OnlineOpera);
+                }
+                return (Assembly.GetExecutingAssembly()).GetType(typeName);
+            }
+        }
+    }
+
     public class ServerDateOperation : IAsyncWebSocketClientMessageDispatcher
     {
         public Task OnServerBinaryReceived(AsyncWebSocketClient client, byte[] data, int offset, int count)
         {
             //Class1.MainForm.Init(new GlobalSet().Open(data));
+            OnlineOpera.Open(data);
+            Class1.MainForm.Invoke(new MethodInvoker(() =>
+            {
+                Class1.MainForm.UpdateUI();
+            }));
             return Task.CompletedTask;
         }
 
         public Task OnServerConnected(AsyncWebSocketClient client)
         {
+            ThreadPool.QueueUserWorkItem(async (object state) =>
+            {
+                while (client.State != WebSocketState.Closed)
+                {
+                    Thread.Sleep(1000);
+                    if (client.State == WebSocketState.Open)
+                        await client.SendTextAsync("GetStatus");
+                }
+            });
             return Task.CompletedTask;
         }
 
         public Task OnServerDisconnected(AsyncWebSocketClient client)
         {
-            Class1.MainForm.Connecting(false);
             return Task.CompletedTask;
         }
 

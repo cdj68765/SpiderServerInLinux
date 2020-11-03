@@ -139,14 +139,18 @@ namespace SpiderServerInLinux
                     case "TabletInfo":
                         {
                             var _Table = db.GetCollection("WebPage");
-                            return _Table.FindOne(Query.And(Query.All("_id", Query.Descending), Query.EQ("Status", false)));
+                            // return _Table.FindOne(Query.And(Query.All("_id", Query.Descending), Query.EQ("Status", false)));
                             //return _Table.FindOne(x => x["Status"] == false);
                         }
+                        break;
+
                     case "UnitInfo":
                         {
                             var _Table = db.GetCollection<MiMiAiData>("MiMiDB");
-                            return _Table.FindOne(Query.And(Query.All("Date", Query.Descending), Query.EQ("Status", false)));
+                            // return _Table.FindOne(Query.And(Query.All("Date", Query.Descending),
+                            // Query.EQ("Status", false)));
                         }
+                        break;
                 }
             }
             return null;

@@ -24,8 +24,8 @@ namespace xNet
         }
 
         // Данный класс используется для загрузки начальных данных. Но он также используется и для
-        // загрузки тела сообщения, точнее, из него просто выгружается остаток данных, полученный при
-        // загрузки начальных данных.
+        // загрузки тела сообщения, точнее, из него просто выгружается остаток данных, полученный
+        // при загрузки начальных данных.
         private sealed class ReceiverHelper
         {
             private const int InitialLineSize = 1000;
@@ -767,8 +767,8 @@ namespace xNet
         /// Загружает тело сообщения и возвращает его в виде потока байтов из памяти.
         /// </summary>
         /// <returns>
-        /// Если тело сообщения отсутствует, или оно уже было загружено, то будет возвращено значение
-        /// <see langword="null"/>.
+        /// Если тело сообщения отсутствует, или оно уже было загружено, то будет возвращено
+        /// значение <see langword="null"/>.
         /// </returns>
         /// <exception cref="System.InvalidOperationException">Вызов метода из ошибочного ответа.</exception>
         /// <exception cref="xNet.Net.HttpException">Ошибка при работе с HTTP-протоколом.</exception>
@@ -900,8 +900,8 @@ namespace xNet
         /// Значение <see langword="true"/>, если указанные куки содержатся, иначе значение <see langword="false"/>.
         /// </returns>
         /// <remarks>
-        /// Это куки, которые были заданы в текущем ответе. Их сырые значения могут быть использованы
-        /// для получения каких-нибудь дополнительных данных.
+        /// Это куки, которые были заданы в текущем ответе. Их сырые значения могут быть
+        /// использованы для получения каких-нибудь дополнительных данных.
         /// </remarks>
         public bool ContainsRawCookie(string name)
         {
@@ -914,8 +914,8 @@ namespace xNet
         /// <param name="name">Название куки.</param>
         /// <returns>Значение куки, если она задана, иначе пустая строка.</returns>
         /// <remarks>
-        /// Это куки, которые были заданы в текущем ответе. Их сырые значения могут быть использованы
-        /// для получения каких-нибудь дополнительных данных.
+        /// Это куки, которые были заданы в текущем ответе. Их сырые значения могут быть
+        /// использованы для получения каких-нибудь дополнительных данных.
         /// </remarks>
         public string GetRawCookie(string name)
         {
@@ -934,8 +934,8 @@ namespace xNet
         /// </summary>
         /// <returns>Коллекция сырых значений куки.</returns>
         /// <remarks>
-        /// Это куки, которые были заданы в текущем ответе. Их сырые значения могут быть использованы
-        /// для получения каких-нибудь дополнительных данных.
+        /// Это куки, которые были заданы в текущем ответе. Их сырые значения могут быть
+        /// использованы для получения каких-нибудь дополнительных данных.
         /// </remarks>
         public Dictionary<string, string>.Enumerator EnumerateRawCookies()
         {
@@ -951,8 +951,8 @@ namespace xNet
         /// </summary>
         /// <param name="headerName">Название HTTP-заголовка.</param>
         /// <returns>
-        /// Значение <see langword="true"/>, если указанный HTTP-заголовок содержится, иначе значение
-        /// <see langword="false"/>.
+        /// Значение <see langword="true"/>, если указанный HTTP-заголовок содержится, иначе
+        /// значение <see langword="false"/>.
         /// </returns>
         /// <exception cref="System.ArgumentNullException">
         /// Значение параметра <paramref name="headerName"/> равно <see langword="null"/>.
@@ -984,8 +984,8 @@ namespace xNet
         /// </summary>
         /// <param name="header">HTTP-заголовок.</param>
         /// <returns>
-        /// Значение <see langword="true"/>, если указанный HTTP-заголовок содержится, иначе значение
-        /// <see langword="false"/>.
+        /// Значение <see langword="true"/>, если указанный HTTP-заголовок содержится, иначе
+        /// значение <see langword="false"/>.
         /// </returns>
         public bool ContainsHeader(HttpHeader header)
         {
@@ -1319,8 +1319,8 @@ namespace xNet
             bytesWraper.Length = begBytesRead;
             yield return bytesWraper;
 
-            // Проверяем, есть ли открывающий тег '<html'. Если есть, то считываем данные то тех пор,
-            // пока не встретим закрывающий тек '</html>'.
+            // Проверяем, есть ли открывающий тег '<html'. Если есть, то считываем данные то тех
+            // пор, пока не встретим закрывающий тек '</html>'.
             bool isHtml = FindSignature(buffer, begBytesRead, _openHtmlSignature);
 
             if (isHtml)

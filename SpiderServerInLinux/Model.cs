@@ -3,17 +3,17 @@ using Shadowsocks.Controller;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using xNet;
-using FileMode = System.IO.FileMode;
 
 namespace SpiderServerInLinux
 {
@@ -22,13 +22,22 @@ namespace SpiderServerInLinux
         internal static int LoopTime = 5000;
         internal static bool Platform = Environment.GetEnvironmentVariable("PROCESSOR_ARCHITECTURE") == "AMD64" ? true : false;
         internal static GlobalSet _GlobalSet;
+        internal static Stack<string> LocalInfoC = new Stack<string>();
+        internal static Stack<string> Remote = new Stack<string>();
         internal static BlockingCollection<NyaaInfo> WordProcess = new BlockingCollection<NyaaInfo>();
         internal static ShowInControl ShowInfo;
         internal static int Socks5Point;
+        internal static int NyaaSocks5Point;
+
         internal static string JavDownLoadNow;
         internal static string NyaaDownLoadNow;
         internal static string MiMiDownLoadNow;
+        internal static string MiMiAiStoryDownLoadNow;
+        internal static string T66yDownLoadNow;
+
         internal static ShadowsocksController SSR;
+        internal static ShadowsocksController NyaaSSR;
+
         internal static server server;
         internal static DownloadManage DownloadManage;
         internal static readonly CancellationTokenSource CancelSign = new CancellationTokenSource();
@@ -36,6 +45,7 @@ namespace SpiderServerInLinux
         internal static readonly string NyaaAddress = "https://sukebei.nyaa.si/view/";
         internal static string NyaaDay = "";//过去下载每条Nyaa用
         internal static string MiMiDay = "";//过去下载每条MiMi用
+        internal static int JavPageCount = 0;
 
         internal static bool CheckOnline(bool ssr = false)
         {
@@ -84,47 +94,261 @@ namespace SpiderServerInLinux
     }
 
     [Serializable]
+    internal class OnlineOpera : IDisposable
+    {
+        internal string NyaaAddress = Setting._GlobalSet.NyaaAddress;
+        internal string JavAddress = Setting._GlobalSet.JavAddress;
+        internal string MiMiAiAddress = Setting._GlobalSet.MiMiAiAddress;
+
+        internal string ssr4Nyaa = Setting._GlobalSet.ssr4Nyaa;
+        internal string ssr_url = Setting._GlobalSet.ssr_url;
+        internal int ConnectPoint = Setting._GlobalSet.ConnectPoint;
+
+        internal long TotalUploadBytes = Setting._GlobalSet.totalUploadBytes;
+        internal long TotalDownloadBytes = Setting._GlobalSet.totalDownloadBytes;
+
+        internal List<string> LocalInfo = Setting.LocalInfoC.ToList();
+        internal List<string> RemoteInfo = Setting.Remote.ToList();
+
+        internal bool NyaaSocksCheck = Setting._GlobalSet.NyaaSocksCheck;
+        internal bool SocksCheck = Setting._GlobalSet.SocksCheck;
+        internal bool OnlyList = true;
+        internal bool AutoRun = Setting._GlobalSet.AutoRun;
+
+        internal string MiMiInterval = Setting.DownloadManage != null ? Setting.DownloadManage.MiMiSpan.ElapsedMilliseconds == 0 ? $"{Setting.MiMiDownLoadNow},{Setting.MiMiDay}" : Setting.DownloadManage.GetMiMiNewDataTimer.Interval.ToString() : string.Empty;
+        internal string JavInterval = Setting.DownloadManage != null ? Setting.DownloadManage.JavSpan.ElapsedMilliseconds == 0 ? Setting.JavDownLoadNow : Setting.DownloadManage.GetJavNewDataTimer.Interval.ToString() : string.Empty;
+        internal string NyaaInterval = Setting.DownloadManage != null ? Setting.DownloadManage.NyaaSpan.ElapsedMilliseconds == 0 ? Setting.NyaaDownLoadNow : Setting.DownloadManage.GetNyaaNewDataTimer.Interval.ToString() : string.Empty;
+        internal string MiMiStoryInterval = Setting.DownloadManage != null ? Setting.DownloadManage.MiMiStorySpan.ElapsedMilliseconds == 0 ? Setting.MiMiAiStoryDownLoadNow : Setting.DownloadManage.GetMiMiAiStoryDataTimer.Interval.ToString() : string.Empty;
+        internal string Memory = $"内存使用量:{System.Diagnostics.Process.GetCurrentProcess().WorkingSet64 / 1024 / 1024}MB";
+
+        internal TimeSpan MiMiSpan = Setting.DownloadManage != null ? Setting.DownloadManage.MiMiSpan.Elapsed : TimeSpan.Zero;
+        internal TimeSpan JavSpan = Setting.DownloadManage != null ? Setting.DownloadManage.JavSpan.Elapsed : TimeSpan.Zero;
+        internal TimeSpan NyaaSpan = Setting.DownloadManage != null ? Setting.DownloadManage.NyaaSpan.Elapsed : TimeSpan.Zero;
+        internal TimeSpan MiMiStorySpan = Setting.DownloadManage != null ? Setting.DownloadManage.MiMiStorySpan.Elapsed : TimeSpan.Zero;
+
+        internal int NyaaSSRPoint = Setting.NyaaSSR != null ? Setting.NyaaSSR.SocksPort : 0;
+        internal int SSRPoint = Setting.SSR != null ? Setting.SSR.SocksPort : 0;
+        internal int SocksPoint = Setting.Socks5Point;
+        internal int NyaaSocksPoint = Setting.NyaaSocks5Point;
+
+        /*
+                public string NyaaAddress
+                {
+                    get
+                    {
+                        _NyaaAddress = Setting._GlobalSet.NyaaAddress;
+                        return _NyaaAddress;
+                    }
+                    set { Setting._GlobalSet.NyaaAddress = value; }
+                }
+
+                public string JavAddress
+                {
+                    get
+                    {
+                        _JavAddress = Setting._GlobalSet.JavAddress;
+
+                        return _JavAddress;
+                    }
+                    set { Setting._GlobalSet.JavAddress = value; }
+                }
+        */
+        /* public string MiMiAiAddress { get { return Setting._GlobalSet.MiMiAiAddress; } set { Setting._GlobalSet.MiMiAiAddress = value; } }
+         public string ssr_url { get { return Setting._GlobalSet.ssr_url; } set { Setting._GlobalSet.ssr_url = value; } }
+         public int ConnectPoint { get { return Setting._GlobalSet.ConnectPoint; } set { Setting._GlobalSet.ConnectPoint = value; } }
+         public long TotalUploadBytes { get { return Setting._GlobalSet.totalUploadBytes; } }
+         public long TotalDownloadBytes { get { return Setting._GlobalSet.totalDownloadBytes; } }
+         public List<string> LocalInfo { get { return Setting.LocalInfoC.ToList(); } }
+         public List<string> RemoteInfo { get { return Setting.LocalInfoC.ToList(); } }*/
+
+        public static byte[] Send(bool First = false)
+        {
+            using var OnlineOpera = new OnlineOpera() { OnlyList = First ? false : true };
+            using (MemoryStream stream = new MemoryStream())
+            {
+                BinaryFormatter Formatter = new BinaryFormatter();
+                Formatter.Serialize(stream, OnlineOpera);
+                return stream.ToArray();
+            }
+        }
+
+        internal static Task ChangeSet(OnlineOpera onlineOpera)
+        {
+            return Task.Run(() =>
+            {
+                if (onlineOpera.NyaaAddress != Setting._GlobalSet.NyaaAddress)
+                {
+                    Setting._GlobalSet.NyaaAddress = onlineOpera.NyaaAddress;
+                }
+                if (onlineOpera.JavAddress != Setting._GlobalSet.JavAddress)
+                {
+                    Setting._GlobalSet.JavAddress = onlineOpera.JavAddress;
+                }
+                if (onlineOpera.MiMiAiAddress != Setting._GlobalSet.MiMiAiAddress)
+                {
+                    Setting._GlobalSet.MiMiAiAddress = onlineOpera.MiMiAiAddress;
+                }
+                if (onlineOpera.SocksCheck != Setting._GlobalSet.SocksCheck)
+                {
+                    Setting._GlobalSet.SocksCheck = onlineOpera.SocksCheck;
+                    Loger.Instance.ServerInfo($"主机", $"更改当前代理状态为{Setting._GlobalSet.SocksCheck }");
+                }
+                if (onlineOpera.SocksPoint != Setting.Socks5Point)
+                {
+                    Setting.Socks5Point = onlineOpera.SocksPoint;
+                    Loger.Instance.ServerInfo($"主机", $"代理端口更改为{Setting.Socks5Point}完毕");
+                }
+                if (onlineOpera.NyaaSocksCheck != Setting._GlobalSet.NyaaSocksCheck)
+                {
+                    Setting._GlobalSet.NyaaSocksCheck = onlineOpera.NyaaSocksCheck;
+                    Loger.Instance.ServerInfo($"主机", $"Nyaa使用代理{onlineOpera.NyaaSocksCheck}");
+                }
+                if (onlineOpera.ssr_url != Setting._GlobalSet.ssr_url)
+                {
+                    var TestSSR = new ShadowsocksController(onlineOpera.ssr_url);
+                    if (TestSSR.CheckOnline())
+                    {
+                        if (Setting.Socks5Point == Setting.SSR.SocksPort)
+                            Setting.Socks5Point = TestSSR.SocksPort;
+                        if (Setting.SSR != null) Setting.SSR.Stop();
+                        Setting.SSR = null;
+                        Setting.SSR = TestSSR;
+                        Setting._GlobalSet.ssr_url = onlineOpera.ssr_url;
+                        GC.Collect();
+                    }
+                    else
+                    {
+                        Loger.Instance.ServerInfo("SSR", "新增SSR外网访问失败，不替换连接");
+                    }
+                }
+                if (onlineOpera.NyaaSocksPoint != Setting.NyaaSocks5Point)
+                {
+                    Setting.NyaaSocks5Point = onlineOpera.NyaaSocksPoint;
+                    Loger.Instance.ServerInfo($"主机", $"Nyaa使用代理端口{onlineOpera.NyaaSocksPoint}");
+                }
+                if (onlineOpera.ssr4Nyaa != Setting._GlobalSet.ssr4Nyaa)
+                {
+                    var TestSSR = new ShadowsocksController(onlineOpera.ssr4Nyaa);
+                    if (TestSSR.CheckOnline(@"https://sukebei.nyaa.si/"))
+                    {
+                        if (Setting.NyaaSocks5Point == Setting.NyaaSSR.SocksPort)
+                        {
+                            Setting.NyaaSocks5Point = TestSSR.SocksPort;
+                        }
+                        if (Setting.NyaaSSR != null) Setting.NyaaSSR.Stop();
+                        Setting.NyaaSSR = null;
+                        Setting.NyaaSSR = TestSSR;
+                        Setting._GlobalSet.ssr4Nyaa = onlineOpera.ssr4Nyaa;
+                        GC.Collect();
+                    }
+                }
+                if (onlineOpera.AutoRun != Setting._GlobalSet.AutoRun)
+                {
+                    Setting._GlobalSet.AutoRun = onlineOpera.AutoRun;
+                    Loger.Instance.ServerInfo($"主机", $"自动运行模式更改为{Setting._GlobalSet.AutoRun}");
+                }
+
+                return Task.CompletedTask;
+            });
+        }
+
+        private bool disposed = false;
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposed)
+            {
+                if (disposing)
+                {
+                    // called via myClass.Dispose(). OK to use any private object references
+                }
+                // Release unmanaged resources. Set large fields to null.
+                disposed = true;
+            }
+        }
+
+        public void Dispose()
+        {
+            GC.SuppressFinalize(this);
+        }
+
+        ~OnlineOpera() // the finalizer
+        {
+            Dispose(false);
+        }
+
+        public class UBinder : SerializationBinder
+        {
+            public override Type BindToType(string assemblyName, string typeName)
+            {
+                if (typeName.EndsWith("OnlineOpera"))
+                {
+                    return typeof(OnlineOpera);
+                }
+                return (Assembly.GetExecutingAssembly()).GetType(typeName);
+            }
+        }
+    }
+
+    [Serializable]
     internal class GlobalSet
     {
         private string _NyaaAddress = "https://sukebei.nyaa.si/?p=";
         private string _JavAddress = "https://www.141jav.com/new?page=";
-        private string _MiMiAiAddress = "http://www.mmfhd.com/forumdisplay.php?fid=55&page=";
+        private string _MiMiAiAddress = "http://www.mmroad.com/forumdisplay.php?fid=55&page=";
+        private string _T66yAddress = "http://t66y.com/thread0806.php?fid=25&search=&page=";
+
         private string _ssr_url = "";
+        private string _ssr4Nyaa = "";
+
         private int _NyaaLastPageIndex = 0;
         private int _JavLastPageIndex = 0;
         private int _MiMiAiPageIndex = 0;
+        private int _MiMiAiStoryPageIndex = 0;
+
         private int _ConnectPoint = 2222;
         private long _totalUploadBytes = 0;
         private long _totalDownloadBytes = 0;
         private bool _SocksCheck = false;
+        private bool _NyaaSocksCheck = false;
+
         private bool _NyaaFin = false;
         private bool _JavFin = false;
         private bool _MiMiFin = false;
         private bool _AutoRun = false;
         internal string NyaaAddress { get { return _NyaaAddress; } set { _NyaaAddress = value; Save(); } }
         internal string JavAddress { get { return _JavAddress; } set { _JavAddress = value; Save(); } }
+        internal string T66yAddress { get { return _T66yAddress; } set { _T66yAddress = value; Save(); } }
+        internal string MiMiAiAddress { get { return _MiMiAiAddress; } set { _MiMiAiAddress = value; Save(); } }
+
         internal string ssr_url { get { return _ssr_url; } set { _ssr_url = value; Save(); } }
+        internal string ssr4Nyaa { get { return _ssr4Nyaa; } set { _ssr4Nyaa = value; Save(); } }
+
         internal int NyaaLastPageIndex { get { return _NyaaLastPageIndex; } set { _NyaaLastPageIndex = value; Save(); } }
         internal int JavLastPageIndex { get { return _JavLastPageIndex; } set { _JavLastPageIndex = value; Save(); } }
         internal int ConnectPoint { get { return _ConnectPoint; } set { _ConnectPoint = value; Save(); } }
+        internal int MiMiAiPageIndex { get { return _MiMiAiPageIndex; } set { _MiMiAiPageIndex = value; Save(); } }
+        internal int MiMiAiStoryPageIndex { get { return _MiMiAiStoryPageIndex; } set { _MiMiAiStoryPageIndex = value; Save(); } }
+
         internal bool SocksCheck { get { return _SocksCheck; } set { _SocksCheck = value; Save(); } }
+        internal bool NyaaSocksCheck { get { return _NyaaSocksCheck; } set { _NyaaSocksCheck = value; Save(); } }
+
         internal bool NyaaFin { get { return _NyaaFin; } set { _NyaaFin = value; Save(); } }
         internal bool JavFin { get { return _JavFin; } set { _JavFin = value; Save(); } }
         internal bool MiMiFin { get { return _MiMiFin; } set { _MiMiFin = value; Save(); } }
         internal bool AutoRun { get { return _AutoRun; } set { _AutoRun = value; Save(); } }
-        internal string MiMiAiAddress { get { return _MiMiAiAddress; } set { _MiMiAiAddress = value; Save(); } }
-
-        internal int MiMiAiPageIndex { get { return _MiMiAiPageIndex; } set { _MiMiAiPageIndex = value; Save(); } }
         internal long totalUploadBytes { get { return _totalUploadBytes; } set { _totalUploadBytes = value; Save(); } }
         internal long totalDownloadBytes { get { return _totalDownloadBytes; } set { _totalDownloadBytes = value; Save(); } }
 
         [OnDeserialized]
         private void OnDeserialized(StreamingContext context)
         {
-            if (string.IsNullOrEmpty(_NyaaAddress)) _NyaaAddress = "https://sukebei.nyaa.si/?p=";
+            /*if (string.IsNullOrEmpty(_NyaaAddress)) _NyaaAddress = "https://sukebei.nyaa.si/?p=";
             if (string.IsNullOrEmpty(_JavAddress)) _JavAddress = "https://www.141jav.com/new?page=";
             if (string.IsNullOrEmpty(_MiMiAiAddress)) _MiMiAiAddress = "http://www.mmbutt.com/forumdisplay.php?fid=55&page=";
-            if (string.IsNullOrEmpty(_ssr_url)) _ssr_url = "";
+            if (string.IsNullOrEmpty(_ssr_url)) _ssr_url = "";*/
+            if (string.IsNullOrEmpty(_T66yAddress)) _T66yAddress = "http://t66y.com/thread0806.php?fid=25&search=&page=";
+            if (string.IsNullOrEmpty(_ssr_url)) _ssr_url = "ssr://MTUzLjEwMS41Ny4zNTo1ODQ1NDphdXRoX2FlczEyOF9zaGExOmNoYWNoYTIwLWlldGY6cGxhaW46VFdsNmRXaHZNVEF4TUROSVN3Lz9vYmZzcGFyYW09WWpkbU9UQXhOemc1TG0xcFkzSnZjMjltZEM1amIyMCZwcm90b3BhcmFtPU1UYzRPVG95WVRGMllWayZyZW1hcmtzPVV5M2x1TGpsdDU3b2dhX3BnSm90NXBlbDVweXM1cDJ4NUxxc0lFTm9iMjl3WVEmZ3JvdXA9NDRHQzQ0S0U0NEtCJnVkcHBvcnQ9NzIwOTA2JnVvdD0xMTUwOTg1Ng";
         }
 
         internal GlobalSet()
@@ -133,7 +357,7 @@ namespace SpiderServerInLinux
 
         static internal GlobalSet Open()
         {
-            using var db = new LiteDatabase(@"GlobalSet.db");
+            using var db = new LiteDatabase($"{new FileInfo(Process.GetCurrentProcess().MainModule.FileName).DirectoryName}/GlobalSet.db");
             if (!db.CollectionExists("GlobalSet"))
             {
                 Loger.Instance.LocalInfo($"未找到配置文件，正在新建");
@@ -146,6 +370,7 @@ namespace SpiderServerInLinux
                     ["_id"] = 0,
                     ["Data"] = stream.ToArray()
                 });
+
                 return globalSet;
             }
             else
@@ -155,22 +380,26 @@ namespace SpiderServerInLinux
                 using var stream = new MemoryStream(Date);
                 IFormatter Formatter = new BinaryFormatter();
                 Formatter.Binder = new UBinder();
-                return Formatter.Deserialize(stream) as GlobalSet;
+                var ret = Formatter.Deserialize(stream) as GlobalSet;
+                return ret;
             }
             /* if (File.Exists("GlobalSet.dat"))
              {
-                 using (Stream stream = new FileStream("GlobalSet.dat", FileMode.Open))
+                 using (var stream = new FileStream("GlobalSet.dat", System.IO.FileMode.OpenOrCreate))
                  {
                      IFormatter Formatter = new BinaryFormatter();
                      Formatter.Binder = new UBinder();
-                     return Formatter.Deserialize(stream) as GlobalSet;
+                     var Ret = Formatter.Deserialize(stream) as GlobalSet;
+                     Loger.Instance.ServerInfo("主机", $"{Ret.ConnectPoint}");
+                     Loger.Instance.ServerInfo("主机", $"{Ret.MiMiAiAddress}");
+                     return Ret;
                  }
              }
              else
              {
                  Loger.Instance.LocalInfo($"未找到配置文件，正在新建");
-             }
-             return new GlobalSet().Save();*/
+             }*/
+            return new GlobalSet();
         }
 
         public void Open(byte[] Data)
@@ -196,12 +425,13 @@ namespace SpiderServerInLinux
             SaveInUse = true;
             try
             {
-                /* using (Stream stream = new FileStream("GlobalSet.dat", FileMode.OpenOrCreate))
-                 {
-                     IFormatter Fileformatter = new BinaryFormatter();
-                     Fileformatter.Serialize(stream, this);
-                 }*/
-                using var db = new LiteDatabase(@"GlobalSet.db");
+                /*using (Stream stream = new FileStream("GlobalSet.dat", System.IO.FileMode.OpenOrCreate))
+                {
+                    IFormatter Fileformatter = new BinaryFormatter();
+                    Fileformatter.Serialize(stream, this);
+                }*/
+                using var db = new LiteDatabase($"{new FileInfo(Process.GetCurrentProcess().MainModule.FileName).DirectoryName}/GlobalSet.db");
+
                 using var stream = new MemoryStream();
                 IFormatter Fileformatter = new BinaryFormatter();
                 Fileformatter.Serialize(stream, this);
@@ -310,6 +540,64 @@ namespace SpiderServerInLinux
             public string Type { get; set; }
             public string info { get; set; }
             public byte[] Data { get; set; }
+        }
+    }
+
+    internal class T66yData
+    {
+        public int id { get; set; }
+        public string Title { get; set; }
+        public string Uri { get; set; }
+        public string Date { get; set; }
+
+        public string HtmlDate { get; set; }
+        public List<BasicData> InfoList { get; set; }
+
+        public bool Status { get; set; }
+
+        internal class BasicData
+        {
+            public string Type { get; set; }
+            public string info { get; set; }
+            public byte[] Data { get; set; }
+        }
+    }
+
+    [Serializable]
+    internal class MiMiAiStory
+    {
+        public int id { get; set; }
+        public string Uri { get; set; }
+        public string Title { get; set; }
+        public string Story { get; set; }
+        public byte[] Data { get; set; }
+
+        public byte[] ToByte()
+        {
+            using var stream = new MemoryStream();
+            IFormatter Fileformatter = new BinaryFormatter();
+            Fileformatter.Serialize(stream, this);
+            return stream.ToArray();
+        }
+
+        public static MiMiAiStory ToClass(byte[] data)
+        {
+            using var stream = new MemoryStream(data);
+            IFormatter Fileformatter = new BinaryFormatter();
+            Fileformatter.Binder = new UBinder();
+            return Fileformatter.Deserialize(stream) as MiMiAiStory;
+        }
+
+        public class UBinder : SerializationBinder
+        {
+            public override Type BindToType(string assemblyName, string typeName)
+            {
+                if (typeName.EndsWith("MiMiAiStory"))
+                {
+                    return typeof(MiMiAiStory);
+                }
+                return (Assembly.GetExecutingAssembly()).GetType(typeName);
+            }
         }
     }
 

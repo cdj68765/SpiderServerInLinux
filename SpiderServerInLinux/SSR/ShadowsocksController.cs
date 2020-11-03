@@ -8,6 +8,7 @@ using System.Net.Sockets;
 using System.Net;
 using System.Net.NetworkInformation;
 using SpiderServerInLinux;
+using xNet;
 
 namespace Shadowsocks.Controller
 {
@@ -58,20 +59,42 @@ namespace Shadowsocks.Controller
 
         public event ErrorEventHandler Errored;
 
+        private bool CheckIfPortInUse(int port)
+        {
+            IPGlobalProperties ipProperties = IPGlobalProperties.GetIPGlobalProperties();
+            foreach (IPEndPoint endPoint in ipProperties.GetActiveTcpListeners())
+            {
+                if (endPoint.Port == port)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private string GetIp(string domain)
+        {
+            if (!IPAddress.TryParse(domain, out IPAddress ip))
+            {
+                try
+                {
+                    domain = domain.Replace("http://", "").Replace("https://", "");
+                    IPHostEntry hostEntry = Dns.GetHostEntry(domain);
+                    IPEndPoint ipEndPoint = new IPEndPoint(hostEntry.AddressList[0], 0);
+                    return ipEndPoint.Address.ToString();
+                }
+                catch (Exception)
+                {
+                    Loger.Instance.ServerInfo("SSR", $"获得服务器IP地址失败");
+                }
+            }
+            return domain;
+        }
+
+        public int SocksPort;
+
         public ShadowsocksController()
         {
-            bool CheckIfPortInUse(int port)
-            {
-                IPGlobalProperties ipProperties = IPGlobalProperties.GetIPGlobalProperties();
-                foreach (IPEndPoint endPoint in ipProperties.GetActiveTcpListeners())
-                {
-                    if (endPoint.Port == port)
-                    {
-                        return true;
-                    }
-                }
-                return false;
-            }
             if (string.IsNullOrEmpty(Setting._GlobalSet.ssr_url))
             {
                 Loger.Instance.ServerInfo("SSR", $"SSR地址为空");
@@ -88,13 +111,13 @@ namespace Shadowsocks.Controller
             }
             // _config.localPort = 7071;
             Loger.Instance.ServerInfo("SSR", $"SSR控制器建立，内部端口{_config.localPort}");
-            Setting.Socks5Point = _config.localPort;
+            SocksPort = _config.localPort;
             var Config = new Server(Setting._GlobalSet.ssr_url, "");
             if (!string.IsNullOrEmpty(Config.remarks)) Loger.Instance.ServerInfo("SSR", $"SSR服务器名称，{Config.remarks}");
             Config.server = GetIp(Config.server);
             Loger.Instance.ServerInfo("SSR", $"SSR地址解析完毕，IP:{Config.server}");
             _config.configs.Add(Config);
-            Config.SetServerSpeedLog(new ServerSpeedLog(Setting._GlobalSet.totalUploadBytes, Setting._GlobalSet.totalDownloadBytes));
+            // Config.SetServerSpeedLog(new ServerSpeedLog(Setting._GlobalSet.totalUploadBytes, Setting._GlobalSet.totalDownloadBytes));
             Reload();
             /* if (Setting.CheckOnline())
                  Loger.Instance.ServerInfo("SSR", $"SSR工作正常");
@@ -105,24 +128,72 @@ namespace Shadowsocks.Controller
                  Setting.SSR = null;
                  GC.Collect();
              }*/
-            string GetIp(string domain)
+        }
+
+        public ShadowsocksController(string ssr_url)
+        {
+            if (string.IsNullOrEmpty(ssr_url))
             {
-                if (!IPAddress.TryParse(domain, out IPAddress ip))
+                Loger.Instance.ServerInfo("SSR", $"SSR地址为空");
+                return;
+            }
+            _config = new Configuration();
+            var _Random = new Random();
+            IPEndPoint[] ipEndPoints = IPGlobalProperties.GetIPGlobalProperties().GetActiveTcpListeners();
+            _config.localPort = ipEndPoints[_Random.Next(ipEndPoints.Length)].Port;
+            SocksPort = _config.localPort;
+            while (true)
+            {
+                if (!CheckIfPortInUse(_config.localPort)) break;
+                if (Setting.Socks5Point == _config.localPort) break;
+                _config.localPort++;
+            }
+            var Config = new Server(ssr_url, "");
+            if (!string.IsNullOrEmpty(Config.remarks)) Loger.Instance.ServerInfo("SSR", $"SSR服务器名称，{Config.remarks}");
+            Config.server = GetIp(Config.server);
+            _config.configs.Add(Config);
+            //Config.SetServerSpeedLog(new ServerSpeedLog(Setting._GlobalSet.totalUploadBytes, Setting._GlobalSet.totalDownloadBytes));
+            Reload();
+        }
+
+        public bool CheckOnline(string uri = "")
+        {
+            try
+            {
+                using (var request = new HttpRequest())
                 {
-                    try
+                    Thread.Sleep(1000);
+                    request.ConnectTimeout = 1000;
+                    request.UserAgent = Http.ChromeUserAgent();
+                    request.Proxy = Socks5ProxyClient.Parse($"127.0.0.1:{_config.localPort}");
+                    HttpResponse response = null;
+                    if (string.IsNullOrEmpty(uri))
                     {
-                        domain = domain.Replace("http://", "").Replace("https://", "");
-                        IPHostEntry hostEntry = Dns.GetHostEntry(domain);
-                        IPEndPoint ipEndPoint = new IPEndPoint(hostEntry.AddressList[0], 0);
-                        return ipEndPoint.Address.ToString();
+                        response = request.Get(@"https://www.google.co.jp/");
+                        if (response.StatusCode == xNet.HttpStatusCode.OK)
+                        {
+                            Loger.Instance.ServerInfo("SSR测试", $"谷歌连接正常");
+                            return true;
+                        }
                     }
-                    catch (Exception)
+                    else
                     {
-                        Loger.Instance.ServerInfo("SSR", $"获得服务器IP地址失败");
+                        response = request.Get(uri);
+                        if (response.StatusCode == xNet.HttpStatusCode.OK)
+                        {
+                            Loger.Instance.ServerInfo("SSR测试", $"Nyaa连接正常");
+                            return true;
+                        }
                     }
                 }
-                return domain;
             }
+            catch (Exception e)
+            {
+                GC.Collect();
+            }
+            Loger.Instance.ServerInfo("SSR测试", $"外网访问失败");
+
+            return false;
         }
 
         public ServerTrans SSRSpeedInfo;
@@ -366,8 +437,8 @@ namespace Shadowsocks.Controller
             }
 
             // don't put polipoRunner.Start() before pacServer.Stop() or bind will fail when
-            // switching bind address from 0.0.0.0 to 127.0.0.1 though UseShellExecute is set to true
-            // now http://stackoverflow.com/questions/10235093/socket-doesnt-close-after-application-exits-if-a-launched-process-is-open
+            // switching bind address from 0.0.0.0 to 127.0.0.1 though UseShellExecute is set to
+            // true now http://stackoverflow.com/questions/10235093/socket-doesnt-close-after-application-exits-if-a-launched-process-is-open
             bool _firstRun = firstRun;
             for (int i = 1; i <= 5; ++i)
             {

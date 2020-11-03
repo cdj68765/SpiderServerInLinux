@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
+using System.Runtime.Serialization.Formatters.Binary;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -107,8 +109,6 @@ namespace SpiderServerInLinux
 
     public class LogerTraceListener : TraceListener
     {
-        private readonly Stack<string> LocalInfoC = new Stack<string>();
-        private readonly Stack<string> Remote = new Stack<string>();
         private int WindowHeight;
 
         private int WindowWidth;
@@ -250,7 +250,9 @@ namespace SpiderServerInLinux
                             var ShowJav = Setting._GlobalSet.JavFin ? $"当前Jav下载页面:{Setting._GlobalSet.JavLastPageIndex}" : $"Jav:{Setting.JavDownLoadNow}";
                             var ShowNyaa = !Setting._GlobalSet.NyaaFin ? $"Nyaa:{Setting.NyaaDownLoadNow}" : $"Nyaa:{Setting.NyaaDownLoadNow}";
                             var ShowMiMi = Setting._GlobalSet.MiMiFin ? $"MiMi:{Setting.MiMiDownLoadNow},{Setting.MiMiDay}" : $"MiMi:{Setting._GlobalSet.MiMiAiPageIndex},{Setting.MiMiDay},{Setting.MiMiDownLoadNow}";
-                            Console.Write($"{ShowNyaa} {ShowJav} {ShowMiMi}");
+                            var ShowMiMiStory = $"Story:{Setting.MiMiAiStoryDownLoadNow}";
+
+                            Console.Write($"|{ShowNyaa}| {ShowJav}| {ShowMiMi}| {ShowMiMiStory}");
                         }
                     }
                     catch (Exception)
@@ -259,7 +261,7 @@ namespace SpiderServerInLinux
 
                     Console.SetCursorPosition(Console.WindowWidth / 2 + Console.WindowWidth / 6 - 1, 1);
                     Console.Write($"内存使用量:{Process.GetCurrentProcess().WorkingSet64 / 1024 / 1024}MB");
-                    if (Setting.SSR != null)
+                    if (Setting.SSR != null || true)
                     {
                         Console.SetCursorPosition(Console.WindowWidth / 2 + Console.WindowWidth / 3 - 3, 1);
                         try
@@ -310,7 +312,20 @@ namespace SpiderServerInLinux
         private void DrawLocal()
         {
             var Top = 5;
-            foreach (var VARIABLE in LocalInfoC.ToArray())
+
+            /*  if (Setting.server != null)
+              {
+                  ThreadPool.QueueUserWorkItem(async (object state) =>
+                  {
+                      var OnlineCheck = Setting.server.ModuleCatalog.GetModule(typeof(server.OnlineCheck));
+                      if (OnlineCheck.SessionCount > 0)
+                      {
+                          await OnlineCheck.Broadcast(OnlineOpera.Send());
+                      }
+                  });
+              }*/
+
+            foreach (var VARIABLE in Setting.LocalInfoC)
             {
                 foreach (var VARIABLE2 in StringSplit(VARIABLE))
                 {
@@ -335,7 +350,7 @@ namespace SpiderServerInLinux
         private void DrawRemote()
         {
             var Top = 5;
-            foreach (var VARIABLE in Remote.ToArray())
+            foreach (var VARIABLE in Setting.Remote)
             {
                 foreach (var VARIABLE2 in StringSplit(VARIABLE))
                 {
@@ -418,21 +433,21 @@ namespace SpiderServerInLinux
         public override void WriteLine(string message)
         {
             Check();
-            LocalInfoC.Push($"{DateTime.Now:MM-dd HH:mm:ss}->{message}");
+            Setting.LocalInfoC.Push($"{DateTime.Now:MM-dd HH:mm:ss}->{message}");
             DrawLocal();
         }
 
         public override void WriteLine(string message, string category)
         {
             Check();
-            LocalInfoC.Push($"{DateTime.Now:MM-dd HH:mm:ss}->[{category}]{message}");
+            Setting.LocalInfoC.Push($"{DateTime.Now:MM-dd HH:mm:ss}->[{category}]{message}");
             DrawLocal();
         }
 
         public override void Write(string category, string message)
         {
             Check();
-            Remote.Push($"{DateTime.Now:MM-dd HH:mm:ss}->[{category}]{message}");
+            Setting.Remote.Push($"{DateTime.Now:MM-dd HH:mm:ss}->[{category}]{message}");
             DrawRemote();
         }
     }

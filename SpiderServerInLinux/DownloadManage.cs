@@ -22,29 +22,455 @@ namespace SpiderServerInLinux
     {
         public CancellationTokenSource NyaaDownloadCancel = new CancellationTokenSource();
         public CancellationTokenSource NyaaOldDownloadCancel = new CancellationTokenSource();
-        public CancellationTokenSource MiMiDownloadCancel = new CancellationTokenSource();
-        public System.Timers.Timer GetNyaaNewDataTimer = new System.Timers.Timer();
         public CancellationTokenSource JavDownloadCancel = new CancellationTokenSource();
+        public CancellationTokenSource MiMiDownloadCancel = new CancellationTokenSource();
+        public CancellationTokenSource MiMiAiStoryDownloadCancel = new CancellationTokenSource();
+        public CancellationTokenSource T66yDownloadCancel = new CancellationTokenSource();
+
+        public System.Timers.Timer GetNyaaNewDataTimer = null;
+        public System.Timers.Timer GetJavNewDataTimer = null;
+        public System.Timers.Timer GetMiMiNewDataTimer = null;
+        public System.Timers.Timer GetMiMiAiStoryDataTimer = null;
+        public System.Timers.Timer GetT66yDataTimer = null;
+
+        public Stopwatch MiMiSpan = new Stopwatch();
+        public Stopwatch MiMiStorySpan = new Stopwatch();
+        public Stopwatch JavSpan = new Stopwatch();
+        public Stopwatch NyaaSpan = new Stopwatch();
+        public Stopwatch GetT66ySpan = new Stopwatch();
+
         public bool JavOldDownloadRunning = false;
 
         public DownloadManage()
         {
+            Load();
+        }
+
+        public async void Load()
+        {
             if (Setting.CheckOnline(Setting._GlobalSet.SocksCheck))
             {
                 Loger.Instance.LocalInfo("网络连接正常，正在加载下载进程");
-                Load();
+                Loger.Instance.LocalInfo("初始化下载");
+                //await Task.WhenAll(GetJavNewData(), GetNyaaNewData(), GetMiMiData(), GetMiMiAiStoryData());
             }
             else
             {
                 Loger.Instance.LocalInfo("外网访问失败，等待操作");
             }
+            await Task.WhenAll(GetT66yStoryData());
         }
 
-        private async void Load()
+        private Task GetMiMiAiStoryData()
         {
-            Loger.Instance.LocalInfo("初始化下载");
-            //await Task.WhenAll(GetJavNewData(), GetNyaaNewData(), GetMiMiData());
-            await Task.WhenAll(GetMiMiData());
+            //HandleStoryPage(DownloadMainPage(_Uri: $"http://www.mmroad.com/viewthread.php?tid=1274532"));
+            long NewSize = 0;
+            return Task.Run(() =>
+            {
+                GetMiMiAiStoryDataTimer = new System.Timers.Timer(1000);
+                var HtmlDoc = new HtmlDocument();
+                GetMiMiAiStoryDataTimer.Elapsed += delegate
+               {
+                   GetMiMiAiStoryDataTimer.Stop();
+                   MiMiStorySpan.Reset();
+                   var RunSpan = new Stopwatch();
+                   RunSpan.Start();
+                   MiMiAiStoryDownloadCancel = new CancellationTokenSource();
+                   var DownloadPage = 1;
+                   NewSize = 0;
+                   //var CheckLastPage = DataBaseCommand.GetDataFromMiMi("CheckMiMiStoryLastPage");
+                   /*if (!CheckLastPage)
+                     {
+                         DownloadPage = Setting._GlobalSet.MiMiAiStoryPageIndex;
+                         Loger.Instance.LocalInfo($"从{DownloadPage}页开始获得MiMi小说信息");
+                     }
+                     else
+                     {
+                         Loger.Instance.LocalInfo("开始获取新MiMi小说信息");
+                     }*/
+                   bool SaveFlag = true;
+                   while (!MiMiAiStoryDownloadCancel.IsCancellationRequested)
+                   {
+                       Setting.MiMiAiStoryDownLoadNow = $"当前下载第{DownloadPage}";
+                       var DoanloadPageHtml = DownloadMainPage(DownloadPage);
+                       if (string.IsNullOrEmpty(DoanloadPageHtml))
+                       {
+                           Loger.Instance.LocalInfo("MiMiStory下载到空网页，退出下载进程");
+                           break;
+                       }
+                       var PageCount = 1;
+                       foreach (var tempData in AnalyMiMiMainPage(HtmlDoc, DoanloadPageHtml, true))
+                       {
+                           // List<MiMiAiStory> ItemList = new List<MiMiAiStory>();
+                           var AddTemp = HandleStoryPage(DownloadMainPage(_Uri: $"http://{new Uri(Setting._GlobalSet.MiMiAiAddress).Host}/{tempData[0]}"), tempData);
+                           if (AddTemp != null)
+                           {
+                               SaveFlag = DataBaseCommand.SaveToMiMiStoryDataUnit(UnitData: AddTemp);
+                               //SaveFlag = true;
+                               //if (AddTemp.id == 140503) SaveFlag = false;
+                           }
+
+                           var time = new Random().Next(1000, 5000);
+                           for (var i = time; i > 0; i -= 1000)
+                           {
+                               if (MiMiAiStoryDownloadCancel.IsCancellationRequested) break;
+                               Setting.MiMiAiStoryDownLoadNow = $"当前下载第{PageCount}-{i / 1000}";
+                               Thread.Sleep(1000);
+                           }
+                           Interlocked.Increment(ref PageCount);
+                           // ItemList.Clear(); ItemList = null;
+                           if (!SaveFlag) break;
+                       }
+                       GC.Collect();
+                       Interlocked.Increment(ref DownloadPage);
+                       Setting._GlobalSet.MiMiAiStoryPageIndex = DownloadPage;
+                       if (!SaveFlag) break;
+                   }
+
+                   GetMiMiAiStoryDataTimer.Interval = new Random().Next(12, 24) * 3600 * 1000;
+                   Setting.MiMiAiStoryDownLoadNow = DateTime.Now.AddMilliseconds(GetMiMiAiStoryDataTimer.Interval).ToString("MM-dd|HH:mm");
+                   Loger.Instance.LocalInfo($"MiMi小说:下载完毕,耗时{RunSpan.Elapsed:mm\\分ss\\秒},消耗流量{HumanReadableFilesize(NewSize)}");
+                   RunSpan.Stop();
+                   MiMiStorySpan.Restart();
+                   GetMiMiAiStoryDataTimer.Start();
+               };
+                GetMiMiAiStoryDataTimer.Enabled = true;
+            });
+
+            string DownloadMainPage(int Index = -1, string _Uri = "")
+            {
+                using (var request = new HttpRequest()
+                {
+                    UserAgent = Http.ChromeUserAgent(),
+                    ConnectTimeout = 5000,
+                    CharacterSet = Encoding.GetEncoding("GBK")
+                })
+                {
+                    if (Setting._GlobalSet.SocksCheck)
+                    {
+                        if (Setting.Socks5Point != 0)
+                            request.Proxy = Socks5ProxyClient.Parse($"127.0.0.1:{Setting.Socks5Point}");
+                    }
+                    try
+                    {
+                        int ErrorCount = 1;
+                        while (!MiMiAiStoryDownloadCancel.IsCancellationRequested || ErrorCount != 0)
+                        {
+                            var downurl = Index > -1 ? new Uri($"http://{new Uri(Setting._GlobalSet.MiMiAiAddress).Authority}/forumdisplay.php?fid=11&filter=0&orderby=dateline&page={Index}") : new Uri($"{_Uri}");
+                            try
+                            {
+                                HttpResponse response = request.Get(downurl);
+                                var RetS = response.ToString();
+                                NewSize += response.Ret.Length;
+                                return RetS;
+                            }
+                            catch (Exception ex)
+                            {
+                                if (request.Response.RedirectAddress != null)
+                                {
+                                    if (request.Response.RedirectAddress.Authority != downurl.Authority)
+                                    {
+                                        Loger.Instance.LocalInfo($"MiMiAi网址变更为{request.Response.RedirectAddress.Authority}");
+                                        Setting._GlobalSet.MiMiAiAddress = Setting._GlobalSet.MiMiAiAddress.Replace(downurl.Authority, request.Response.RedirectAddress.Authority);
+                                        downurl = Index > -1 ? new Uri($"http://{new Uri(Setting._GlobalSet.MiMiAiAddress).Authority}/forumdisplay.php?fid=11&filter=0&orderby=dateline&page={Index}") : new Uri($"{_Uri}");
+                                        continue;
+                                    }
+                                }
+                                if (ex.Message.StartsWith("Cannot access a disposed object"))
+                                {
+                                    Loger.Instance.LocalInfo($"SSR异常，退出全部下载进程");
+                                    MiMiAiStoryDownloadCancel.Cancel();
+                                    break;
+                                }
+                                Loger.Instance.LocalInfo($"{ex.Message}");
+                                Loger.Instance.LocalInfo($"下载{downurl}失败，计数{ErrorCount}次");
+                                var time = new Random().Next(5000, 10000);
+                                for (var i = time; i > 0; i -= 1000)
+                                {
+                                    if (MiMiAiStoryDownloadCancel.IsCancellationRequested) break;
+                                    Loger.Instance.WaitTime(i / 1000);
+                                    Thread.Sleep(1000);
+                                }
+                                Interlocked.Increment(ref ErrorCount);
+                                if (ErrorCount == 5)
+                                {
+                                    ErrorCount = 0;
+                                    Loger.Instance.LocalInfo($"下载{downurl}失败，退出下载进程");
+                                    if (!Setting.CheckOnline(Setting._GlobalSet.SocksCheck))
+                                    {
+                                        Loger.Instance.LocalInfo($"检测到网络连接异常，退出全部下载方式");
+                                        Setting.CancelSign.Cancel();
+                                    }
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    catch (UriFormatException UriError)
+                    {
+                        Loger.Instance.LocalInfo($"地址错误{UriError.Message}");
+                        return $"地址错误{UriError.Message}";
+                    }
+                }
+                return null;
+            }
+            MiMiAiStory HandleStoryPage(string Html, string[] PageData = null)
+            {
+                try
+                {
+                    var Temp = new MiMiAiStory();
+                    var _HtmlDoc = new HtmlDocument();
+                    _HtmlDoc.LoadHtml(Html);
+                    Temp.Data = Encoding.Default.GetBytes(_HtmlDoc.DocumentNode.SelectNodes("//div[@class='t_msgfont']")[0].InnerHtml);
+                    var OutPutText = new StringBuilder();
+                    var CN = _HtmlDoc.DocumentNode.SelectNodes("//div[@class='t_msgfont']")[0].ChildNodes;
+                    while (CN.Count == 1)
+                    {
+                        if (CN[0].ChildNodes.Count == 0) break;
+                        CN = CN[0].ChildNodes;
+                    }
+                    foreach (var Child in CN)
+                    {
+                        if (Child.Name == "#text")
+                        {
+                            var TempText = Child.InnerText.Replace("\r\n", "").Replace(" ", "").Replace("", "").Replace("&nbsp;", "");
+                            if (!string.IsNullOrEmpty(TempText))
+                            {
+                                OutPutText.Append(TempText);
+                            }
+                        }
+                    }
+                    Temp.id = int.Parse(PageData[0].Split("=")[1]);
+                    Temp.Title = PageData[1];
+                    if (string.IsNullOrEmpty(OutPutText.ToString()))
+                    {
+                        Loger.Instance.LocalInfo($"MiMiStory页面{PageData[0]}解析错误");
+                        File.AppendAllLines("MiMiStory.txt", new string[] { $"{PageData[0]}|{PageData[1]}" });
+                    }
+                    Temp.Story = OutPutText.ToString();
+                    return Temp;
+                }
+                catch (Exception ex)
+                {
+                    Loger.Instance.LocalInfo($"MiMiStory页面解析错误");
+                }
+                return null;
+            }
+        }
+
+        private Task GetT66yStoryData()
+        {
+            //HandleStoryPage(DownloadMainPage(_Uri: $"http://www.mmroad.com/viewthread.php?tid=1274532"));
+            long NewSize = 0;
+            return Task.Run(() =>
+            {
+                GetT66yDataTimer = new System.Timers.Timer(1000);
+                var HtmlDoc = new HtmlDocument();
+                GetT66yDataTimer.Elapsed += delegate
+                {
+                    GetT66yDataTimer.Stop();
+                    GetT66ySpan.Reset();
+                    var RunSpan = new Stopwatch();
+                    RunSpan.Start();
+                    T66yDownloadCancel = new CancellationTokenSource();
+                    var DownloadPage = 1;
+                    NewSize = 0;
+                    //var CheckLastPage = DataBaseCommand.GetDataFromMiMi("CheckMiMiStoryLastPage");
+                    /*if (!CheckLastPage)
+                      {
+                          DownloadPage = Setting._GlobalSet.MiMiAiStoryPageIndex;
+                          Loger.Instance.LocalInfo($"从{DownloadPage}页开始获得MiMi小说信息");
+                      }
+                      else
+                      {
+                          Loger.Instance.LocalInfo("开始获取新MiMi小说信息");
+                      }*/
+                    bool SaveFlag = true;
+                    while (!T66yDownloadCancel.IsCancellationRequested)
+                    {
+                        Setting.T66yDownLoadNow = $"当前下载第{DownloadPage}";
+                        var DoanloadPageHtml = DownloadMainPage(DownloadPage);
+                        if (string.IsNullOrEmpty(DoanloadPageHtml))
+                        {
+                            Loger.Instance.LocalInfo("T66y下载到空网页，退出下载进程");
+                            break;
+                        }
+                        //var PageCount = 1;
+                        List<T66yData> ItemList = new List<T66yData>();
+                        foreach (var tempData in AnalyT66yMainPage(HtmlDoc, DoanloadPageHtml))
+                        {
+                            T66yData AddTemp = new T66yData();
+                            //AddTemp.id=
+                            //var AddTemp = HandleStoryPage(DownloadMainPage(_Uri: $"http://{new Uri(Setting._GlobalSet.T66yAddress).Host}/{tempData[0]}"), tempData);
+                            if (AddTemp != null)
+                            {
+                                ItemList.Add(AddTemp);
+                                //SaveFlag = DataBaseCommand.SaveToT66yDataUnit();
+                            }
+                            var time = new Random().Next(1000, 10000);
+                            for (var i = time; i > 0; i -= 1000)
+                            {
+                                if (MiMiAiStoryDownloadCancel.IsCancellationRequested) break;
+                                Setting.T66yDownLoadNow = $"当前下载第{DownloadPage}-{ItemList.Count}-{i / 1000}";
+                                Thread.Sleep(1000);
+                            }
+                            //Interlocked.Increment(ref PageCount);
+                            if (!SaveFlag) break;
+                        }
+                        DataBaseCommand.SaveToT66yDataUnit(ItemList);
+                        ItemList.Clear(); ItemList = null;
+                        GC.Collect();
+                        Interlocked.Increment(ref DownloadPage);
+                        if (!SaveFlag) break;
+                    }
+
+                    GetT66yDataTimer.Interval = new Random().Next(12, 24) * 3600 * 1000;
+                    Setting.T66yDownLoadNow = DateTime.Now.AddMilliseconds(GetT66yDataTimer.Interval).ToString("MM-dd|HH:mm");
+                    Loger.Instance.LocalInfo($"T66y:下载完毕,耗时{RunSpan.Elapsed:mm\\分ss\\秒},消耗流量{HumanReadableFilesize(NewSize)}");
+                    RunSpan.Stop();
+                    GetT66ySpan.Restart();
+                    GetT66yDataTimer.Start();
+                };
+                GetT66yDataTimer.Enabled = true;
+            });
+
+            string DownloadMainPage(int Index = -1, string _Uri = "")
+            {
+                using (var request = new HttpRequest()
+                {
+                    UserAgent = Http.ChromeUserAgent(),
+                    ConnectTimeout = 5000,
+                    CharacterSet = Encoding.GetEncoding("GBK")
+                })
+                {
+                    if (Setting._GlobalSet.SocksCheck)
+                    {
+                        if (Setting.Socks5Point != 0)
+                            request.Proxy = Socks5ProxyClient.Parse($"127.0.0.1:{Setting.Socks5Point}");
+                    }
+                    try
+                    {
+                        int ErrorCount = 1;
+                        while (!T66yDownloadCancel.IsCancellationRequested || ErrorCount != 0)
+                        {
+                            var downurl = Index > -1 ? new Uri($"{Setting._GlobalSet.T66yAddress}{Index}") : new Uri($"{_Uri}");
+                            try
+                            {
+                                HttpResponse response = request.Get(downurl);
+                                var RetS = response.ToString();
+                                File.WriteAllBytes("Html", response.Ret);
+                                NewSize += response.Ret.Length;
+                                return RetS;
+                            }
+                            catch (Exception ex)
+                            {
+                                if (ex.Message.StartsWith("Cannot access a disposed object"))
+                                {
+                                    Loger.Instance.LocalInfo($"SSR异常，退出全部下载进程");
+                                    T66yDownloadCancel.Cancel();
+                                    break;
+                                }
+                                Loger.Instance.LocalInfo($"{ex.Message}");
+                                Loger.Instance.LocalInfo($"下载{downurl}失败，计数{ErrorCount}次");
+                                var time = new Random().Next(5000, 10000);
+                                for (var i = time; i > 0; i -= 1000)
+                                {
+                                    if (T66yDownloadCancel.IsCancellationRequested) break;
+                                    Loger.Instance.WaitTime(i / 1000);
+                                    Thread.Sleep(1000);
+                                }
+                                Interlocked.Increment(ref ErrorCount);
+                                if (ErrorCount == 5)
+                                {
+                                    ErrorCount = 0;
+                                    Loger.Instance.LocalInfo($"下载{downurl}失败，退出下载进程");
+                                    if (!Setting.CheckOnline(Setting._GlobalSet.SocksCheck))
+                                    {
+                                        Loger.Instance.LocalInfo($"检测到网络连接异常，退出全部下载方式");
+                                        Setting.CancelSign.Cancel();
+                                    }
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    catch (UriFormatException UriError)
+                    {
+                        Loger.Instance.LocalInfo($"地址错误{UriError.Message}");
+                        return $"地址错误{UriError.Message}";
+                    }
+                }
+                return null;
+            }
+            MiMiAiStory HandleStoryPage(string Html, string[] PageData = null)
+            {
+                try
+                {
+                    var Temp = new MiMiAiStory();
+                    var _HtmlDoc = new HtmlDocument();
+                    _HtmlDoc.LoadHtml(Html);
+                    Temp.Data = Encoding.Default.GetBytes(_HtmlDoc.DocumentNode.SelectNodes("//div[@class='t_msgfont']")[0].InnerHtml);
+                    var OutPutText = new StringBuilder();
+                    var CN = _HtmlDoc.DocumentNode.SelectNodes("//div[@class='t_msgfont']")[0].ChildNodes;
+                    while (CN.Count == 1)
+                    {
+                        if (CN[0].ChildNodes.Count == 0) break;
+                        CN = CN[0].ChildNodes;
+                    }
+                    foreach (var Child in CN)
+                    {
+                        if (Child.Name == "#text")
+                        {
+                            var TempText = Child.InnerText.Replace("\r\n", "").Replace(" ", "").Replace("", "").Replace("&nbsp;", "");
+                            if (!string.IsNullOrEmpty(TempText))
+                            {
+                                OutPutText.Append(TempText);
+                            }
+                        }
+                    }
+                    Temp.id = int.Parse(PageData[0].Split("=")[1]);
+                    Temp.Title = PageData[1];
+                    if (string.IsNullOrEmpty(OutPutText.ToString()))
+                    {
+                        Loger.Instance.LocalInfo($"MiMiStory页面{PageData[0]}解析错误");
+                        File.AppendAllLines("MiMiStory.txt", new string[] { $"{PageData[0]}|{PageData[1]}" });
+                    }
+                    Temp.Story = OutPutText.ToString();
+                    return Temp;
+                }
+                catch (Exception ex)
+                {
+                    Loger.Instance.LocalInfo($"MiMiStory页面解析错误");
+                }
+                return null;
+            }
+            IEnumerable<string[]> AnalyT66yMainPage(HtmlDocument HtmlDoc, string Page)
+            {
+                if (string.IsNullOrEmpty(Page))
+                {
+                    Loger.Instance.LocalInfo($"T66y页面为空"); yield break;
+                }
+                HtmlDoc.LoadHtml(Page);
+                foreach (var item in HtmlDoc.DocumentNode.SelectNodes(@"/html/body/div[2]/div[2]/table[1]/tbody[1]/tr"))
+                {
+                    if (string.IsNullOrEmpty(item.InnerHtml)) continue;
+                    if (item.InnerLength < 50)
+                        continue;
+                    if (item.Attributes["class"].Value == "tr3 t_one tac" && item.SelectSingleNode("td[1]").InnerHtml.Contains(".::"))
+                    {
+                        var temp = HtmlNode.CreateNode(item.OuterHtml);
+                        var TempData = new string[]
+                        {
+                        temp.SelectSingleNode("td[2]/h3/a").Attributes["href"].Value,
+                        temp.SelectSingleNode("td[2]/h3/a").InnerHtml,
+                        temp.SelectSingleNode("td[3]/div/span").Attributes["title"].Value.Split(' ')[2],
+                        bool.FalseString
+                        };
+                        yield return TempData;
+                    }
+                    yield break;
+                }
+            }
         }
 
         private Task GetNyaaNewData()
@@ -52,19 +478,28 @@ namespace SpiderServerInLinux
             return Task.Run(() =>
             {
                 {
-                    GetNyaaNewDataTimer = new System.Timers.Timer(10000);
+                    GetNyaaNewDataTimer = new System.Timers.Timer(1000);
                     GetNyaaNewDataTimer.Elapsed += async delegate
                     {
                         Loger.Instance.LocalInfo("开始获取新Nyaa信息");
+                        NyaaSpan.Reset();
+                        var RunSpan = new Stopwatch();
+                        RunSpan.Start();
+                        var OldSize = new FileInfo(@"Nyaa.db").Length;
                         NyaaDownloadCancel = new CancellationTokenSource();
                         GetNyaaNewDataTimer.Stop();
                         var DownloadCollect = new BlockingCollection<Tuple<int, string>>();
                         //await Task.WhenAll(DownloadLoop(Setting._GlobalSet.NyaaAddress, Setting._GlobalSet.NyaaFin ? 0 : Setting._GlobalSet.NyaaLastPageIndex, DownloadCollect, NyaaNewDownloadCancel), HandlerNyaaHtml(DownloadCollect));
-                        await Task.WhenAll(DownloadLoop(Setting._GlobalSet.NyaaAddress, 0, DownloadCollect, NyaaDownloadCancel), HandlerNyaaHtml(DownloadCollect));
-                        Thread.Sleep(5000);
+                        await Task.WhenAll(DownloadLoop(Setting._GlobalSet.NyaaAddress, 0, DownloadCollect, NyaaDownloadCancel, false, true), HandlerNyaaHtml(DownloadCollect));
+                        Thread.Sleep(1000);
                         GetNyaaNewDataTimer.Interval = new Random().Next(6, 12) * 3600 * 1000;
                         Setting.NyaaDownLoadNow = DateTime.Now.AddMilliseconds(GetNyaaNewDataTimer.Interval).ToString("MM-dd|HH:mm");
+                        var NewSize = new FileInfo(@"Nyaa.db").Length;
+                        Setting._GlobalSet.totalDownloadBytes += NewSize - OldSize;
+                        Loger.Instance.LocalInfo($"Nyaa:下载完毕,耗时{RunSpan.Elapsed:mm\\分ss\\秒},消耗流量{HumanReadableFilesize(NewSize - OldSize)}");
                         Loger.Instance.LocalInfo($"下次获得新数据为{Setting.NyaaDownLoadNow}");
+                        RunSpan.Stop();
+                        NyaaSpan.Restart();
                         GetNyaaNewDataTimer.Start();
                     };
                     GetNyaaNewDataTimer.Enabled = true;
@@ -228,95 +663,447 @@ namespace SpiderServerInLinux
             });
         }
 
-        public System.Timers.Timer GetJavNewDataTimer = new System.Timers.Timer();
-        public System.Timers.Timer GetMiMiNewDataTimer = new System.Timers.Timer();
+        private Task HandlerOldNyaaHtml(BlockingCollection<Tuple<int, string>> downloadCollect)
+        {
+            var SaveData = new BlockingCollection<Tuple<int, NyaaInfo>>();
+            Task.Factory.StartNew(() =>
+            {
+                using (var request = new HttpRequest())
+                {
+                    List<NyaaInfo> Save = new List<NyaaInfo>();
+                    foreach (var item in SaveData.GetConsumingEnumerable())
+                    {
+                        Save.Add(item.Item2);
+                        if (item.Item2.Day != Setting.NyaaDay)
+                        {
+                            DataBaseCommand.SaveToNyaaDateInfo(new DateRecord() { _id = Setting.NyaaDay, Status = true });
+                            Setting.NyaaDay = item.Item2.Day;
+                            Loger.Instance.LocalInfo($"当前保存Nyaa下载日期{Setting.NyaaDay}");
+                            Loger.Instance.LocalInfo($"当前保存Nyaa页面{Setting._GlobalSet.NyaaLastPageIndex}");
+                        }
+                        if (Save.Count > 25 || SaveData.IsCompleted)
+                        {
+                            if (!DataBaseCommand.SaveToNyaaDataBaseRange(Save))
+                            {
+                                foreach (var AddTemp in Save)
+                                {
+                                    DataBaseCommand.SaveToNyaaDataBaseOneObject(AddTemp, false);
+                                }
+                            }
+                            Setting._GlobalSet.NyaaLastPageIndex = item.Item1;
+                            Save.Clear();
+                        }
+                        if (item.Item1 >= 2737376)
+                        {
+                            Loger.Instance.LocalInfo($"Nyaa旧数据下载完毕，退出下载进程");
+                            NyaaOldDownloadCancel.Cancel();
+                            Setting._GlobalSet.NyaaFin = true;
+                            SaveData.CompleteAdding();
+                        }
+                    }
+
+                    if (Save.Count != 0)
+                    {
+                        if (!DataBaseCommand.SaveToNyaaDataBaseRange(Save))
+                        {
+                            foreach (var AddTemp in Save)
+                            {
+                                DataBaseCommand.SaveToNyaaDataBaseOneObject(AddTemp, false);
+                            }
+                        }
+                        Save.Clear();
+                    }
+                    Loger.Instance.LocalInfo($"当前保存旧Nyaa线程退出");
+                }
+            });
+            return Task.Run(() =>
+            {
+                var HtmlDoc = new HtmlDocument();
+                foreach (var Page in downloadCollect.GetConsumingEnumerable())
+                {
+                    if (string.IsNullOrEmpty(Page.Item2))
+                    {
+                        Task.Delay(1000);
+                        continue;
+                    }
+                    HtmlDoc.LoadHtml(Page.Item2);
+                    try
+                    {
+                        var TempData = new NyaaInfo();
+                        var temp = HtmlNode.CreateNode(HtmlDoc.DocumentNode.OuterHtml);
+                        TempData.Class = temp.SelectSingleNode("/html/body/div[1]/div[2]").Attributes["class"]
+                            .Value.Split('-')[1];
+                        TempData.Catagory = $"{temp.SelectSingleNode("/html/body/div[1]/div[2]/div[2]/div[1]/div[2]/a[1]").InnerText} - {temp.SelectSingleNode("/html/body/div[1]/div[2]/div[2]/div[1]/div[2]/a[2]").InnerText}";
+                        TempData.Title = temp.SelectSingleNode("/html/body/div[1]/div[2]/div[1]/h3").InnerText.Replace("\r", "").Replace("\t", "").Replace("\n", "");
+                        TempData.Url = $"/view/{Page.Item1}";
+                        TempData.Torrent = temp.SelectSingleNode("/html/body/div[1]/div[2]/div[3]/a[1]").Attributes["href"].Value;
+                        TempData.Magnet = temp.SelectSingleNode("/html/body/div[1]/div[2]/div[3]/a[2]").Attributes["href"].Value;
+                        TempData.Size = temp.SelectSingleNode("/html/body/div[1]/div[2]/div[2]/div[4]/div[2]").InnerText;
+                        TempData.Timestamp = int.Parse(temp.SelectSingleNode("/html/body/div[1]/div[2]/div[2]/div[1]/div[4]").Attributes["data-timestamp"].Value);
+                        TempData.Date = temp.SelectSingleNode("/html/body/div[1]/div[2]/div[2]/div[1]/div[4]").InnerText.Replace(" UTC", "");
+                        TempData.Up = temp.SelectSingleNode("/html/body/div[1]/div[2]/div[2]/div[2]/div[4]/span").InnerText;
+                        TempData.Leeches = temp.SelectSingleNode("/html/body/div[1]/div[2]/div[2]/div[3]/div[4]/span").InnerText;
+                        TempData.Complete = temp.SelectSingleNode("/html/body/div[1]/div[2]/div[2]/div[4]/div[4]").InnerText;
+                        SaveData.Add(new Tuple<int, NyaaInfo>(Page.Item1, TempData));
+                    }
+                    catch (Exception e)
+                    {
+                        Loger.Instance.LocalInfo($"Nyaa解析失败，失败原因{e}");
+                        break;
+                    }
+                }
+                NyaaDownloadCancel.Cancel();
+                downloadCollect.CompleteAdding();
+                SaveData.CompleteAdding();
+            });
+        }
 
         private Task GetJavNewData()
         {
+            long NewSize = 0;
             return Task.Run(() =>
             {
                 {
-                    GetJavNewDataTimer = new System.Timers.Timer(10000);
+                    GetJavNewDataTimer = new System.Timers.Timer(1000);
                     GetJavNewDataTimer.Elapsed += async delegate
                     {
                         Loger.Instance.LocalInfo("开始获取新Jav信息");
                         JavDownloadCancel = new CancellationTokenSource();
                         GetJavNewDataTimer.Stop();
+                        JavSpan.Reset();
+
+                        var RunSpan = new Stopwatch();
+                        RunSpan.Start();
+                        Setting.JavPageCount = 0;
+                        NewSize = 0;
                         var DownloadCollect = new BlockingCollection<Tuple<int, string>>();
                         await Task.WhenAll(DownloadLoop(Setting._GlobalSet.JavAddress, 0, DownloadCollect, JavDownloadCancel), HandlerJavHtml(DownloadCollect, true));
+                        Thread.Sleep(5000);
                         GetJavNewDataTimer.Interval = new Random().Next(12, 24) * 3600 * 1000;
                         Setting.JavDownLoadNow = DateTime.Now.AddMilliseconds(GetJavNewDataTimer.Interval).ToString("MM-dd|HH:mm");
+                        Setting._GlobalSet.totalDownloadBytes += NewSize;
+                        Loger.Instance.LocalInfo($"Jav:下载完毕,耗时{RunSpan.Elapsed:mm\\分ss\\秒},消耗流量{HumanReadableFilesize(NewSize)}");
                         Loger.Instance.LocalInfo($"下次获得新数据为{Setting.JavDownLoadNow}");
+                        RunSpan.Stop();
+                        JavSpan.Restart();
                         GetJavNewDataTimer.Start();
                     };
                     GetJavNewDataTimer.Enabled = true;
                 }
             });
-        }
-
-        private Task GetOldData()
-        {
-            return Task.Run(() =>
+            Task HandlerJavHtml(BlockingCollection<Tuple<int, string>> downloadCollect, bool GetNew = false)
             {
+                var SaveData = new BlockingCollection<Tuple<int, JavInfo>>();
+                var NewDate = "";
+                if (GetNew)
                 {
-                    Loger.Instance.LocalInfo($"开始Nyaa旧数据下载");
-                    if (Setting._GlobalSet.NyaaFin) return;
-                    var DownloadCollect = new BlockingCollection<Tuple<int, string>>();
-                    NyaaOldDownloadCancel = new CancellationTokenSource();
-                    if (Setting._GlobalSet.NyaaLastPageIndex < 2600000) Setting._GlobalSet.NyaaLastPageIndex = 2600000;
-                    DownloadLoop(@"https://sukebei.nyaa.si/view/", Setting._GlobalSet.NyaaLastPageIndex, DownloadCollect, NyaaOldDownloadCancel, true);
-                    HandlerOldNyaaHtml(DownloadCollect);
-                }
-                return;
+                    Task.Factory.StartNew(() =>
+                    {
+                        using (var request = new HttpRequest())
+                        {
+                            if (Setting._GlobalSet.SocksCheck) request.Proxy = Socks5ProxyClient.Parse($"127.0.0.1:{Setting.Socks5Point}");
 
-                if (!Setting._GlobalSet.MiMiFin)
-                {
-                    var DownloadCollect = new BlockingCollection<Tuple<int, string>>();
-                    MiMiDownloadCancel = new CancellationTokenSource();
-                    /* DownloadLoop(Setting._GlobalSet.MiMiAiAddress, Setting._GlobalSet.MiMiAiPageIndex, DownloadCollect, MiMiDownloadCancel, true);
-                     HandlerMiMiHtml(DownloadCollect);*/
-                }
-
-                if (!Setting._GlobalSet.NyaaFin)
-                {
-                    var DownloadCollect = new BlockingCollection<Tuple<int, string>>();
-                    NyaaDownloadCancel = new CancellationTokenSource();
-                    DownloadLoop(Setting.NyaaAddress, Setting._GlobalSet.NyaaLastPageIndex, DownloadCollect, NyaaDownloadCancel);
-                    HandlerOldNyaaHtml(DownloadCollect);
+                            foreach (var item in SaveData.GetConsumingEnumerable())
+                            {
+                                try
+                                {
+                                    request.UserAgent = Http.ChromeUserAgent();
+                                    try
+                                    {
+                                        HttpResponse response = request.Get(item.Item2.ImgUrl);
+                                        if (!string.IsNullOrEmpty(response.ToString()))
+                                        {
+                                            NewSize += response.Ret.Length;
+                                            item.Item2.Image = response.Ret;
+                                        }
+                                    }
+                                    catch (Exception)
+                                    {
+                                        if (Setting._GlobalSet.SocksCheck) request.Proxy = Socks5ProxyClient.Parse($"127.0.0.1:{Setting.Socks5Point}");
+                                        try
+                                        {
+                                            HttpResponse response = request.Get(item.Item2.ImgUrlError);
+                                            if (!string.IsNullOrEmpty(response.ToString()))
+                                            {
+                                                NewSize += response.Ret.Length;
+                                                item.Item2.Image = response.Ret;
+                                            }
+                                        }
+                                        catch (Exception)
+                                        {
+                                        }
+                                    }
+                                    if (NewDate != item.Item2.Date)
+                                    {
+                                        Loger.Instance.LocalInfo($"当前保存Jav下载日期{item.Item2.Date}");
+                                        NewDate = item.Item2.Date;
+                                        if (DataBaseCommand.GetOrSaveWebInfoFromJav(item.Item2.Date))
+                                        {
+                                            var TempDate = DateTime.ParseExact(item.Item2.Date, "yy-MM-dd", CultureInfo.InvariantCulture);
+                                            var DateCount = -1;
+                                            do
+                                            {
+                                                Interlocked.Decrement(ref DateCount);
+                                                if (DateCount == -10)
+                                                {
+                                                    break;
+                                                }
+                                            } while (DataBaseCommand.GetWebInfoFromJav(TempDate.AddDays(DateCount).ToString("yy-MM-dd")));
+                                            if (DateCount == -10)
+                                            {
+                                                Loger.Instance.LocalInfo($"检测到Jav下载完毕，退出下载进程");
+                                                break;
+                                            }
+                                            else
+                                            {
+                                                Loger.Instance.LocalInfo($"检测到Jav|{TempDate.AddDays(DateCount):yy-MM-dd}未下载完成，继续下载任务");
+                                            }
+                                        }
+                                        /* if (NewDate == "19-09-01")
+                                         {
+                                             Loger.Instance.LocalInfo($"记录时间到达，退出下载进程");
+                                             break;
+                                         }*/
+                                    }
+                                    Setting.JavDownLoadNow = $"{ item.Item1} |{Setting.JavPageCount}|{item.Item2.Date}";
+                                    DataBaseCommand.SaveToJavDataBaseOneObject(item.Item2);
+                                }
+                                catch (Exception ex)
+                                {
+                                    Loger.Instance.LocalInfo(ex);
+                                }
+                            }
+                            JavDownloadCancel.Cancel();
+                            downloadCollect.CompleteAdding();
+                        }
+                    });
                 }
                 else
                 {
-                    Loger.Instance.LocalInfo($"Nyaa下载完毕，跳过旧数据获取");
+                    Task.Factory.StartNew(() =>
+                    {
+                        int PageIndex = 0;
+                        using (var request = new HttpRequest())
+                        {
+                            List<JavInfo> Save = new List<JavInfo>();
+                            foreach (var item in SaveData.GetConsumingEnumerable())
+                            {
+                                try
+                                {
+                                    if (PageIndex != item.Item1)
+                                    {
+                                        PageIndex = item.Item1;
+                                        if (NewDate != item.Item2.Date)
+                                        {
+                                            Loger.Instance.LocalInfo($"当前保存Jav下载日期{item.Item2.Date}");
+                                            NewDate = item.Item2.Date;
+                                        }
+                                        if (Save.Count != 0)
+                                        {
+                                            try
+                                            {
+                                                DataBaseCommand.SaveToJavDataBaseRange(Save);
+                                            }
+                                            catch (Exception e)
+                                            {
+                                                Loger.Instance.LocalInfo(e);
+                                                DataBaseCommand.SaveToJavDataBaseOneByOne(Save);
+                                            }
+                                            Setting._GlobalSet.JavLastPageIndex = item.Item1;
+                                            Save.Clear();
+                                        }
+                                    }
+                                    request.UserAgent = Http.ChromeUserAgent();
+                                    if (Setting._GlobalSet.SocksCheck) request.Proxy = Socks5ProxyClient.Parse($"127.0.0.1:{Setting.Socks5Point}");
+                                    try
+                                    {
+                                        HttpResponse response = request.Get(item.Item2.ImgUrl);
+                                        if (!string.IsNullOrEmpty(response.ToString()))
+                                        {
+                                            NewSize += response.Ret.Length;
+                                            item.Item2.Image = response.Ret;
+                                        }
+                                    }
+                                    catch (Exception)
+                                    {
+                                        try
+                                        {
+                                            HttpResponse response = request.Get(item.Item2.ImgUrlError);
+                                            if (!string.IsNullOrEmpty(response.ToString()))
+                                            {
+                                                NewSize += response.Ret.Length;
+                                                item.Item2.Image = response.Ret;
+                                            }
+                                        }
+                                        catch (Exception)
+                                        {
+                                        }
+                                    }
+                                    Save.Add(item.Item2);
+                                }
+                                catch (Exception ex)
+                                {
+                                    Loger.Instance.LocalInfo(ex);
+                                }
+                            }
+                            Loger.Instance.LocalInfo($"当前保存Jav解析进程退出");
+                            JavOldDownloadRunning = false;
+                        }
+                    });
                 }
-                if (Setting._GlobalSet.JavFin)
+                return Task.Run(() =>
                 {
-                    var DownloadCollect = new BlockingCollection<Tuple<int, string>>();
-                    DownloadLoop(Setting._GlobalSet.JavAddress, Setting._GlobalSet.JavLastPageIndex, DownloadCollect, JavDownloadCancel);
-                    HandlerJavHtml(DownloadCollect);
-                }
-                else
+                    var HtmlDoc = new HtmlDocument();
+                    foreach (var Page in downloadCollect.GetConsumingEnumerable())
+                    {
+                        if (string.IsNullOrEmpty(Page.Item2))
+                        {
+                            Task.Delay(1000);
+                            continue;
+                        }
+                        HtmlDoc.LoadHtml(Page.Item2);
+                        try
+                        {
+                            foreach (var item in HtmlDoc.DocumentNode.SelectNodes(@"/html/body/div[1]/div"))
+                            {
+                                var TempData = new JavInfo();
+                                var temp = HtmlNode.CreateNode(item.OuterHtml);
+                                if (string.IsNullOrEmpty(temp.GetClasses().FirstOrDefault())) continue;
+                                TempData.ImgUrl = temp.SelectSingleNode("div/div/div[1]/img").Attributes["src"].Value;
+                                //TempData.ImgUrlError = temp.SelectSingleNode("div/div/div[1]/img").Attributes["onerror"].Value.Split('\'')[1];
+                                //TempData.id = temp.SelectSingleNode("div/div/div[2]/div/h5/a").InnerText.Replace("\n", "");
+                                TempData.id = temp.SelectSingleNode("div/div/div[2]/div/h5/a").Attributes["href"].Value.Replace(@"/torrent/", "");
+                                TempData.Size = temp.SelectSingleNode("div/div/div[2]/div/h5/span").InnerText;
+                                TempData.Date = $"{DateTime.Parse(temp.SelectSingleNode("div/div/div[2]/div/p[1]/a").Attributes["href"].Value.Substring(1)):yy-MM-dd}";
+                                var tags = new List<string>();
+                                try
+                                {
+                                    foreach (var Tags in temp.SelectNodes(@"//div[@class='tags']/a"))
+                                    {
+                                        tags.Add(Tags.InnerText.Replace("\n", "").Replace("\r", ""));
+                                    }
+                                }
+                                catch (NullReferenceException) { }
+                                catch (Exception)
+                                {
+                                    Loger.Instance.LocalInfo($"Jav类型解析失败，退出下载");
+                                    downloadCollect.CompleteAdding();
+                                    SaveData.CompleteAdding();
+                                    JavDownloadCancel.Cancel();
+                                }
+                                TempData.Tags = tags.ToArray();
+                                TempData.Describe = temp.SelectSingleNode("div/div/div[2]/div/p[2]").InnerText.ReplaceEntities().Replace("\n", "");
+                                var Actress = new List<string>();
+                                try
+                                {
+                                    foreach (var Tags in temp.SelectNodes(@"//div[@class='panel']/a"))
+                                    //foreach (var Tags in temp.SelectNodes(@"div/div/div[2]/div/div[2]"))
+                                    {
+                                        Actress.Add(Tags.InnerText.Replace("\n", ""));
+                                    }
+                                }
+                                catch (NullReferenceException) { }
+                                catch (Exception)
+                                {
+                                    Loger.Instance.LocalInfo($"Jav人名解析失败");
+                                    File.WriteAllText($"错误{DateTime.Now:mm-dd}.html", Page.Item2);
+                                }
+                                TempData.Actress = Actress.ToArray();
+                                TempData.Magnet = temp.SelectSingleNode("div/div/div[2]/div/a[1]").Attributes["href"].Value;
+                                SaveData.Add(new Tuple<int, JavInfo>(Page.Item1, TempData));
+                            }
+                        }
+                        catch (Exception)
+                        {
+                            Loger.Instance.LocalInfo($"Jav解析失败，推测下载完毕");
+
+                            File.WriteAllText($"错误{Guid.NewGuid().ToString()}.html", Page.Item2);
+
+                            Setting._GlobalSet.JavFin = false;
+                            downloadCollect.CompleteAdding();
+                            SaveData.CompleteAdding();
+                            JavDownloadCancel.Cancel();
+                        }
+                    }
+                    SaveData.CompleteAdding();
+                });
+            }
+            Task GetOldData()
+            {
+                return Task.Run(() =>
                 {
-                    Loger.Instance.LocalInfo($"JAV下载完毕，跳过旧数据获取");
-                }
-            });
+                    {
+                        Loger.Instance.LocalInfo($"开始Nyaa旧数据下载");
+                        if (Setting._GlobalSet.NyaaFin) return;
+                        var DownloadCollect = new BlockingCollection<Tuple<int, string>>();
+                        NyaaOldDownloadCancel = new CancellationTokenSource();
+                        if (Setting._GlobalSet.NyaaLastPageIndex < 2600000) Setting._GlobalSet.NyaaLastPageIndex = 2600000;
+                        DownloadLoop(@"https://sukebei.nyaa.si/view/", Setting._GlobalSet.NyaaLastPageIndex, DownloadCollect, NyaaOldDownloadCancel, true, true);
+                        HandlerOldNyaaHtml(DownloadCollect);
+                    }
+                    return;
+
+                    if (!Setting._GlobalSet.MiMiFin)
+                    {
+                        var DownloadCollect = new BlockingCollection<Tuple<int, string>>();
+                        MiMiDownloadCancel = new CancellationTokenSource();
+                        /* DownloadLoop(Setting._GlobalSet.MiMiAiAddress, Setting._GlobalSet.MiMiAiPageIndex, DownloadCollect, MiMiDownloadCancel, true);
+                         HandlerMiMiHtml(DownloadCollect);*/
+                    }
+
+                    if (!Setting._GlobalSet.NyaaFin)
+                    {
+                        var DownloadCollect = new BlockingCollection<Tuple<int, string>>();
+                        NyaaDownloadCancel = new CancellationTokenSource();
+                        DownloadLoop(Setting.NyaaAddress, Setting._GlobalSet.NyaaLastPageIndex, DownloadCollect, NyaaDownloadCancel, true);
+                        HandlerOldNyaaHtml(DownloadCollect);
+                    }
+                    else
+                    {
+                        Loger.Instance.LocalInfo($"Nyaa下载完毕，跳过旧数据获取");
+                    }
+                    if (Setting._GlobalSet.JavFin)
+                    {
+                        var DownloadCollect = new BlockingCollection<Tuple<int, string>>();
+                        DownloadLoop(Setting._GlobalSet.JavAddress, Setting._GlobalSet.JavLastPageIndex, DownloadCollect, JavDownloadCancel);
+                        HandlerJavHtml(DownloadCollect);
+                    }
+                    else
+                    {
+                        Loger.Instance.LocalInfo($"JAV下载完毕，跳过旧数据获取");
+                    }
+                });
+            }
         }
 
         private Task GetMiMiData()
         {
+            long NewSize = 0;
+
             MiMiDownloadCancel = new CancellationTokenSource();
             return Task.Run(() =>
             {
                 var HtmlDoc = new HtmlDocument();
-                GetMiMiNewDataTimer = new System.Timers.Timer(10000);
+                GetMiMiNewDataTimer = new System.Timers.Timer(1000);
                 GetMiMiNewDataTimer.Elapsed += delegate
                 {
                     Loger.Instance.LocalInfo("开始获取新MiMi信息");
                     GetMiMiNewDataTimer.Stop();
+                    MiMiSpan.Reset();
+                    var RunSpan = new Stopwatch();
+                    RunSpan.Start();
+                    NewSize = 0;
                     DownLoadWork(1);
+                    Thread.Sleep(5000);
                     GetMiMiNewDataTimer.Interval = new Random().Next(12, 24) * 3600 * 1000;
                     Setting.MiMiDownLoadNow = DateTime.Now.AddMilliseconds(GetMiMiNewDataTimer.Interval).ToString("MM-dd|HH:mm");
+                    Setting._GlobalSet.totalDownloadBytes += NewSize;
+                    Loger.Instance.LocalInfo($"MiMi:下载完毕,耗时{RunSpan.Elapsed:mm\\分ss\\秒},消耗流量{HumanReadableFilesize(NewSize)}");
                     Loger.Instance.LocalInfo($"下次获得新数据为{Setting.MiMiDownLoadNow}");
+                    RunSpan.Stop();
+                    MiMiSpan.Restart();
                     GetMiMiNewDataTimer.Start();
+                    //var ss = (TimeSpan.FromMilliseconds(GetMiMiNewDataTimer.Interval) - MiMiStop.Elapsed).ToString(@"hh\:mm\:ss");
                 };
                 GetMiMiNewDataTimer.Enabled = true;
                 /*  if (!Setting._GlobalSet.MiMiFin)
@@ -336,27 +1123,25 @@ namespace SpiderServerInLinux
                         try
                         {
                             if (string.IsNullOrEmpty(RTemp.Item1)) return;
-                            foreach (var tempData in AnalySysMainPage(RTemp.Item1))
+                            foreach (var tempData in AnalyMiMiMainPage(HtmlDoc, RTemp.Item1))
                             {
                                 if (DataBaseCommand.SaveToMiMiDataTablet(tempData, false))
                                 {
                                     var Date = DateTime.Parse(tempData[3]).ToString("yyyy-MM-dd");
                                     Setting.MiMiDay = Date;
                                     var rtemp = DownLoadNew(_Uri: $"http://{new Uri(Setting._GlobalSet.MiMiAiAddress).Host}/{tempData[0]}");
-                                    //DataBaseCommand.GetWebInfoFromMiMi(tempData[0]);
+                                    DataBaseCommand.GetWebInfoFromMiMi(tempData[0]);
                                     if (rtemp != null)
                                     {
                                         RT = rtemp.Item1;
-                                        Stopwatch Time = new Stopwatch();
-                                        Time.Start();
-                                        var Now = Setting._GlobalSet.totalDownloadBytes;
-                                        //HandleMiMiPage(rtemp.Item1, Date);
-                                        Time.Stop();
+                                        HandleMiMiPage(rtemp.Item1, Date);
                                         tempData[4] = bool.TrueString;
-                                        Loger.Instance.LocalInfo($"MiMi:{Date}下载完毕,耗时{Time.Elapsed:mm\\分ss\\秒},消耗流量{HumanReadableFilesize(Setting._GlobalSet.totalDownloadBytes - Now)}");
                                         DataBaseCommand.SaveToMiMiDataTablet(tempData);
                                     }
-                                    else DataBaseCommand.SaveToMiMiDataTablet(tempData);
+                                    else
+                                    {
+                                        DataBaseCommand.SaveToMiMiDataTablet(tempData);
+                                    }
                                 }
                             }
                         }
@@ -366,36 +1151,15 @@ namespace SpiderServerInLinux
                             File.WriteAllText("Error.html", RT);
                             if (ex.Message == "Object reference not set to an instance of an object.")
                             {
-                                Loger.Instance.LocalInfo($"判断MiMi下载完成,退出下载进程");
                                 Setting._GlobalSet.MiMiFin = true;
                                 MiMiDownloadCancel.Cancel();
                             }
                         }
-                    }
-                }
-                string HumanReadableFilesize(double size)
-                {
-                    var units = new[] { "B", "KB", "MB", "GB", "TB", "PB" };
-                    double mod = 1024.0;
-                    var DoubleCount = new List<double>();
-                    while (size >= mod)
-                    {
-                        size /= mod;
-                        DoubleCount.Add(size);
-                    }
-                    var Ret = "";
-                    for (int j = DoubleCount.Count; j > 0; j--)
-                    {
-                        if (j == DoubleCount.Count)
+                        finally
                         {
-                            Ret += $"{Math.Floor(DoubleCount[j - 1])}{units[j]}";
-                        }
-                        else
-                        {
-                            Ret += $"{Math.Floor(DoubleCount[j - 1] - (Math.Floor(DoubleCount[j]) * 1024))}{units[j]}";
+                            Loger.Instance.LocalInfo($"判断MiMi下载完成,退出下载进程");
                         }
                     }
-                    return Ret;
                 }
                 void HandleMiMiPage(string PageData, string Date)
                 {
@@ -500,33 +1264,6 @@ namespace SpiderServerInLinux
                         Loger.Instance.LocalInfo($"MiMi页面解析错误");
                     }
                 }
-                IEnumerable<string[]> AnalySysMainPage(string Page)
-                {
-                    if (string.IsNullOrEmpty(Page))
-                    {
-                        Loger.Instance.LocalInfo($"MiMi页面为空"); yield break;
-                    }
-                    HtmlDoc.LoadHtml(Page);
-                    foreach (var item in HtmlDoc.DocumentNode.SelectNodes(@"/html/body/center/form/div[1]/div/table"))
-                    {
-                        var TempData = new string[]
-                        {
-                        item.SelectSingleNode("tr/td[1]/a").Attributes["href"].Value,
-                        item.SelectSingleNode("tr/td[3]/a[1]").InnerText,
-                        item.SelectSingleNode("tr/td[4]/a").InnerText,
-                        item.SelectSingleNode("tr/td[4]/span").InnerText,
-                        bool.FalseString
-                        };
-                        if (TempData[2] == "mimi")
-                        {
-                            if (TempData[1].ToUpper().Contains("BT"))
-                            {
-                                yield return TempData;
-                            }
-                        }
-                    }
-                    yield break;
-                }
 
                 Tuple<string, byte[]> DownLoadNew(int Index = -1, string _Uri = "", bool Mode = false)
                 {
@@ -550,10 +1287,14 @@ namespace SpiderServerInLinux
                                     try
                                     {
                                         HttpResponse response = request.Get(downurl);
-                                        return new Tuple<string, byte[]>(response.ToString(), null);
+                                        var RetS = response.ToString();
+                                        NewSize += response.Ret.Length;
+                                        return new Tuple<string, byte[]>(RetS, null);
                                     }
                                     catch (Exception ex)
                                     {
+                                        if (Setting._GlobalSet.SocksCheck) request.Proxy = Socks5ProxyClient.Parse($"127.0.0.1:{Setting.Socks5Point}");
+
                                         if (request.Response.RedirectAddress != null)
                                         {
                                             if (request.Response.RedirectAddress.Authority != downurl.Authority)
@@ -571,7 +1312,7 @@ namespace SpiderServerInLinux
                                             break;
                                         }
                                         Loger.Instance.LocalInfo($"{ex.Message}");
-                                        Loger.Instance.LocalInfo($"下载{downurl.ToString()}失败，计数{ErrorCount}次");
+                                        Loger.Instance.LocalInfo($"下载{downurl}失败，计数{ErrorCount}次");
                                         var time = new Random().Next(5000, 10000);
                                         for (var i = time; i > 0; i -= 1000)
                                         {
@@ -583,7 +1324,7 @@ namespace SpiderServerInLinux
                                         if (ErrorCount == 5)
                                         {
                                             ErrorCount = 0;
-                                            Loger.Instance.LocalInfo($"下载{downurl.ToString()}失败，退出下载进程");
+                                            Loger.Instance.LocalInfo($"下载{downurl}失败，退出下载进程");
                                             if (!Setting.CheckOnline(Setting._GlobalSet.SocksCheck))
                                             {
                                                 Loger.Instance.LocalInfo($"检测到网络连接异常，退出全部下载方式");
@@ -605,6 +1346,7 @@ namespace SpiderServerInLinux
                                                 var _PostData = request.Get(downurl);
                                                 if (!string.IsNullOrEmpty(_PostData.ToString()))
                                                 {
+                                                    NewSize += _PostData.Ret.Length;
                                                     return new Tuple<string, byte[]>("", _PostData.Ret);
                                                 }
                                                 else
@@ -650,6 +1392,63 @@ namespace SpiderServerInLinux
                 }
             }
             , MiMiDownloadCancel.Token);
+        }
+
+        private IEnumerable<string[]> AnalyMiMiMainPage(HtmlDocument HtmlDoc, string Page, bool RetAll = false)
+        {
+            if (string.IsNullOrEmpty(Page))
+            {
+                Loger.Instance.LocalInfo($"MiMi页面为空"); yield break;
+            }
+            HtmlDoc.LoadHtml(Page);
+            foreach (var item in HtmlDoc.DocumentNode.SelectNodes(@"/html/body/center/form/div[1]/div/table"))
+            {
+                var TempData = new string[]
+                {
+                        item.SelectSingleNode("tr/td[1]/a").Attributes["href"].Value,
+                        item.SelectSingleNode("tr/td[3]/a[1]").InnerText,
+                        item.SelectSingleNode("tr/td[4]/a").InnerText,
+                        item.SelectSingleNode("tr/td[4]/span").InnerText,
+                        bool.FalseString
+                };
+                if (TempData[2] == "mimi")
+                {
+                    if (TempData[1].ToUpper().Contains("BT"))
+                    {
+                        yield return TempData;
+                    }
+                }
+                if (RetAll)
+                {
+                    yield return TempData;
+                }
+            }
+            yield break;
+        }
+
+        private string HumanReadableFilesize(double size)
+        {
+            var units = new[] { "B", "KB", "MB", "GB", "TB", "PB" };
+            double mod = 1024.0;
+            var DoubleCount = new List<double>();
+            while (size >= mod)
+            {
+                size /= mod;
+                DoubleCount.Add(size);
+            }
+            var Ret = "";
+            for (int j = DoubleCount.Count; j > 0; j--)
+            {
+                if (j == DoubleCount.Count)
+                {
+                    Ret += $"{Math.Floor(DoubleCount[j - 1])}{units[j]}";
+                }
+                else
+                {
+                    Ret += $"{Math.Floor(DoubleCount[j - 1] - (Math.Floor(DoubleCount[j]) * 1024))}{units[j]}";
+                }
+            }
+            return Ret;
         }
 
         private Task HandlerMiMiHtml(BlockingCollection<Tuple<int, string>> downloadCollect)
@@ -941,334 +1740,7 @@ namespace SpiderServerInLinux
               }));
         }
 
-        private Task HandlerOldNyaaHtml(BlockingCollection<Tuple<int, string>> downloadCollect)
-        {
-            var SaveData = new BlockingCollection<Tuple<int, NyaaInfo>>();
-            Task.Factory.StartNew(() =>
-            {
-                using (var request = new HttpRequest())
-                {
-                    List<NyaaInfo> Save = new List<NyaaInfo>();
-                    foreach (var item in SaveData.GetConsumingEnumerable())
-                    {
-                        Save.Add(item.Item2);
-                        if (item.Item2.Day != Setting.NyaaDay)
-                        {
-                            DataBaseCommand.SaveToNyaaDateInfo(new DateRecord() { _id = Setting.NyaaDay, Status = true });
-                            Setting.NyaaDay = item.Item2.Day;
-                            Loger.Instance.LocalInfo($"当前保存Nyaa下载日期{Setting.NyaaDay}");
-                            Loger.Instance.LocalInfo($"当前保存Nyaa页面{Setting._GlobalSet.NyaaLastPageIndex}");
-                        }
-                        if (Save.Count > 25 || SaveData.IsCompleted)
-                        {
-                            if (!DataBaseCommand.SaveToNyaaDataBaseRange(Save))
-                            {
-                                foreach (var AddTemp in Save)
-                                {
-                                    DataBaseCommand.SaveToNyaaDataBaseOneObject(AddTemp, false);
-                                }
-                            }
-                            Setting._GlobalSet.NyaaLastPageIndex = item.Item1;
-                            Save.Clear();
-                        }
-                        if (item.Item1 >= 2737376)
-                        {
-                            Loger.Instance.LocalInfo($"Nyaa旧数据下载完毕，退出下载进程");
-                            NyaaOldDownloadCancel.Cancel();
-                            Setting._GlobalSet.NyaaFin = true;
-                            SaveData.CompleteAdding();
-                        }
-                    }
-
-                    if (Save.Count != 0)
-                    {
-                        if (!DataBaseCommand.SaveToNyaaDataBaseRange(Save))
-                        {
-                            foreach (var AddTemp in Save)
-                            {
-                                DataBaseCommand.SaveToNyaaDataBaseOneObject(AddTemp, false);
-                            }
-                        }
-                        Save.Clear();
-                    }
-                    Loger.Instance.LocalInfo($"当前保存旧Nyaa线程退出");
-                }
-            });
-            return Task.Run(() =>
-            {
-                var HtmlDoc = new HtmlDocument();
-                foreach (var Page in downloadCollect.GetConsumingEnumerable())
-                {
-                    if (string.IsNullOrEmpty(Page.Item2))
-                    {
-                        Task.Delay(1000);
-                        continue;
-                    }
-                    HtmlDoc.LoadHtml(Page.Item2);
-                    try
-                    {
-                        var TempData = new NyaaInfo();
-                        var temp = HtmlNode.CreateNode(HtmlDoc.DocumentNode.OuterHtml);
-                        TempData.Class = temp.SelectSingleNode("/html/body/div[1]/div[2]").Attributes["class"]
-                            .Value.Split('-')[1];
-                        TempData.Catagory = $"{temp.SelectSingleNode("/html/body/div[1]/div[2]/div[2]/div[1]/div[2]/a[1]").InnerText} - {temp.SelectSingleNode("/html/body/div[1]/div[2]/div[2]/div[1]/div[2]/a[2]").InnerText}";
-                        TempData.Title = temp.SelectSingleNode("/html/body/div[1]/div[2]/div[1]/h3").InnerText.Replace("\r", "").Replace("\t", "").Replace("\n", "");
-                        TempData.Url = $"/view/{Page.Item1}";
-                        TempData.Torrent = temp.SelectSingleNode("/html/body/div[1]/div[2]/div[3]/a[1]").Attributes["href"].Value;
-                        TempData.Magnet = temp.SelectSingleNode("/html/body/div[1]/div[2]/div[3]/a[2]").Attributes["href"].Value;
-                        TempData.Size = temp.SelectSingleNode("/html/body/div[1]/div[2]/div[2]/div[4]/div[2]").InnerText;
-                        TempData.Timestamp = int.Parse(temp.SelectSingleNode("/html/body/div[1]/div[2]/div[2]/div[1]/div[4]").Attributes["data-timestamp"].Value);
-                        TempData.Date = temp.SelectSingleNode("/html/body/div[1]/div[2]/div[2]/div[1]/div[4]").InnerText.Replace(" UTC", "");
-                        TempData.Up = temp.SelectSingleNode("/html/body/div[1]/div[2]/div[2]/div[2]/div[4]/span").InnerText;
-                        TempData.Leeches = temp.SelectSingleNode("/html/body/div[1]/div[2]/div[2]/div[3]/div[4]/span").InnerText;
-                        TempData.Complete = temp.SelectSingleNode("/html/body/div[1]/div[2]/div[2]/div[4]/div[4]").InnerText;
-                        SaveData.Add(new Tuple<int, NyaaInfo>(Page.Item1, TempData));
-                    }
-                    catch (Exception e)
-                    {
-                        Loger.Instance.LocalInfo($"Nyaa解析失败，失败原因{e}");
-                        break;
-                    }
-                }
-                NyaaDownloadCancel.Cancel();
-                downloadCollect.CompleteAdding();
-                SaveData.CompleteAdding();
-            });
-        }
-
-        private Task HandlerJavHtml(BlockingCollection<Tuple<int, string>> downloadCollect, bool GetNew = false)
-        {
-            var SaveData = new BlockingCollection<Tuple<int, JavInfo>>();
-            var NewDate = "";
-            if (GetNew)
-            {
-                Task.Factory.StartNew(() =>
-                {
-                    using (var request = new HttpRequest())
-                    {
-                        foreach (var item in SaveData.GetConsumingEnumerable())
-                        {
-                            try
-                            {
-                                request.UserAgent = Http.ChromeUserAgent();
-                                if (Setting._GlobalSet.SocksCheck) request.Proxy = Socks5ProxyClient.Parse($"127.0.0.1:{Setting.Socks5Point}");
-                                try
-                                {
-                                    HttpResponse response = request.Get(item.Item2.ImgUrl);
-                                    if (!string.IsNullOrEmpty(response.ToString()))
-                                    {
-                                        item.Item2.Image = response.Ret;
-                                    }
-                                }
-                                catch (Exception)
-                                {
-                                    try
-                                    {
-                                        HttpResponse response = request.Get(item.Item2.ImgUrlError);
-                                        if (!string.IsNullOrEmpty(response.ToString()))
-                                        {
-                                            item.Item2.Image = response.Ret;
-                                        }
-                                    }
-                                    catch (Exception)
-                                    {
-                                    }
-                                }
-                                if (NewDate != item.Item2.Date)
-                                {
-                                    Loger.Instance.LocalInfo($"当前保存Jav下载日期{item.Item2.Date}");
-                                    NewDate = item.Item2.Date;
-                                    if (DataBaseCommand.GetOrSaveWebInfoFromJav(item.Item2.Date))
-                                    {
-                                        var TempDate = DateTime.ParseExact(item.Item2.Date, "yy-MM-dd", CultureInfo.InvariantCulture);
-                                        var DateCount = -1;
-                                        do
-                                        {
-                                            Interlocked.Decrement(ref DateCount);
-                                            if (DateCount == -10)
-                                            {
-                                                break;
-                                            }
-                                        } while (DataBaseCommand.GetWebInfoFromJav(TempDate.AddDays(DateCount).ToString("yy-MM-dd")));
-                                        if (DateCount == -10)
-                                        {
-                                            Loger.Instance.LocalInfo($"检测到Jav下载完毕，退出下载进程");
-                                            break;
-                                        }
-                                        else
-                                        {
-                                            Loger.Instance.LocalInfo($"检测到Jav|{TempDate.AddDays(DateCount).ToString("yy-MM-dd")}未下载完成，继续下载任务");
-                                        }
-                                    }
-                                    /* if (NewDate == "19-09-01")
-                                     {
-                                         Loger.Instance.LocalInfo($"记录时间到达，退出下载进程");
-                                         break;
-                                     }*/
-                                }
-                                Setting.JavDownLoadNow = $"{ item.Item1} | {item.Item2.Date}";
-                                DataBaseCommand.SaveToJavDataBaseOneObject(item.Item2);
-                            }
-                            catch (Exception ex)
-                            {
-                                Loger.Instance.LocalInfo(ex);
-                            }
-                        }
-                        JavDownloadCancel.Cancel();
-                        downloadCollect.CompleteAdding();
-                    }
-                });
-            }
-            else
-            {
-                Task.Factory.StartNew(() =>
-                {
-                    int PageIndex = 0;
-                    using (var request = new HttpRequest())
-                    {
-                        List<JavInfo> Save = new List<JavInfo>();
-                        foreach (var item in SaveData.GetConsumingEnumerable())
-                        {
-                            try
-                            {
-                                if (PageIndex != item.Item1)
-                                {
-                                    PageIndex = item.Item1;
-                                    if (NewDate != item.Item2.Date)
-                                    {
-                                        Loger.Instance.LocalInfo($"当前保存Jav下载日期{item.Item2.Date}");
-                                        NewDate = item.Item2.Date;
-                                    }
-                                    if (Save.Count != 0)
-                                    {
-                                        try
-                                        {
-                                            DataBaseCommand.SaveToJavDataBaseRange(Save);
-                                        }
-                                        catch (Exception e)
-                                        {
-                                            Loger.Instance.LocalInfo(e);
-                                            DataBaseCommand.SaveToJavDataBaseOneByOne(Save);
-                                        }
-                                        Setting._GlobalSet.JavLastPageIndex = item.Item1;
-                                        Save.Clear();
-                                    }
-                                }
-                                request.UserAgent = Http.ChromeUserAgent();
-                                if (Setting._GlobalSet.SocksCheck) request.Proxy = Socks5ProxyClient.Parse($"127.0.0.1:{Setting.Socks5Point}");
-                                try
-                                {
-                                    HttpResponse response = request.Get(item.Item2.ImgUrl);
-                                    if (!string.IsNullOrEmpty(response.ToString()))
-                                    {
-                                        item.Item2.Image = response.Ret;
-                                    }
-                                }
-                                catch (Exception)
-                                {
-                                    try
-                                    {
-                                        HttpResponse response = request.Get(item.Item2.ImgUrlError);
-                                        if (!string.IsNullOrEmpty(response.ToString()))
-                                        {
-                                            item.Item2.Image = response.Ret;
-                                        }
-                                    }
-                                    catch (Exception)
-                                    {
-                                    }
-                                }
-                                Save.Add(item.Item2);
-                            }
-                            catch (Exception ex)
-                            {
-                                Loger.Instance.LocalInfo(ex);
-                            }
-                        }
-                        Loger.Instance.LocalInfo($"当前保存Jav解析进程退出");
-                        JavOldDownloadRunning = false;
-                    }
-                });
-            }
-            return Task.Run(() =>
-            {
-                var HtmlDoc = new HtmlDocument();
-                foreach (var Page in downloadCollect.GetConsumingEnumerable())
-                {
-                    if (string.IsNullOrEmpty(Page.Item2))
-                    {
-                        Task.Delay(1000);
-                        continue;
-                    }
-                    HtmlDoc.LoadHtml(Page.Item2);
-                    try
-                    {
-                        foreach (var item in HtmlDoc.DocumentNode.SelectNodes(@"/html/body/div[1]/div"))
-                        {
-                            var TempData = new JavInfo();
-                            var temp = HtmlNode.CreateNode(item.OuterHtml);
-                            if (string.IsNullOrEmpty(temp.GetClasses().FirstOrDefault())) continue;
-                            TempData.ImgUrl = temp.SelectSingleNode("div/div/div[1]/img").Attributes["src"].Value;
-                            TempData.ImgUrlError = temp.SelectSingleNode("div/div/div[1]/img").Attributes["onerror"].Value.Split('\'')[1];
-                            //TempData.id = temp.SelectSingleNode("div/div/div[2]/div/h5/a").InnerText.Replace("\n", "");
-                            TempData.id = temp.SelectSingleNode("div/div/div[2]/div/h5/a").Attributes["href"].Value.Replace(@"/torrent/", "");
-                            TempData.Size = temp.SelectSingleNode("div/div/div[2]/div/h5/span").InnerText;
-                            TempData.Date = $"{DateTime.Parse(temp.SelectSingleNode("div/div/div[2]/div/p[1]/a").Attributes["href"].Value.Substring(1)):yy-MM-dd}";
-                            var tags = new List<string>();
-                            try
-                            {
-                                foreach (var Tags in temp.SelectNodes(@"//div[@class='tags']/a"))
-                                {
-                                    tags.Add(Tags.InnerText.Replace("\n", "").Replace("\r", ""));
-                                }
-                            }
-                            catch (NullReferenceException) { }
-                            catch (Exception)
-                            {
-                                Loger.Instance.LocalInfo($"Jav类型解析失败，退出下载");
-                                downloadCollect.CompleteAdding();
-                                SaveData.CompleteAdding();
-                                JavDownloadCancel.Cancel();
-                            }
-                            TempData.Tags = tags.ToArray();
-                            TempData.Describe = temp.SelectSingleNode("div/div/div[2]/div/p[2]").InnerText.ReplaceEntities().Replace("\n", ""); ;
-                            var Actress = new List<string>();
-                            try
-                            {
-                                foreach (var Tags in temp.SelectNodes(@"//div[@class='panel']/a"))
-                                //foreach (var Tags in temp.SelectNodes(@"div/div/div[2]/div/div[2]"))
-                                {
-                                    Actress.Add(Tags.InnerText.Replace("\n", ""));
-                                }
-                            }
-                            catch (NullReferenceException) { }
-                            catch (Exception)
-                            {
-                                Loger.Instance.LocalInfo($"Jav人名解析失败");
-                                File.WriteAllText($"错误{DateTime.Now:mm-dd}.html", Page.Item2);
-                            }
-                            TempData.Actress = Actress.ToArray();
-                            TempData.Magnet = temp.SelectSingleNode("div/div/div[2]/div/a[1]").Attributes["href"].Value;
-                            SaveData.Add(new Tuple<int, JavInfo>(Page.Item1, TempData));
-                        }
-                    }
-                    catch (Exception)
-                    {
-                        Loger.Instance.LocalInfo($"Jav解析失败，推测下载完毕");
-
-                        File.WriteAllText($"错误{Guid.NewGuid().ToString()}.html", Page.Item2);
-
-                        Setting._GlobalSet.JavFin = false;
-                        downloadCollect.CompleteAdding();
-                        SaveData.CompleteAdding();
-                        JavDownloadCancel.Cancel();
-                    }
-                }
-                SaveData.CompleteAdding();
-            });
-        }
-
-        private Task DownloadLoop(string Address, int LastPageIndex, BlockingCollection<Tuple<int, string>> downloadCollect, CancellationTokenSource token, bool CheckMode = false)
+        private Task DownloadLoop(string Address, int LastPageIndex, BlockingCollection<Tuple<int, string>> downloadCollect, CancellationTokenSource token, bool CheckMode = false, bool NyaaSocks = false)
         {
             return Task.Factory.StartNew(() =>
               {
@@ -1278,9 +1750,13 @@ namespace SpiderServerInLinux
                       ConnectTimeout = 20000,
                   })
                   {
+                      Setting.JavPageCount = downloadCollect.Count;
                       int ErrorCount = 0;
-                      if (Setting._GlobalSet.SocksCheck)
-                      { request.Proxy = Socks5ProxyClient.Parse($"127.0.0.1:{Setting.Socks5Point}"); }
+                      if (NyaaSocks)
+                      {
+                          if (Setting._GlobalSet.NyaaSocksCheck) request.Proxy = Socks5ProxyClient.Parse($"127.0.0.1:{Setting.NyaaSocks5Point}");
+                      }
+                      else if (Setting._GlobalSet.SocksCheck) request.Proxy = Socks5ProxyClient.Parse($"127.0.0.1:{Setting.Socks5Point}");
                       while (!token.Token.IsCancellationRequested)
                       {
                           if (downloadCollect.Count > 3)
@@ -1319,9 +1795,21 @@ namespace SpiderServerInLinux
                               {
                                   break;
                               }
-                              Setting.SSR.Stop();
-                              Setting.SSR.Start();
-
+                              if (!NyaaSocks)
+                              {
+                                  Setting.SSR.Stop();
+                                  Setting.SSR.Start();
+                              }
+                              else
+                              {
+                                  Setting.NyaaSSR.Stop();
+                                  Setting.NyaaSSR.Start();
+                              }
+                              if (NyaaSocks)
+                              {
+                                  if (Setting._GlobalSet.NyaaSocksCheck) request.Proxy = Socks5ProxyClient.Parse($"127.0.0.1:{Setting.NyaaSocks5Point}");
+                              }
+                              else if (Setting._GlobalSet.SocksCheck) request.Proxy = Socks5ProxyClient.Parse($"127.0.0.1:{Setting.Socks5Point}");
                               Interlocked.Increment(ref ErrorCount);
                               if (new Uri(Address).Host == new Uri(Setting.NyaaAddress).Host)
                               {
@@ -1382,7 +1870,8 @@ namespace SpiderServerInLinux
             Setting.DownloadManage.JavDownloadCancel.Cancel();
             Setting.DownloadManage.NyaaDownloadCancel.Cancel();
             Setting.DownloadManage.MiMiDownloadCancel.Cancel();
-            GetJavNewDataTimer.Dispose();
+            Setting.DownloadManage.MiMiAiStoryDownloadCancel.Cancel();
+
             while (!Setting.DownloadManage.JavOldDownloadRunning && !Setting.DownloadManage.JavDownloadCancel.IsCancellationRequested && !MiMiDownloadCancel.IsCancellationRequested)
             {
                 Thread.Sleep(1000);

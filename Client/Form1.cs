@@ -1,10 +1,15 @@
 ﻿using Client.Properties;
+using Cowboy.WebSockets;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Drawing;
+using System.IO;
 using System.Linq;
+using System.Net;
+using System.Runtime.InteropServices;
+using System.Runtime.Serialization.Formatters.Binary;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -34,8 +39,34 @@ namespace Client
                 Settings.Default.point = textBox2.Text;
                 Settings.Default.Save();
             }
-
-            button1.PerformClick();
+            Task.Factory.StartNew(() =>
+            {
+                while (true)
+                {
+                    Thread.Sleep(1000);
+                    if (_server == null)
+                    {
+                        Class1.MainForm.Connecting(false);
+                        continue;
+                    }
+                    try
+                    {
+                        if (_server._client.State == Cowboy.WebSockets.WebSocketState.Open)
+                        {
+                            Class1.MainForm.Connecting(true);
+                        }
+                        else
+                        {
+                            Class1.MainForm.Connecting(false);
+                        }
+                    }
+                    catch (Exception)
+                    {
+                        Class1.MainForm.Connecting(false);
+                    }
+                }
+            });
+            // button1.PerformClick();
         }
 
         internal void Connecting(bool ConnectControl)
@@ -60,11 +91,32 @@ namespace Client
 
         private void Button1_Click(object sender, EventArgs e)
         {
-            Task.Factory.StartNew(() =>
+            string GetIp(string domain)
+            {
+                if (!IPAddress.TryParse(domain, out IPAddress ip))
+                {
+                    try
+                    {
+                        domain = domain.Replace("http://", "").Replace("https://", "");
+                        IPHostEntry hostEntry = Dns.GetHostEntry(domain);
+                        IPEndPoint ipEndPoint = new IPEndPoint(hostEntry.AddressList[0], 0);
+                        return ipEndPoint.Address.ToString();
+                    }
+                    catch (Exception)
+                    {
+                    }
+                }
+                return domain;
+            }
+            //textBox1.Text = GetIp(textBox1.Text);
+            Settings.Default.ip = textBox1.Text;
+            Settings.Default.point = textBox2.Text;
+            Settings.Default.Save();
+            Task.Factory.StartNew(async () =>
             {
                 if (_server != null)
                 {
-                    _server._client.Close(Cowboy.WebSockets.WebSocketCloseCode.NormalClosure);
+                    await _server._client.Close(Cowboy.WebSockets.WebSocketCloseCode.NormalClosure);
                     _server._client.Dispose();
                     _server = null;
                 }
@@ -83,43 +135,137 @@ namespace Client
             }));
         }
 
-        private GlobalSet globalSet;
-
-        internal void Init(GlobalSet globalSet)
-        {
-            BeginInvoke(new MethodInvoker(() =>
-            {
-                this.globalSet = globalSet;
-                textBox3.Text = globalSet.Socks5Point.ToString();
-                checkBox1.Checked = globalSet.SocksCheck;
-                textBox4.Text = globalSet.NyaaAddress;
-                textBox5.Text = globalSet.JavAddress;
-            }));
-        }
-
-        private void Button2_Click(object sender, EventArgs e)
+        private async void Button2_ClickAsync(object sender, EventArgs e)
         {
             if (Connect)
             {
-                globalSet.Socks5Point = int.Parse(textBox3.Text);
-                globalSet.SocksCheck = checkBox1.Checked;
-                globalSet.NyaaAddress = textBox4.Text;
-                globalSet.JavAddress = textBox5.Text;
-                globalSet.Save(_server);
+                using (MemoryStream stream = new MemoryStream())
+                {
+                    BinaryFormatter Formatter = new BinaryFormatter();
+                    var Clone = new OnlineOpera()
+                    {
+                        ConnectPoint = int.Parse(textBox2.Text),
+                        SocksPoint = int.Parse(textBox8.Text),
+                        NyaaAddress = textBox4.Text,
+                        JavAddress = textBox5.Text,
+                        MiMiAiAddress = textBox6.Text,
+                        ssr_url = textBox7.Text,
+                        SocksCheck = checkBox1.Checked,
+                        AutoRun = AutoRun.Checked,
+                        ssr4Nyaa = textBox9.Text,
+                        NyaaSocksCheck = checkBox2.Checked,
+                        NyaaSocksPoint = int.Parse(textBox3.Text)
+                    };
+
+                    Formatter.Serialize(stream, Clone);
+                    await _server._client.SendBinaryAsync(stream.ToArray());
+                }
             }
         }
 
-        private void Button3_Click(object sender, EventArgs e)
+        private void Button3_ClickAsync(object sender, EventArgs e)
         {
             if (Connect)
             {
-                _server.Connect2Set();
+                _server.Connect2SetAsync("Restart");
+            }
+        }
+
+        private void button5_Click(object sender, EventArgs e)
+        {
+            if (Connect)
+            {
+                //_server.Connect2SetAsync("CloseMiMiStory");
+                Task.Factory.StartNew(async () =>
+                {
+                    var uri = new Uri($"ws://{Settings.Default.ip}:{Settings.Default.point}/Data");
+                    var client = new AsyncWebSocketClient(uri, new ServerDataBaseOperation());
+                    await client.Connect();
+                    await client.SendTextAsync("GetStory|*");
+                });
             }
         }
 
         private void Button4_Click(object sender, EventArgs e)
         {
-            _server.Connect3Set();
+            if (Connect)
+            {
+                Task.Factory.StartNew(async () =>
+                {
+                    var uri = new Uri($"ws://{Settings.Default.ip}:{Settings.Default.point}/Data");
+                    var client = new AsyncWebSocketClient(uri, new ServerDataBaseOperation());
+                    await client.Connect();
+                    await client.SendTextAsync("GetNullStory");
+                });
+            }
+        }
+
+        internal void UpdateUI()
+        {
+            if (listBox1.Items.Count != Class1.OnlineOpera.LocalInfo.Count)
+            {
+                listBox1.Items.Clear();
+                listBox1.Items.AddRange(Class1.OnlineOpera.LocalInfo.ToArray());
+            }
+
+            if (listBox2.Items.Count != Class1.OnlineOpera.RemoteInfo.Count)
+            {
+                listBox2.Items.Clear();
+                listBox2.Items.AddRange(Class1.OnlineOpera.RemoteInfo.ToArray());
+            }
+
+            if (double.TryParse(Class1.OnlineOpera.MiMiInterval, out double MiMiInterval))
+            {
+                var mimi = TimeSpan.FromMilliseconds(MiMiInterval) - Class1.OnlineOpera.MiMiSpan;
+                MiMi.Text = $"{mimi:hh\\:mm\\:ss}\n{DateTime.Now.AddMilliseconds(mimi.TotalMilliseconds):MM月dd日HH时mm分}";
+            }
+            else MiMi.Text = Class1.OnlineOpera.MiMiInterval;
+            if (double.TryParse(Class1.OnlineOpera.JavInterval, out double JavInterval))
+            {
+                var Jav = TimeSpan.FromMilliseconds(JavInterval) - Class1.OnlineOpera.JavSpan;
+                JAV.Text = $"{Jav:hh\\:mm\\:ss}\n{DateTime.Now.AddMilliseconds(Jav.TotalMilliseconds):MM月dd日HH时mm分}";
+            }
+            else JAV.Text = Class1.OnlineOpera.JavInterval;
+            if (double.TryParse(Class1.OnlineOpera.NyaaInterval, out double NyaaInterval))
+            {
+                var Nyaa = TimeSpan.FromMilliseconds(NyaaInterval) - Class1.OnlineOpera.NyaaSpan;
+                NYAA.Text = $"{Nyaa:hh\\:mm\\:ss}\n{DateTime.Now.AddMilliseconds(Nyaa.TotalMilliseconds):MM月dd日HH时mm分}";
+            }
+            else NYAA.Text = Class1.OnlineOpera.NyaaInterval;
+
+            if (double.TryParse(Class1.OnlineOpera.MiMiStoryInterval, out double MiMiStoryInterval))
+            {
+                var mimistory = TimeSpan.FromMilliseconds(MiMiStoryInterval) - Class1.OnlineOpera.MiMiStorySpan;
+                MiMiStory.Text = $"{mimistory:hh\\:mm\\:ss}\n{DateTime.Now.AddMilliseconds(mimistory.TotalMilliseconds):MM月dd日HH时mm分}";
+            }
+            else MiMiStory.Text = Class1.OnlineOpera.MiMiStoryInterval;
+            Memory.Text = Class1.OnlineOpera.Memory;
+            if (!Class1.OnlineOpera.OnlyList)
+            {
+                if (textBox2.Text != Class1.OnlineOpera.ConnectPoint.ToString())
+                {
+                    if (Connect)
+                    {
+                        _server._client.Shutdown();
+                        _server._client.Dispose();
+                        _server = new server(textBox1.Text, Class1.OnlineOpera.ConnectPoint.ToString());
+                        textBox2.Text = Class1.OnlineOpera.ConnectPoint.ToString();
+                    }
+                }
+
+                textBox3.Text = Class1.OnlineOpera.NyaaSocksPoint.ToString();
+                checkBox2.Checked = Class1.OnlineOpera.NyaaSocksCheck;
+                textBox9.Text = Class1.OnlineOpera.ssr4Nyaa;
+                textBox4.Text = Class1.OnlineOpera.NyaaAddress;
+                textBox5.Text = Class1.OnlineOpera.JavAddress;
+                textBox6.Text = Class1.OnlineOpera.MiMiAiAddress;
+                textBox7.Text = Class1.OnlineOpera.ssr_url;
+                textBox8.Text = Class1.OnlineOpera.SocksPoint.ToString();
+                label4.Text = Class1.OnlineOpera.SSRPoint.ToString();
+                label5.Text = Class1.OnlineOpera.NyaaSSRPoint.ToString();
+                checkBox1.Checked = Class1.OnlineOpera.SocksCheck;
+                AutoRun.Checked = Class1.OnlineOpera.AutoRun;
+            }
         }
     }
 }
