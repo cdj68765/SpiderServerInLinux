@@ -251,8 +251,8 @@ namespace SpiderServerInLinux
                             var ShowNyaa = !Setting._GlobalSet.NyaaFin ? $"Nyaa:{Setting.NyaaDownLoadNow}" : $"Nyaa:{Setting.NyaaDownLoadNow}";
                             var ShowMiMi = Setting._GlobalSet.MiMiFin ? $"MiMi:{Setting.MiMiDownLoadNow},{Setting.MiMiDay}" : $"MiMi:{Setting._GlobalSet.MiMiAiPageIndex},{Setting.MiMiDay},{Setting.MiMiDownLoadNow}";
                             var ShowMiMiStory = $"Story:{Setting.MiMiAiStoryDownLoadNow}";
-
-                            Console.Write($"|{ShowNyaa}| {ShowJav}| {ShowMiMi}| {ShowMiMiStory}");
+                            var T66yDownLoadNow = $"T66y:{Setting.T66yDownLoadNow}";
+                            Console.Write($"|{ShowNyaa}|{ShowJav}|{ShowMiMi}|{ShowMiMiStory}|{T66yDownLoadNow}");
                         }
                     }
                     catch (Exception)

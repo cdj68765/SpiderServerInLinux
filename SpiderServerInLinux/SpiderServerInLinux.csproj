@@ -15,11 +15,42 @@
 
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
 		<Optimize>false</Optimize>
+		<AllowUnsafeBlocks>false</AllowUnsafeBlocks>
+		<DefineConstants>TRACE</DefineConstants>
+		<GenerateSerializationAssemblies>Auto</GenerateSerializationAssemblies>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='X64|AnyCPU'">
 		<Optimize>false</Optimize>
 	</PropertyGroup>
+
+	<ItemGroup>
+	  <Compile Remove="Code.cs" />
+	  <Compile Remove="DownNyaaLoop.cs" />
+	  <Compile Remove="HandlerHtml.cs" />
+	  <Compile Remove="ShowInControl.cs" />
+	  <Compile Remove="TCPCommand.cs" />
+	  <Compile Remove="WebClientEx.cs" />
+	  <Compile Remove="WebPageGet.cs" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <None Remove="Cowboy.WebSockets.dll" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <None Include="DownNyaaLoop.cs" />
+	  <None Include="HandlerHtml.cs" />
+	  <None Include="TCPCommand.cs" />
+	  <None Include="WebClientEx.cs">
+	    <SubType>Component</SubType>
+	  </None>
+	  <None Include="WebPageGet.cs" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<None Include="SocksSharp\SocksSharp.csproj" />
+	</ItemGroup>
 
 	<ItemGroup>
 		<PackageReference Include="CoreZipCode" Version="1.1.2" />
@@ -34,8 +65,14 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<Compile Update="WebClientEx.cs">
-			<SubType>Component</SubType>
+	  <Resource Include="Code.cs" />
+	  <Resource Include="Cowboy.WebSockets.dll" />
+	  <None Include="ShowInControl.cs" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<Compile Update="DataBaseCommand.cs">
+		  <CopyToOutputDirectory>Always</CopyToOutputDirectory>
 		</Compile>
 	</ItemGroup>
 

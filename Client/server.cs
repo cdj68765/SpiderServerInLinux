@@ -16,7 +16,7 @@ using System.Windows.Forms;
 
 namespace Client
 {
-    internal class server : IDisposable
+    public class server : IDisposable
     {
         internal AsyncWebSocketClient _client;
 
@@ -104,11 +104,17 @@ namespace Client
 
     internal class ServerDataBaseOperation : IAsyncWebSocketClientMessageDispatcher
     {
+        private string CodeNow = "";
+
         public async Task OnServerBinaryReceived(AsyncWebSocketClient client, byte[] data, int offset, int count)
         {
             //File.WriteAllBytes("jav.db", data);
             var New = MiMiAiStory.ToClass(data);
-            await client.SendTextAsync("SetMiMiAiStory");
+            if (CodeNow != "SetMiMiAiStory")
+            {
+                CodeNow = "SetMiMiAiStory";
+                await client.SendTextAsync("SetMiMiAiStory");
+            }
             var _HtmlDoc = new HtmlAgilityPack.HtmlDocument();
             var Text = Encoding.UTF8.GetString(New.Data);
             _HtmlDoc.LoadHtml(Text);
@@ -119,8 +125,23 @@ namespace Client
 
             Text = Text.Replace("\r\n\r\n", "\r\n");
             Text = Text.Replace("\r\n", Environment.NewLine);
-            File.WriteAllText(@"C:\Users\cdj68\Desktop\无标题2.txt", Text);
-            //await client.SendBinaryAsync(New.ToByte());
+            New.Story = Text;
+            StringBuilder sb = new StringBuilder();
+            foreach (var item in New.Story)
+            {
+                if ((int)item > 127 && (item >= 0x4e00 && item <= 0x9fbb) && (System.Text.RegularExpressions.Regex.IsMatch(item.ToString(), @"[\u4e00-\u9fbb]")))//三种方法判断是否为汉字 汉字的ASCII码大于127
+                {
+                    sb.Append(Microsoft.VisualBasic.Strings.StrConv(item.ToString(), Microsoft.VisualBasic.VbStrConv.SimplifiedChinese, 0));//把繁体字转换成简体字
+                }
+                else
+                {
+                    sb.Append(item.ToString());
+                }
+            }
+            New.Story = sb.ToString();
+            //File.WriteAllText(@"C:\Users\cdj68\Desktop\无标题2.txt", Text);
+            Class1.OperaCount += 1;
+            await client.SendBinaryAsync(New.ToByte());
         }
 
         public Task OnServerConnected(AsyncWebSocketClient client)
@@ -166,11 +187,16 @@ namespace Client
         internal string JavInterval;
         internal string NyaaInterval;
         internal string MiMiStoryInterval;
+        internal string T66yInterval;
+        internal string T66yOtherMessage;
+        internal string T66yOtherOldMessage;
         internal string Memory;
+
         internal TimeSpan MiMiSpan;
         internal TimeSpan JavSpan;
         internal TimeSpan NyaaSpan;
         internal TimeSpan MiMiStorySpan;
+        internal TimeSpan GetT66ySpan;
 
         internal int ConnectPoint;
         internal int SSRPoint;

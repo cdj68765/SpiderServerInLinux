@@ -59,6 +59,14 @@
             this.checkBox2 = new System.Windows.Forms.CheckBox();
             this.label5 = new System.Windows.Forms.Label();
             this.button5 = new System.Windows.Forms.Button();
+            this.T66y = new System.Windows.Forms.Label();
+            this.label7 = new System.Windows.Forms.Label();
+            this.T66yOther = new System.Windows.Forms.Label();
+            this.Download = new System.Windows.Forms.Label();
+            this.button6 = new System.Windows.Forms.Button();
+            this.button7 = new System.Windows.Forms.Button();
+            this.button8 = new System.Windows.Forms.Button();
+            this.T66yOldOther = new System.Windows.Forms.Label();
             this.panel1.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -98,7 +106,7 @@
             this.listBox1.Location = new System.Drawing.Point(3, 3);
             this.listBox1.Name = "listBox1";
             this.listBox1.ScrollAlwaysVisible = true;
-            this.listBox1.Size = new System.Drawing.Size(426, 160);
+            this.listBox1.Size = new System.Drawing.Size(665, 328);
             this.listBox1.TabIndex = 3;
             // 
             // checkBox1
@@ -130,21 +138,21 @@
             // 
             // textBox4
             // 
-            this.textBox4.Location = new System.Drawing.Point(13, 210);
+            this.textBox4.Location = new System.Drawing.Point(13, 314);
             this.textBox4.Name = "textBox4";
             this.textBox4.Size = new System.Drawing.Size(176, 21);
             this.textBox4.TabIndex = 7;
             // 
             // textBox5
             // 
-            this.textBox5.Location = new System.Drawing.Point(13, 238);
+            this.textBox5.Location = new System.Drawing.Point(13, 342);
             this.textBox5.Name = "textBox5";
             this.textBox5.Size = new System.Drawing.Size(176, 21);
             this.textBox5.TabIndex = 8;
             // 
             // button3
             // 
-            this.button3.Location = new System.Drawing.Point(13, 266);
+            this.button3.Location = new System.Drawing.Point(13, 370);
             this.button3.Name = "button3";
             this.button3.Size = new System.Drawing.Size(75, 23);
             this.button3.TabIndex = 9;
@@ -154,7 +162,7 @@
             // 
             // button4
             // 
-            this.button4.Location = new System.Drawing.Point(13, 295);
+            this.button4.Location = new System.Drawing.Point(13, 399);
             this.button4.Name = "button4";
             this.button4.Size = new System.Drawing.Size(75, 23);
             this.button4.TabIndex = 10;
@@ -168,15 +176,15 @@
             | System.Windows.Forms.AnchorStyles.Right)));
             this.listBox2.FormattingEnabled = true;
             this.listBox2.ItemHeight = 12;
-            this.listBox2.Location = new System.Drawing.Point(3, 180);
+            this.listBox2.Location = new System.Drawing.Point(3, 344);
             this.listBox2.Name = "listBox2";
             this.listBox2.ScrollAlwaysVisible = true;
-            this.listBox2.Size = new System.Drawing.Size(426, 184);
+            this.listBox2.Size = new System.Drawing.Size(665, 184);
             this.listBox2.TabIndex = 11;
             // 
             // textBox6
             // 
-            this.textBox6.Location = new System.Drawing.Point(13, 183);
+            this.textBox6.Location = new System.Drawing.Point(13, 287);
             this.textBox6.Name = "textBox6";
             this.textBox6.Size = new System.Drawing.Size(176, 21);
             this.textBox6.TabIndex = 12;
@@ -257,7 +265,7 @@
             // AutoRun
             // 
             this.AutoRun.AutoSize = true;
-            this.AutoRun.Location = new System.Drawing.Point(11, 426);
+            this.AutoRun.Location = new System.Drawing.Point(14, 584);
             this.AutoRun.Name = "AutoRun";
             this.AutoRun.Size = new System.Drawing.Size(72, 16);
             this.AutoRun.TabIndex = 22;
@@ -284,10 +292,11 @@
             // Memory
             // 
             this.Memory.AutoSize = true;
-            this.Memory.Location = new System.Drawing.Point(89, 427);
+            this.Memory.Location = new System.Drawing.Point(92, 585);
             this.Memory.Name = "Memory";
-            this.Memory.Size = new System.Drawing.Size(0, 12);
+            this.Memory.Size = new System.Drawing.Size(41, 12);
             this.Memory.TabIndex = 25;
+            this.Memory.Text = "Memory";
             // 
             // panel1
             // 
@@ -296,10 +305,10 @@
             | System.Windows.Forms.AnchorStyles.Right)));
             this.panel1.Controls.Add(this.listBox1);
             this.panel1.Controls.Add(this.listBox2);
-            this.panel1.Location = new System.Drawing.Point(192, 69);
-            this.panel1.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.panel1.Location = new System.Drawing.Point(261, 69);
+            this.panel1.Margin = new System.Windows.Forms.Padding(2);
             this.panel1.Name = "panel1";
-            this.panel1.Size = new System.Drawing.Size(430, 371);
+            this.panel1.Size = new System.Drawing.Size(669, 535);
             this.panel1.TabIndex = 26;
             // 
             // textBox9
@@ -329,19 +338,102 @@
             // 
             // button5
             // 
-            this.button5.Location = new System.Drawing.Point(94, 265);
+            this.button5.Location = new System.Drawing.Point(94, 369);
             this.button5.Name = "button5";
             this.button5.Size = new System.Drawing.Size(75, 23);
             this.button5.TabIndex = 30;
-            this.button5.Text = "button5";
+            this.button5.Text = "GetStory";
             this.button5.UseVisualStyleBackColor = true;
             this.button5.Click += new System.EventHandler(this.button5_Click);
+            // 
+            // T66y
+            // 
+            this.T66y.AutoSize = true;
+            this.T66y.Location = new System.Drawing.Point(56, 186);
+            this.T66y.Name = "T66y";
+            this.T66y.Size = new System.Drawing.Size(29, 12);
+            this.T66y.TabIndex = 31;
+            this.T66y.Text = "T66y";
+            // 
+            // label7
+            // 
+            this.label7.AutoSize = true;
+            this.label7.Location = new System.Drawing.Point(13, 186);
+            this.label7.Name = "label7";
+            this.label7.Size = new System.Drawing.Size(41, 12);
+            this.label7.TabIndex = 32;
+            this.label7.Text = "T66y：";
+            // 
+            // T66yOther
+            // 
+            this.T66yOther.AutoSize = true;
+            this.T66yOther.Location = new System.Drawing.Point(13, 220);
+            this.T66yOther.Name = "T66yOther";
+            this.T66yOther.Size = new System.Drawing.Size(29, 12);
+            this.T66yOther.TabIndex = 33;
+            this.T66yOther.Text = "T66y";
+            // 
+            // Download
+            // 
+            this.Download.AutoSize = true;
+            this.Download.Location = new System.Drawing.Point(91, 564);
+            this.Download.Name = "Download";
+            this.Download.Size = new System.Drawing.Size(53, 12);
+            this.Download.TabIndex = 34;
+            this.Download.Text = "Download";
+            // 
+            // button6
+            // 
+            this.button6.Location = new System.Drawing.Point(94, 398);
+            this.button6.Name = "button6";
+            this.button6.Size = new System.Drawing.Size(75, 23);
+            this.button6.TabIndex = 35;
+            this.button6.Text = "CloseT66y";
+            this.button6.UseVisualStyleBackColor = true;
+            this.button6.Click += new System.EventHandler(this.button6_Click);
+            // 
+            // button7
+            // 
+            this.button7.Location = new System.Drawing.Point(15, 427);
+            this.button7.Name = "button7";
+            this.button7.Size = new System.Drawing.Size(75, 23);
+            this.button7.TabIndex = 36;
+            this.button7.Text = "StartT66y";
+            this.button7.UseVisualStyleBackColor = true;
+            this.button7.Click += new System.EventHandler(this.button7_Click);
+            // 
+            // button8
+            // 
+            this.button8.Location = new System.Drawing.Point(96, 427);
+            this.button8.Name = "button8";
+            this.button8.Size = new System.Drawing.Size(75, 23);
+            this.button8.TabIndex = 37;
+            this.button8.Text = "ShowImage";
+            this.button8.UseVisualStyleBackColor = true;
+            this.button8.Click += new System.EventHandler(this.button8_Click);
+            // 
+            // T66yOldOther
+            // 
+            this.T66yOldOther.AutoSize = true;
+            this.T66yOldOther.Location = new System.Drawing.Point(13, 253);
+            this.T66yOldOther.Name = "T66yOldOther";
+            this.T66yOldOther.Size = new System.Drawing.Size(29, 12);
+            this.T66yOldOther.TabIndex = 38;
+            this.T66yOldOther.Text = "T66y";
             // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(628, 446);
+            this.ClientSize = new System.Drawing.Size(936, 610);
+            this.Controls.Add(this.T66yOldOther);
+            this.Controls.Add(this.button8);
+            this.Controls.Add(this.button7);
+            this.Controls.Add(this.button6);
+            this.Controls.Add(this.Download);
+            this.Controls.Add(this.T66yOther);
+            this.Controls.Add(this.label7);
+            this.Controls.Add(this.T66y);
             this.Controls.Add(this.button5);
             this.Controls.Add(this.label5);
             this.Controls.Add(this.checkBox2);
@@ -412,5 +504,13 @@
         private System.Windows.Forms.CheckBox checkBox2;
         private System.Windows.Forms.Label label5;
         private System.Windows.Forms.Button button5;
+        private System.Windows.Forms.Label T66y;
+        private System.Windows.Forms.Label label7;
+        public System.Windows.Forms.Label T66yOther;
+        private System.Windows.Forms.Label Download;
+        private System.Windows.Forms.Button button6;
+        private System.Windows.Forms.Button button7;
+        private System.Windows.Forms.Button button8;
+        public System.Windows.Forms.Label T66yOldOther;
     }
 }

@@ -119,11 +119,12 @@ namespace SpiderServerInLinux
 
             public override async Task OnSessionTextReceived(AsyncWebSocketSession session, string text)
             {
+                Loger.Instance.ServerInfo("主机", $"接收到远程{text}命令");
+
                 switch (text)
                 {
                     case "Restart":
                         {
-                            Loger.Instance.ServerInfo("主机", $"接收到远程{session.RemoteEndPoint}命令开始全部下载");
                             if (Setting.DownloadManage == null)
                             {
                                 Setting.DownloadManage = new DownloadManage();
@@ -138,6 +139,7 @@ namespace SpiderServerInLinux
                                 Setting.DownloadManage.GetMiMiNewDataTimer.Interval = 1000;
                                 Setting.DownloadManage.GetNyaaNewDataTimer.Interval = 1000;
                                 Setting.DownloadManage.GetMiMiAiStoryDataTimer.Interval = 1000;
+                                Setting.DownloadManage.GetT66yDataTimer.Interval = 1000;
                             }
                         }
                         break;
@@ -147,6 +149,36 @@ namespace SpiderServerInLinux
                             if (Setting.DownloadManage != null)
                             {
                                 Setting.DownloadManage.MiMiAiStoryDownloadCancel.Cancel();
+                            }
+                        }
+                        break;
+
+                    case "StartT66y":
+                        {
+                            if (Setting.DownloadManage == null)
+                            {
+                                Setting.DownloadManage = new DownloadManage();
+                            }
+                            if (Setting.DownloadManage != null)
+                            {
+                                Setting.DownloadManage.GetT66yData();
+                            }
+                            else if (Setting.DownloadManage.GetT66yDataTimer == null)
+                            {
+                                Setting.DownloadManage.GetT66yData();
+                            }
+                            else
+                            {
+                                Setting.DownloadManage.GetT66yDataTimer.Interval = 1000;
+                            }
+                        }
+                        break;
+
+                    case "CloseT66y":
+                        {
+                            if (Setting.DownloadManage != null)
+                            {
+                                Setting.DownloadManage.T66yDownloadCancel.Cancel();
                             }
                         }
                         break;
@@ -169,6 +201,15 @@ namespace SpiderServerInLinux
                                 Setting.DownloadManage.NyaaDownloadCancel.Cancel();
                                 GC.Collect();
                             }
+                        }
+                        break;
+
+                    case "Close":
+                        {
+                            Setting.DownloadManage.Dispose();
+                            Setting.DownloadManage = null;
+                            GC.Collect();
+                            Environment.Exit(0);
                         }
                         break;
 
@@ -203,6 +244,8 @@ namespace SpiderServerInLinux
                 return Task.CompletedTask;
             }
 
+            private CancellationTokenSource Storycancel = new CancellationTokenSource();
+
             public override async Task OnSessionTextReceived(AsyncWebSocketSession session, string text)
             {
                 Loger.Instance.ServerInfo("主机", $"远程{session.RemoteEndPoint}命令{text}");
@@ -215,13 +258,28 @@ namespace SpiderServerInLinux
 
                     case "GetNullStory":
                         {
-                            DataBaseCommand.GetDataFromMiMi("GetNullStory", session, SearchText[1]);
+                            CancellationTokenSource Storycancel = new CancellationTokenSource();
+                            DataBaseCommand.GetDataFromMiMi("GetNullStory", session, Cancel: Storycancel, SearchText[1]);
                         }
                         break;
 
                     case "GetStory":
                         {
-                            DataBaseCommand.GetDataFromMiMi("GetStory", session, SearchText[1]);
+                            CancellationTokenSource Storycancel = new CancellationTokenSource();
+                            DataBaseCommand.GetDataFromMiMi("GetStory", session, Cancel: Storycancel, SearchText[1]);
+                        }
+                        break;
+
+                    case "Stop":
+                        {
+                            Storycancel.Cancel();
+                        }
+                        break;
+
+                    case "GetT66y":
+                        {
+                            CancellationTokenSource Storycancel = new CancellationTokenSource();
+                            DataBaseCommand.GetDataFromT66y(SearchText[1], SearchText[2], session, Cancel: Storycancel);
                         }
                         break;
 

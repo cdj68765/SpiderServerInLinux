@@ -101,13 +101,11 @@ namespace Shadowsocks.Controller
                 return;
             }
             _config = new Configuration();
-            var _Random = new Random();
-            IPEndPoint[] ipEndPoints = IPGlobalProperties.GetIPGlobalProperties().GetActiveTcpListeners();
-            _config.localPort = ipEndPoints[_Random.Next(ipEndPoints.Length)].Port;
+            _config.localPort = new Random().Next(10000, 65535);
             while (true)
             {
                 if (!CheckIfPortInUse(_config.localPort)) break;
-                _config.localPort++;
+                _config.localPort += 1;
             }
             // _config.localPort = 7071;
             Loger.Instance.ServerInfo("SSR", $"SSR控制器建立，内部端口{_config.localPort}");
@@ -138,16 +136,13 @@ namespace Shadowsocks.Controller
                 return;
             }
             _config = new Configuration();
-            var _Random = new Random();
-            IPEndPoint[] ipEndPoints = IPGlobalProperties.GetIPGlobalProperties().GetActiveTcpListeners();
-            _config.localPort = ipEndPoints[_Random.Next(ipEndPoints.Length)].Port;
-            SocksPort = _config.localPort;
+            _config.localPort = new Random().Next(10000, 65535);
             while (true)
             {
-                if (!CheckIfPortInUse(_config.localPort)) break;
-                if (Setting.Socks5Point == _config.localPort) break;
-                _config.localPort++;
+                if (!CheckIfPortInUse(_config.localPort) && Setting.Socks5Point != _config.localPort) break;
+                _config.localPort += 1;
             }
+            SocksPort = _config.localPort;
             var Config = new Server(ssr_url, "");
             if (!string.IsNullOrEmpty(Config.remarks)) Loger.Instance.ServerInfo("SSR", $"SSR服务器名称，{Config.remarks}");
             Config.server = GetIp(Config.server);

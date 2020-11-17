@@ -20,8 +20,8 @@ namespace Client
 {
     public partial class Form1 : Form
     {
-        private server _server;
-        private bool Connect;
+        public server _server;
+        public bool Connect;
 
         public Form1()
         {
@@ -239,7 +239,18 @@ namespace Client
                 MiMiStory.Text = $"{mimistory:hh\\:mm\\:ss}\n{DateTime.Now.AddMilliseconds(mimistory.TotalMilliseconds):MM月dd日HH时mm分}";
             }
             else MiMiStory.Text = Class1.OnlineOpera.MiMiStoryInterval;
+
+            if (double.TryParse(Class1.OnlineOpera.T66yInterval, out double T66yInterval))
+            {
+                var t66y = TimeSpan.FromMilliseconds(T66yInterval) - Class1.OnlineOpera.GetT66ySpan;
+                T66y.Text = $"{t66y:hh\\:mm\\:ss}\n{DateTime.Now.AddMilliseconds(t66y.TotalMilliseconds):MM月dd日HH时mm分}";
+            }
+            else T66y.Text = Class1.OnlineOpera.T66yInterval;
+            T66yOther.Text = Class1.OnlineOpera.T66yOtherMessage;
+            T66yOldOther.Text = Class1.OnlineOpera.T66yOtherOldMessage;
+
             Memory.Text = Class1.OnlineOpera.Memory;
+            Download.Text = HumanReadableFilesize(Class1.OnlineOpera.TotalDownloadBytes);
             if (!Class1.OnlineOpera.OnlyList)
             {
                 if (textBox2.Text != Class1.OnlineOpera.ConnectPoint.ToString())
@@ -265,6 +276,59 @@ namespace Client
                 label5.Text = Class1.OnlineOpera.NyaaSSRPoint.ToString();
                 checkBox1.Checked = Class1.OnlineOpera.SocksCheck;
                 AutoRun.Checked = Class1.OnlineOpera.AutoRun;
+            }
+        }
+
+        private string HumanReadableFilesize(double size)
+        {
+            var units = new[] { "B", "KB", "MB", "GB", "TB", "PB" };
+            double mod = 1024.0;
+            var DoubleCount = new List<double>();
+            while (size >= mod)
+            {
+                size /= mod;
+                DoubleCount.Add(size);
+            }
+            var Ret = "";
+            for (int j = DoubleCount.Count; j > 0; j--)
+            {
+                if (j == DoubleCount.Count)
+                {
+                    Ret += $"{Math.Floor(DoubleCount[j - 1])}{units[j]}";
+                }
+                else
+                {
+                    Ret += $"{Math.Floor(DoubleCount[j - 1] - (Math.Floor(DoubleCount[j]) * 1024))}{units[j]}";
+                }
+            }
+            return Ret;
+        }
+
+        private void button6_Click(object sender, EventArgs e)
+        {
+            if (Connect)
+            {
+                _server.Connect2SetAsync("CloseT66y");
+            }
+        }
+
+        private void button7_Click(object sender, EventArgs e)
+        {
+            if (Connect)
+            {
+                _server.Connect2SetAsync("StartT66y");
+            }
+        }
+
+        private void button8_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                var Show = new Form2();
+                Show.Show();
+            }
+            catch (Exception)
+            {
             }
         }
     }

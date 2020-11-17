@@ -1,6 +1,8 @@
 ﻿using HtmlAgilityPack;
 using LiteDB;
 using Shadowsocks.Controller;
+using SocksSharp;
+using SocksSharp.Proxy;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -9,6 +11,7 @@ using System.Globalization;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
+using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
@@ -52,13 +55,13 @@ namespace SpiderServerInLinux
             {
                 Loger.Instance.LocalInfo("网络连接正常，正在加载下载进程");
                 Loger.Instance.LocalInfo("初始化下载");
-                //await Task.WhenAll(GetJavNewData(), GetNyaaNewData(), GetMiMiData(), GetMiMiAiStoryData());
+                await Task.WhenAll(GetJavNewData(), GetNyaaNewData(), GetMiMiData(), GetMiMiAiStoryData(), GetT66yData());
             }
             else
             {
                 Loger.Instance.LocalInfo("外网访问失败，等待操作");
             }
-            await Task.WhenAll(GetT66yStoryData());
+            //await Task.WhenAll(GetT66yData());
         }
 
         private Task GetMiMiAiStoryData()
@@ -70,73 +73,72 @@ namespace SpiderServerInLinux
                 GetMiMiAiStoryDataTimer = new System.Timers.Timer(1000);
                 var HtmlDoc = new HtmlDocument();
                 GetMiMiAiStoryDataTimer.Elapsed += delegate
-               {
-                   GetMiMiAiStoryDataTimer.Stop();
-                   MiMiStorySpan.Reset();
-                   var RunSpan = new Stopwatch();
-                   RunSpan.Start();
-                   MiMiAiStoryDownloadCancel = new CancellationTokenSource();
-                   var DownloadPage = 1;
-                   NewSize = 0;
-                   //var CheckLastPage = DataBaseCommand.GetDataFromMiMi("CheckMiMiStoryLastPage");
-                   /*if (!CheckLastPage)
-                     {
-                         DownloadPage = Setting._GlobalSet.MiMiAiStoryPageIndex;
-                         Loger.Instance.LocalInfo($"从{DownloadPage}页开始获得MiMi小说信息");
-                     }
-                     else
-                     {
-                         Loger.Instance.LocalInfo("开始获取新MiMi小说信息");
-                     }*/
-                   bool SaveFlag = true;
-                   while (!MiMiAiStoryDownloadCancel.IsCancellationRequested)
-                   {
-                       Setting.MiMiAiStoryDownLoadNow = $"当前下载第{DownloadPage}";
-                       var DoanloadPageHtml = DownloadMainPage(DownloadPage);
-                       if (string.IsNullOrEmpty(DoanloadPageHtml))
-                       {
-                           Loger.Instance.LocalInfo("MiMiStory下载到空网页，退出下载进程");
-                           break;
-                       }
-                       var PageCount = 1;
-                       foreach (var tempData in AnalyMiMiMainPage(HtmlDoc, DoanloadPageHtml, true))
-                       {
-                           // List<MiMiAiStory> ItemList = new List<MiMiAiStory>();
-                           var AddTemp = HandleStoryPage(DownloadMainPage(_Uri: $"http://{new Uri(Setting._GlobalSet.MiMiAiAddress).Host}/{tempData[0]}"), tempData);
-                           if (AddTemp != null)
-                           {
-                               SaveFlag = DataBaseCommand.SaveToMiMiStoryDataUnit(UnitData: AddTemp);
-                               //SaveFlag = true;
-                               //if (AddTemp.id == 140503) SaveFlag = false;
-                           }
+                {
+                    GetMiMiAiStoryDataTimer.Stop();
+                    MiMiStorySpan.Reset();
+                    var RunSpan = new Stopwatch();
+                    RunSpan.Start();
+                    MiMiAiStoryDownloadCancel = new CancellationTokenSource();
+                    var DownloadPage = 1;
+                    NewSize = 0;
+                    //var CheckLastPage = DataBaseCommand.GetDataFromMiMi("CheckMiMiStoryLastPage");
+                    /*if (!CheckLastPage)
+                      {
+                          DownloadPage = Setting._GlobalSet.MiMiAiStoryPageIndex;
+                          Loger.Instance.LocalInfo($"从{DownloadPage}页开始获得MiMi小说信息");
+                      }
+                      else
+                      {
+                          Loger.Instance.LocalInfo("开始获取新MiMi小说信息");
+                      }*/
+                    bool SaveFlag = true;
+                    while (!MiMiAiStoryDownloadCancel.IsCancellationRequested)
+                    {
+                        Setting.MiMiAiStoryDownLoadNow = $"当前下载第{DownloadPage}";
+                        var DoanloadPageHtml = DownloadMainPage(DownloadPage);
+                        if (string.IsNullOrEmpty(DoanloadPageHtml))
+                        {
+                            Loger.Instance.LocalInfo("MiMiStory下载到空网页，退出下载进程");
+                            break;
+                        }
+                        var PageCount = 1;
+                        foreach (var tempData in AnalyMiMiMainPage(HtmlDoc, DoanloadPageHtml, true))
+                        {
+                            // List<MiMiAiStory> ItemList = new List<MiMiAiStory>();
+                            var AddTemp = HandleStoryPage(DownloadMainPage(_Uri: $"http://{new Uri(Setting._GlobalSet.MiMiAiAddress).Host}/{tempData[0]}"), tempData);
+                            if (AddTemp != null)
+                            {
+                                SaveFlag = DataBaseCommand.SaveToMiMiStoryDataUnit(UnitData: AddTemp);
+                                //SaveFlag = true;
+                                //if (AddTemp.id == 140503) SaveFlag = false;
+                            }
 
-                           var time = new Random().Next(1000, 5000);
-                           for (var i = time; i > 0; i -= 1000)
-                           {
-                               if (MiMiAiStoryDownloadCancel.IsCancellationRequested) break;
-                               Setting.MiMiAiStoryDownLoadNow = $"当前下载第{PageCount}-{i / 1000}";
-                               Thread.Sleep(1000);
-                           }
-                           Interlocked.Increment(ref PageCount);
-                           // ItemList.Clear(); ItemList = null;
-                           if (!SaveFlag) break;
-                       }
-                       GC.Collect();
-                       Interlocked.Increment(ref DownloadPage);
-                       Setting._GlobalSet.MiMiAiStoryPageIndex = DownloadPage;
-                       if (!SaveFlag) break;
-                   }
+                            var time = new Random().Next(1000, 5000);
+                            for (var i = time; i > 0; i -= 1000)
+                            {
+                                if (MiMiAiStoryDownloadCancel.IsCancellationRequested) break;
+                                Setting.MiMiAiStoryDownLoadNow = $"当前下载第{PageCount}-{i / 1000}";
+                                Thread.Sleep(1000);
+                            }
+                            Interlocked.Increment(ref PageCount);
+                            // ItemList.Clear(); ItemList = null;
+                            if (!SaveFlag) break;
+                        }
+                        GC.Collect();
+                        Interlocked.Increment(ref DownloadPage);
+                        Setting._GlobalSet.MiMiAiStoryPageIndex = DownloadPage;
+                        if (!SaveFlag) break;
+                    }
 
-                   GetMiMiAiStoryDataTimer.Interval = new Random().Next(12, 24) * 3600 * 1000;
-                   Setting.MiMiAiStoryDownLoadNow = DateTime.Now.AddMilliseconds(GetMiMiAiStoryDataTimer.Interval).ToString("MM-dd|HH:mm");
-                   Loger.Instance.LocalInfo($"MiMi小说:下载完毕,耗时{RunSpan.Elapsed:mm\\分ss\\秒},消耗流量{HumanReadableFilesize(NewSize)}");
-                   RunSpan.Stop();
-                   MiMiStorySpan.Restart();
-                   GetMiMiAiStoryDataTimer.Start();
-               };
+                    GetMiMiAiStoryDataTimer.Interval = new Random().Next(12, 24) * 3600 * 1000;
+                    Setting.MiMiAiStoryDownLoadNow = DateTime.Now.AddMilliseconds(GetMiMiAiStoryDataTimer.Interval).ToString("MM-dd|HH:mm");
+                    Loger.Instance.LocalInfo($"MiMi小说:下载完毕,耗时{RunSpan.Elapsed:mm\\分ss\\秒},消耗流量{HumanReadableFilesize(NewSize)}");
+                    RunSpan.Stop();
+                    MiMiStorySpan.Restart();
+                    GetMiMiAiStoryDataTimer.Start();
+                };
                 GetMiMiAiStoryDataTimer.Enabled = true;
             });
-
             string DownloadMainPage(int Index = -1, string _Uri = "")
             {
                 using (var request = new HttpRequest()
@@ -146,11 +148,8 @@ namespace SpiderServerInLinux
                     CharacterSet = Encoding.GetEncoding("GBK")
                 })
                 {
-                    if (Setting._GlobalSet.SocksCheck)
-                    {
-                        if (Setting.Socks5Point != 0)
-                            request.Proxy = Socks5ProxyClient.Parse($"127.0.0.1:{Setting.Socks5Point}");
-                    }
+                    if (Setting._GlobalSet.SocksCheck && Setting.Socks5Point != 0)
+                        request.Proxy = Socks5ProxyClient.Parse($"127.0.0.1:{Setting.Socks5Point}");
                     try
                     {
                         int ErrorCount = 1;
@@ -166,6 +165,8 @@ namespace SpiderServerInLinux
                             }
                             catch (Exception ex)
                             {
+                                if (Setting._GlobalSet.SocksCheck && Setting.Socks5Point != 0)
+                                    request.Proxy = Socks5ProxyClient.Parse($"127.0.0.1:{Setting.Socks5Point}");
                                 if (request.Response.RedirectAddress != null)
                                 {
                                     if (request.Response.RedirectAddress.Authority != downurl.Authority)
@@ -258,10 +259,811 @@ namespace SpiderServerInLinux
             }
         }
 
-        private Task GetT66yStoryData()
+        private Task T66yOtherDownloadTask = null;
+
+        public Task GetT66yData()
         {
-            //HandleStoryPage(DownloadMainPage(_Uri: $"http://www.mmroad.com/viewthread.php?tid=1274532"));
+            //HandleStoryPage(DownloadMainPage(_Uri: $"http://t66y.com/htm_data/2008/25/4069983.html"));
             long NewSize = 0;
+            Loger.Instance.LocalInfo($"开始T66y下载");
+
+            #region 下载图片数据
+
+            var ImageDownload = new Action(() =>
+            {
+                Loger.Instance.LocalInfo($"开始T66y图片数据开始下载");
+                foreach (T66yImgData ImgTemp in DataBaseCommand.GetDataFromT66y("img"))
+                {
+                    if (ImgTemp != null)
+                    {
+                        ImgTemp.img = DownloadImg(ImgTemp.id);
+                        ImgTemp.img = new byte[] { 0 };
+                        DataBaseCommand.SaveToT66yDataUnit(UnitData: ImgTemp);
+                    }
+                }
+                Loger.Instance.LocalInfo($"开始T66y图片数据结束下载");
+                byte[] DownloadImg(string url)
+                {
+                    var Download = new HttpClient();
+                    for (int i = 0; i < 4; i++)
+                    {
+                        try
+                        {
+                            var RET = Download.GetByteArrayAsync(url).Result;
+                            Setting._GlobalSet.totalDownloadBytes += RET.Length;
+                            return RET;
+                        }
+                        catch (Exception ex)
+                        {
+                            Download.Dispose();
+                            if (i % 2 == 1) Download = new HttpClient();
+                            else
+                                Download = new HttpClient(new ProxyClientHandler<Socks5>(new ProxySettings { Host = "127.0.0.1", Port = Setting.Socks5Point }));
+                            // Wait($"图片下载错误第{i}次{ex.Message}");
+                        }
+                    }
+                    return null;
+                }
+            });
+
+            #endregion 下载图片数据
+
+            #region 下载详细数据
+
+            var OtherDownload = new Action(() =>
+            {
+                int PageCount = 0;
+                int ErrorCount = 0;
+                Loger.Instance.LocalInfo($"开始T66y附加信息下载");
+                var HisList = new List<string>();
+                if (File.Exists(@"T66yHis.txt"))
+                {
+                    HisList = new List<string>(File.ReadAllLines(@"T66yHis.txt"));
+                }
+                //using var db = new LiteDatabase(@"T66y.db");
+                //var T66yDb = db.GetCollection<T66yData>("T66yData");
+                while (!T66yDownloadCancel.IsCancellationRequested)
+                {
+                    HttpClient client = new HttpClient(new ProxyClientHandler<Socks5>(new ProxySettings { Host = "127.0.0.1", Port = Setting.NyaaSocks5Point }));
+                    Setting.T66yDownLoadNowOther = $"正在搜索数据库";
+                    foreach (T66yData GetTempData in DataBaseCommand.GetDataFromT66y())
+                    {
+                        if (T66yDownloadCancel.IsCancellationRequested) break;
+                        if (HisList.Exists(x => x == GetTempData.id.ToString())) continue; else File.AppendAllLines(@"T66yHis.txt", new[] { GetTempData.id.ToString() });
+                        PageCount += 1;
+                        Wait($"{GetTempData.id}");
+                        //GetTempData.Uri = "htm_data/2011/25/4170309.html";
+                        // File.WriteAllText($"text.html", GetTempData.HtmlDate, Encoding.GetEncoding("gbk"));
+                        if (string.IsNullOrEmpty(GetTempData.HtmlData))
+                        {
+                            try
+                            {
+                                Setting.T66yDownLoadNowOther = $"下载页面中{GetTempData.id},当前第{PageCount}页{GetTempData.Date}";
+                                GetTempData.HtmlData = client.GetStringAsync($"http://t66y.com/{GetTempData.Uri}").Result;
+                                Setting._GlobalSet.totalDownloadBytes += GetTempData.HtmlData.Length;
+                                ErrorCount = 0;
+                            }
+                            catch (Exception e)
+                            {
+                                ErrorCount += 1;
+
+                                if (e.Message.Contains("403"))
+                                {
+                                    Loger.Instance.LocalInfo($"T66y下载内容出错，错误信息{e.Message},推测IP已被Ban");
+                                    client = new HttpClient(new ProxyClientHandler<Socks5>(new ProxySettings { Host = "127.0.0.1", Port = Setting.NyaaSocks5Point == 1088 ? Setting.Socks5Point : 1088 }));
+                                }
+                                else if (e.Message.Contains("proxy"))
+                                {
+                                    Loger.Instance.LocalInfo($"T66y下载内容出错，错误信息{e.Message},推测代理错误");
+                                }
+                                else
+                                {
+                                    Loger.Instance.LocalInfo($"T66y下载内容出错，错误信息{e.Message},计数{ErrorCount}");
+                                }
+                                if (ErrorCount == 6)
+                                {
+                                    Loger.Instance.LocalInfo($"T66y下载内容出错,计数{ErrorCount},退出下载进程");
+                                    break;
+                                }
+                                client.Dispose();
+                                client = new HttpClient(new ProxyClientHandler<Socks5>(new ProxySettings { Host = "127.0.0.1", Port = Setting.NyaaSocks5Point }));
+                                Wait($"错误等待");
+                                continue;
+                            }
+                        }
+                        HandleT66yPage(GetTempData, client);
+                        client.Dispose();
+                        client = null;
+                        GC.Collect();
+                        client = new HttpClient(new ProxyClientHandler<Socks5>(new ProxySettings { Host = "127.0.0.1", Port = Setting.NyaaSocks5Point }));
+                        // File.WriteAllText($"text.html", GetTempData.HtmlDate, Encoding.GetEncoding("gbk"));
+                    }
+                }
+                Loger.Instance.LocalInfo($"附加信息结束下载");
+                Setting.T66yDownLoadNowOther = "T66y附加信息未启用";
+                void HandleT66yPage(T66yData TempData, HttpClient client)
+                {
+                    var ImgList = new List<T66yImgData>();
+                    var TempList = new List<string>();
+                    var Quote = new List<string>();
+                    var _HtmlDoc = new HtmlDocument();
+                    _HtmlDoc.LoadHtml(TempData.HtmlData);
+                    // _HtmlDoc.Load("text.html", Encoding.GetEncoding("gbk"));
+                    try
+                    {
+                        //_HtmlDoc.Save($"Html{count++}.html", Encoding.GetEncoding("gbk"));
+                        var CN = _HtmlDoc.DocumentNode.SelectSingleNode("//div[@class='tiptop']").ParentNode;
+                        var H4 = CN.SelectSingleNode("//h4");
+                        var DIV4 = CN.SelectSingleNode("//div[4]");
+                        var Start = false;
+                        foreach (var item in DIV4.ChildNodes)
+                        {
+                            Setting.T66yDownLoadNowOther = $"{TempData.id}|{TempData.Date}页面解析页面中{PageCount}";
+                            if (Start)
+                            {
+                                if (item.Name == "blockquote")//TempList.Last().Contains("引用") || TempList.Last().Contains("Quote"))
+                                {
+                                    if (item.ChildNodes.Count != 0)
+                                    {
+                                        SpildChild(item.ChildNodes, ref Quote);
+                                    }
+                                }
+                                else if (!string.IsNullOrWhiteSpace(item.InnerHtml)) // !item.InnerHtml.Contains("&nbsp"))
+                                {
+                                    if (item.ChildNodes.Count != 0)
+                                        SpildChild(item.ChildNodes, ref TempList);
+                                    else
+                                        TempList.Add(item.InnerHtml);
+                                }
+                                else if (item.Name == "img")
+                                {
+                                    var img = item.Attributes["ess-data"].Value.Replace(".th.jpg", ".jpg");
+                                    SaveImg(img);
+                                    TempList.Add(img);
+                                }
+                            }
+                            else if (FindFirst(item.InnerHtml, TempData.Title))
+                            {
+                                Start = true;
+                                if (item.ChildNodes.Count != 0)
+                                    SpildChild(item.ChildNodes, ref TempList);
+                                else
+                                    TempList.Add(item.InnerHtml);
+                            }
+                        }
+                        if (TempList.Count == 0)
+                        {
+                            _HtmlDoc.Save($"{TempData.id}.html", Encoding.GetEncoding("gbk"));
+                            Loger.Instance.LocalInfo($"T66y页面解析错误，分析列表为空");
+                        }
+                        TempList.RemoveAt(TempList.Count - 1);//删除 赞
+                        for (int i = TempList.Count - 1; i > 0; i--)
+                        {
+                            if (TempList[i].ToLower().Contains("quote"))
+                                TempList.RemoveAt(i);
+                            else if (TempList[i].ToLower().Contains("nbsp"))
+                            {
+                                var RepS = TempList[i].ToLower().Replace("nbsp", "");
+                                if (RepS.Length < 2)
+                                    TempList.RemoveAt(i);
+                                else
+                                    TempList[i] = RepS;
+                            }
+                        }
+                        var findrmdown = false;
+                        if (!findrmdown)
+                        {
+                            foreach (var item3 in TempList)
+                            {
+                                if (item3.Contains("rmdown"))
+                                {
+                                    findrmdown = true;
+                                }
+                            }
+                        }
+                        if (!findrmdown)
+                        {
+                            _HtmlDoc.Save($"{TempData.id}.html", Encoding.GetEncoding("gbk"));
+                            TempData.HtmlData = string.Empty;
+                            Loger.Instance.LocalInfo($"{TempData.Title}页面未找到下载地址");
+                        }
+                        TempData.MainList = new List<string>(TempList);
+                        TempData.QuoteList = new List<string>(Quote);
+                        // TempData.Status = findrmdown && TempData.MainList.Count != 0;
+                        TempData.Status = true;
+                        DataBaseCommand.SaveToT66yDataUnit(UnitData: TempData);
+                        DataBaseCommand.SaveToT66yDataUnit(ImgList);
+                    }
+                    catch (Exception ex)
+                    {
+                        _HtmlDoc.Save($"{TempData.id}.html", Encoding.GetEncoding("gbk"));
+                        Loger.Instance.LocalInfo($"T66y页面解析错误{ex.Message}");
+                    }
+                    void SpildChild(HtmlNodeCollection item, ref List<string> sL)
+                    {
+                        foreach (var item2 in item)
+                        {
+                            if (item2.ChildNodes.Count == 0)
+                            {
+                                if (!string.IsNullOrWhiteSpace(item2.InnerHtml) && !item2.InnerHtml.Contains("&nbsp"))
+                                    sL.Add(item2.InnerHtml);
+                                if (item2.Name == "img")
+                                {
+                                    var img = item2.Attributes["ess-data"].Value.Replace(".th.jpg", ".jpg");
+                                    sL.Add(img);
+                                    SaveImg(img);
+                                }
+                            }
+                            else
+                            {
+                                SpildChild(item2.ChildNodes, ref sL);
+                            }
+                        }
+                    }
+                    bool FindFirst(string src, string Title)
+                    {
+                        var SearchChar = new HashSet<string>() { "名称", "名稱", "rmdown", Title };
+                        foreach (var item in SearchChar)
+                        {
+                            if (src.Contains(item))
+                            {
+                                return true;
+                            }
+                        }
+                        return false;
+                    }
+                    void SaveImg(string img)
+                    {
+                        T66yImgData SearchImg = DataBaseCommand.GetDataFromT66y("img", img);
+                        if (SearchImg != null)
+                        {
+                            Setting.T66yDownLoadNowOther = "T66y找到重复图片";
+                            if (!SearchImg.Status)
+                            {
+                                SearchImg.img = DownloadImg(img);
+                            }
+                            SearchImg.FromList.Add(TempData.id);
+                            DataBaseCommand.SaveToT66yDataUnit(UnitData: SearchImg);
+                        }
+                        else
+                        {
+                            var imgdata = DownloadImg(img);
+                            var TempImg = new T66yImgData() { id = img, Date = TempData.Date, img = imgdata };
+                            if (TempImg.FromList == null) TempImg.FromList = new List<int>();
+                            TempImg.FromList.Add(TempData.id);
+                            ImgList.Add(TempImg);
+                        }
+                    }
+                    byte[] DownloadImg(string url)
+                    {
+                        //byte[] ret = null;
+                        for (int i = 0; i < 4; i++)
+                        //{
+                        // Parallel.For(0, 4, (i, Status) =>
+                        {
+                            Setting.T66yDownLoadNowOther = $"第{PageCount}页{TempData.Date}-下载第{ImgList.Count + 1}张图片第{i}次";
+                            switch (i)
+                            {
+                                case 0:
+                                    {
+                                        HttpClient Download = new HttpClient(new ProxyClientHandler<Socks5>(new ProxySettings { Host = "127.0.0.1", Port = Setting.NyaaSocks5Point }));
+                                        try
+                                        {
+                                            Download.Timeout = new TimeSpan(0, 1, 0);
+                                            var RET = Download.GetByteArrayAsync(url).Result;
+                                            Setting._GlobalSet.totalDownloadBytes += RET.Length;
+                                            return RET;
+                                            //ret = RET; Status.Stop();
+                                        }
+                                        catch (Exception)
+                                        {
+                                            Download.Dispose();
+                                        }
+                                    }
+                                    break;
+
+                                case 3:
+                                    {
+                                        HttpClient Download = new HttpClient();
+                                        try
+                                        {
+                                            Download.Timeout = new TimeSpan(0, 1, 0);
+                                            var RET = Download.GetByteArrayAsync(url).Result;
+                                            Setting._GlobalSet.totalDownloadBytes += RET.Length;
+                                            return RET;
+                                            //ret = RET;
+                                            //Status.Stop();
+                                        }
+                                        catch (Exception)
+                                        {
+                                            Download.Dispose();
+                                        }
+                                    }
+                                    break;
+
+                                case 1:
+                                    {
+                                        HttpClient Download = new HttpClient(new ProxyClientHandler<Socks5>(new ProxySettings { Host = "127.0.0.1", Port = Setting.NyaaSocks5Point == 1088 ? Setting.Socks5Point : 1088 }));
+                                        try
+                                        {
+                                            Download.Timeout = new TimeSpan(0, 1, 0);
+                                            var RET = Download.GetByteArrayAsync(url).Result;
+                                            Setting._GlobalSet.totalDownloadBytes += RET.Length;
+                                            return RET;
+                                            //ret = RET;
+                                            // Status.Stop();
+                                        }
+                                        catch (Exception)
+                                        {
+                                            Download.Dispose();
+                                        }
+                                    }
+                                    break;
+
+                                case 2:
+                                    {
+                                        try
+                                        {
+                                            using var request = new HttpRequest()
+                                            {
+                                                UserAgent = Http.ChromeUserAgent(),
+                                                ConnectTimeout = 5000,
+                                                CharacterSet = Encoding.GetEncoding("GBK")
+                                            };
+                                            request.Proxy = Socks5ProxyClient.Parse($"127.0.0.1:{(Setting.NyaaSocks5Point == 1088 ? Setting.Socks5Point : 1088)}");
+                                            HttpResponse response = request.Get(url);
+                                            var RetS = response.ToString();
+                                            Setting._GlobalSet.totalDownloadBytes += response.Ret.Length;
+                                            return response.Ret;
+                                            //ret = response.Ret;
+                                            //  Status.Stop();
+                                        }
+                                        catch (Exception)
+                                        {
+                                        }
+                                    }
+                                    break;
+
+                                default:
+                                    break;
+                            }
+                        }
+                        // });
+                        return null;
+                    }
+                }
+                void Wait(string message)
+                {
+                    var time = new Random().Next(1000, 5000);
+                    for (var i = time; i > 0; i -= 1000)
+                    {
+                        if (T66yDownloadCancel.IsCancellationRequested) break;
+                        Setting.T66yDownLoadNowOther = $"{message}-{i / 1000}";
+                        Thread.Sleep(1000);
+                    }
+                }
+            });
+
+            #endregion 下载详细数据
+
+            #region 下载旧数据
+
+            var GetOtherT66yPage = new Action(() =>
+            {
+                using var db = new LiteDatabase(@"T66y.db");
+                var DownloadPage = db.GetCollection<T66yData>("T66yData").Min(x => x.id).AsInt32;
+                db.Dispose();
+                var PageCount = 0;
+                var HisList = new List<string>();
+                if (File.Exists(@"T66yHis.txt"))
+                {
+                    HisList = new List<string>(File.ReadAllLines(@"T66yHis.txt"));
+                }
+                while (!T66yDownloadCancel.IsCancellationRequested)
+                {
+                    if (HisList.Exists(x => x == DownloadPage.ToString())) continue; else File.AppendAllLines(@"T66yHis.txt", new[] { DownloadPage.ToString() });
+                    Interlocked.Decrement(ref DownloadPage);
+                    if (DataBaseCommand.GetDataFromT66y("CheckT66yExists", DownloadPage.ToString()))
+                        continue;
+                    Interlocked.Increment(ref PageCount);
+                    Wait($"等待下载{DownloadPage}页");
+                    Setting.T66yDownLoadOldOther = $"开始{DownloadPage}页面下载{PageCount}";
+                    var GoogleHtml = DownloadGooglePage(DownloadPage);
+                    Setting.T66yDownLoadOldOther = $"从谷歌下载{DownloadPage}页面{PageCount}";
+                    var T66yHtmlPage = string.Empty;
+                    if (string.IsNullOrEmpty(GoogleHtml))
+                    {
+                        Setting.T66yDownLoadOldOther = $"从谷歌下载{DownloadPage}页面失败开始直接下载{PageCount}";
+                        T66yHtmlPage = DownloadT66yPage(null);
+                    }
+                    else
+                    {
+                        Setting.T66yDownLoadOldOther = $"从T66y下载{DownloadPage}转换页面{PageCount}";
+                        T66yHtmlPage = DownloadT66yPage(AnalyGooglePage(GoogleHtml));
+                    }
+                    if (!string.IsNullOrEmpty(T66yHtmlPage))
+                    {
+                        if (!string.IsNullOrEmpty(T66yHtmlPage))
+                        {
+                            var _HtmlDoc = new HtmlDocument();
+                            _HtmlDoc.LoadHtml(T66yHtmlPage);
+                            try
+                            {
+                                var Uri = _HtmlDoc.DocumentNode.SelectSingleNode("/html/body/center/div/a[2]").Attributes["href"].Value;
+                                Setting.T66yDownLoadOldOther = $"从T66y下载{DownloadPage}主页面{PageCount}";
+                                var MainPage = DownloadT66yPage($"http://t66y.com/{Uri}");
+                                if (!string.IsNullOrEmpty(MainPage))
+                                    HandleT66yPage(MainPage, Uri);
+                            }
+                            catch (Exception)
+                            {
+                                Setting.T66yDownLoadOldOther = $"从T66y下载{DownloadPage}主页面失败{PageCount}";
+                                continue;
+                            }
+                        }
+                    }
+                }
+                Setting.T66yDownLoadOldOther = $"停止下载";
+                string DownloadGooglePage(int DownloadPage)
+                {
+                    using (var request = new HttpRequest()
+                    {
+                        UserAgent = Http.ChromeUserAgent(),
+                        ConnectTimeout = 5000,
+                        CharacterSet = Encoding.GetEncoding("GBK")
+                    })
+                    {
+                        if (Setting._GlobalSet.NyaaSocksCheck && Setting.NyaaSocks5Point != 0)
+                            request.Proxy = Socks5ProxyClient.Parse($"127.0.0.1:{Setting.NyaaSocks5Point}");
+                        try
+                        {
+                            int ErrorCount = 1;
+                            while (ErrorCount != 0)
+                            {
+                                try
+                                {
+                                    HttpResponse response = request.Get($"https://www.google.co.jp/search?&source=hp&q=http://www.t66y.com/read.php?tid={DownloadPage}");
+                                    var RetS = response.ToString();
+                                    Setting._GlobalSet.totalDownloadBytes += RetS.Length;
+                                    return Encoding.Default.GetString(response.Ret);
+                                }
+                                catch (Exception ex)
+                                {
+                                    if (Setting._GlobalSet.SocksCheck && Setting.Socks5Point != 0)
+                                        request.Proxy = Socks5ProxyClient.Parse($"127.0.0.1:{Setting.Socks5Point}");
+                                    var time = new Random().Next(30000, 60000);
+                                    for (var i = time; i > 0; i -= 1000)
+                                    {
+                                        Loger.Instance.WaitTime(i / 1000);
+                                        Thread.Sleep(1000);
+                                    }
+                                    Interlocked.Increment(ref ErrorCount);
+                                }
+                            }
+                        }
+                        catch (UriFormatException UriError)
+                        {
+                            Loger.Instance.LocalInfo($"地址错误{UriError.Message}");
+                            return $"地址错误{UriError.Message}";
+                        }
+                    }
+                    return null;
+                }
+                string AnalyGooglePage(string Html)
+                {
+                    try
+                    {
+                        var _HtmlDoc = new HtmlDocument();
+                        _HtmlDoc.LoadHtml(Html);
+                        foreach (var item in _HtmlDoc.DocumentNode.SelectNodes(@"//*[@id='search']"))
+                        {
+                            if (string.IsNullOrEmpty(item.InnerHtml)) break;
+                            return item.SelectSingleNode("div/div/div/div/div[1]/a").Attributes["href"].Value;
+                        }
+                        return string.Empty;
+                    }
+                    catch (Exception)
+                    {
+                        return string.Empty;
+                    }
+                }
+                string DownloadT66yPage(string Url)
+                {
+                    if (string.IsNullOrEmpty(Url))
+                        Url = "http://www.t66y.com/read.php?tid={DownloadPage}";
+                    var Download = new HttpClient(new ProxyClientHandler<Socks5>(new ProxySettings { Host = "127.0.0.1", Port = Setting.NyaaSocks5Point }));
+                    for (int i = 0; i < 2; i++)
+                    {
+                        try
+                        {
+                            var RET = Download.GetStringAsync(Url).Result;
+                            Setting._GlobalSet.totalDownloadBytes += RET.Length;
+                            return RET;
+                        }
+                        catch (Exception ex)
+                        {
+                            Download.Dispose();
+                            Download = new HttpClient(new ProxyClientHandler<Socks5>(new ProxySettings { Host = "127.0.0.1", Port = Setting.Socks5Point }));
+                        }
+                    }
+                    return null;
+                }
+                void HandleT66yPage(string Html, string uri)
+                {
+                    var TempData = new T66yData() { id = DownloadPage, HtmlData = Html, Uri = uri };
+                    var ImgList = new List<T66yImgData>();
+                    var TempList = new List<string>();
+                    var Quote = new List<string>();
+                    var _HtmlDoc = new HtmlDocument();
+                    _HtmlDoc.LoadHtml(Html);
+                    //_HtmlDoc.Save($"{DownloadPage}.html", Encoding.GetEncoding("gbk"));
+                    try
+                    {
+                        var ParentNode = _HtmlDoc.DocumentNode.SelectSingleNode("//div[@class='tiptop']").ParentNode;
+                        TempData.Title = ParentNode.SelectSingleNode("//h4").InnerHtml;
+                        var MainPage = ParentNode.SelectSingleNode("//div[4]");
+                        var Type = ParentNode.SelectSingleNode("//*[@id='main']/div[1]/table[1]/tr[1]/td[1]/b[1]/a[2]");
+                        Setting.T66yDownLoadOldOther = $"{DownloadPage}页面类型为{Type.InnerHtml}";
+                        if (Type.InnerHtml != "國產原創區")
+                        {
+                            using var db = new LiteDatabase(@"T66y.db");
+                            var T66yDb = db.GetCollection<T66yData>(Type.InnerHtml);
+                            T66yDb.Insert(TempData);
+                            return;
+                        }
+                        var Time = ParentNode.SelectSingleNode("//*[@id='main']/div[3]/table[1]/tbody[1]/tr[2]/th[1]/div[1]");//.ChildNodes[2].InnerHtml.Replace("\r\n", "").Replace("Posted:", "");
+                        if (Time == null)
+                            Time = ParentNode.SelectSingleNode("//*[@id='main']/div[3]/table[1]/tr[2]/th[1]/div[1]");//.ChildNodes[2].InnerHtml.Replace("\r\n", "").Replace("Posted:", "");
+                        if (Time != null)
+                            if (DateTime.TryParse(Time.ChildNodes[2].InnerHtml.Replace("\r\n", "").Replace("Posted:", ""), out DateTime dateTime))
+                                TempData.Date = dateTime.ToString("yyyy-MM-dd");
+                        var Start = false;
+                        foreach (var item in MainPage.ChildNodes)
+                        {
+                            Setting.T66yDownLoadOldOther = $"{TempData.id}|{TempData.Date}页面解析页面中{PageCount}";
+                            if (Start)
+                            {
+                                if (item.Name == "blockquote")
+                                {
+                                    if (item.ChildNodes.Count != 0)
+                                    {
+                                        SpildChild(item.ChildNodes, ref Quote);
+                                    }
+                                }
+                                else if (!string.IsNullOrWhiteSpace(item.InnerHtml)) // !item.InnerHtml.Contains("&nbsp"))
+                                {
+                                    if (item.ChildNodes.Count != 0)
+                                        SpildChild(item.ChildNodes, ref TempList);
+                                    else
+                                        TempList.Add(item.InnerHtml);
+                                }
+                                else if (item.Name == "img")
+                                {
+                                    var img = item.Attributes["ess-data"].Value.Replace(".th.jpg", ".jpg");
+                                    SaveImg(img);
+                                    TempList.Add(img);
+                                }
+                            }
+                            else if (FindFirst(item.InnerHtml, TempData.Title))
+                            {
+                                Start = true;
+                                if (item.ChildNodes.Count != 0)
+                                    SpildChild(item.ChildNodes, ref TempList);
+                                else
+                                    TempList.Add(item.InnerHtml);
+                            }
+                        }
+                        if (TempList.Count == 0)
+                        {
+                            Loger.Instance.LocalInfo($"T66y页面解析错误，分析列表为空{DownloadPage}");
+                        }
+                        TempList.RemoveAt(TempList.Count - 1);//删除 赞
+                        for (int i = TempList.Count - 1; i > 0; i--)
+                        {
+                            if (TempList[i].ToLower().Contains("quote"))
+                                TempList.RemoveAt(i);
+                            else if (TempList[i].ToLower().Contains("nbsp"))
+                            {
+                                var RepS = TempList[i].ToLower().Replace("nbsp", "");
+                                if (RepS.Length < 2)
+                                    TempList.RemoveAt(i);
+                                else
+                                    TempList[i] = RepS;
+                            }
+                        }
+                        var findrmdown = false;
+                        if (!findrmdown)
+                        {
+                            foreach (var item3 in TempList)
+                            {
+                                if (item3.Contains("rmdown"))
+                                {
+                                    findrmdown = true;
+                                }
+                            }
+                        }
+                        if (!findrmdown)
+                        {
+                            TempData.HtmlData = string.Empty;
+                            Loger.Instance.LocalInfo($"{TempData.Title}页面未找到下载地址");
+                        }
+                        TempData.MainList = new List<string>(TempList);
+                        TempData.QuoteList = new List<string>(Quote);
+                        TempData.Status = true;
+                        DataBaseCommand.SaveToT66yDataUnit(UnitData: TempData);
+                        DataBaseCommand.SaveToT66yDataUnit(ImgList);
+                    }
+                    catch (Exception ex)
+                    {
+                        Loger.Instance.LocalInfo($"T66y页面解析错误{ex.Message}");
+                    }
+                    void SpildChild(HtmlNodeCollection item, ref List<string> sL)
+                    {
+                        foreach (var item2 in item)
+                        {
+                            if (item2.ChildNodes.Count == 0)
+                            {
+                                if (!string.IsNullOrWhiteSpace(item2.InnerHtml) && !item2.InnerHtml.Contains("&nbsp"))
+                                    sL.Add(item2.InnerHtml);
+                                if (item2.Name == "img")
+                                {
+                                    var img = item2.Attributes["ess-data"].Value.Replace(".th.jpg", ".jpg");
+                                    sL.Add(img);
+                                    SaveImg(img);
+                                }
+                            }
+                            else
+                            {
+                                SpildChild(item2.ChildNodes, ref sL);
+                            }
+                        }
+                    }
+                    bool FindFirst(string src, string Title)
+                    {
+                        var SearchChar = new HashSet<string>() { "名称", "名稱", "rmdown", Title };
+                        foreach (var item in SearchChar)
+                        {
+                            if (src.Contains(item))
+                            {
+                                return true;
+                            }
+                        }
+                        return false;
+                    }
+                    void SaveImg(string img)
+                    {
+                        T66yImgData SearchImg = DataBaseCommand.GetDataFromT66y("img", img);
+                        if (SearchImg != null)
+                        {
+                            Setting.T66yDownLoadOldOther = "T66y找到重复图片";
+                            if (!SearchImg.Status)
+                            {
+                                SearchImg.img = DownloadImg(img);
+                            }
+                            SearchImg.FromList.Add(TempData.id);
+                            DataBaseCommand.SaveToT66yDataUnit(UnitData: SearchImg);
+                        }
+                        else
+                        {
+                            var imgdata = DownloadImg(img);
+                            var TempImg = new T66yImgData() { id = img, Date = TempData.Date, img = imgdata };
+                            if (TempImg.FromList == null) TempImg.FromList = new List<int>();
+                            TempImg.FromList.Add(TempData.id);
+                            ImgList.Add(TempImg);
+                        }
+                    }
+                    byte[] DownloadImg(string url)
+                    {
+                        //byte[] ret = null;
+                        for (int i = 0; i < 4; i++)
+                        //{
+                        // Parallel.For(0, 4, (i, Status) =>
+                        {
+                            Setting.T66yDownLoadOldOther = $"第{PageCount}页{TempData.Date}-下载第{ImgList.Count + 1}张图片第{i}次";
+                            switch (i)
+                            {
+                                case 0:
+                                    {
+                                        HttpClient Download = new HttpClient(new ProxyClientHandler<Socks5>(new ProxySettings { Host = "127.0.0.1", Port = Setting.NyaaSocks5Point }));
+                                        try
+                                        {
+                                            Download.Timeout = new TimeSpan(0, 1, 0);
+                                            var RET = Download.GetByteArrayAsync(url).Result;
+                                            Setting._GlobalSet.totalDownloadBytes += RET.Length;
+                                            return RET;
+                                            //ret = RET; Status.Stop();
+                                        }
+                                        catch (Exception)
+                                        {
+                                            Download.Dispose();
+                                        }
+                                    }
+                                    break;
+
+                                case 3:
+                                    {
+                                        HttpClient Download = new HttpClient();
+                                        try
+                                        {
+                                            Download.Timeout = new TimeSpan(0, 1, 0);
+                                            var RET = Download.GetByteArrayAsync(url).Result;
+                                            Setting._GlobalSet.totalDownloadBytes += RET.Length;
+                                            return RET;
+                                            //ret = RET;
+                                            //Status.Stop();
+                                        }
+                                        catch (Exception)
+                                        {
+                                            Download.Dispose();
+                                        }
+                                    }
+                                    break;
+
+                                case 1:
+                                    {
+                                        HttpClient Download = new HttpClient(new ProxyClientHandler<Socks5>(new ProxySettings { Host = "127.0.0.1", Port = Setting.NyaaSocks5Point == 1088 ? Setting.Socks5Point : 1088 }));
+                                        try
+                                        {
+                                            Download.Timeout = new TimeSpan(0, 1, 0);
+                                            var RET = Download.GetByteArrayAsync(url).Result;
+                                            Setting._GlobalSet.totalDownloadBytes += RET.Length;
+                                            return RET;
+                                            //ret = RET;
+                                            // Status.Stop();
+                                        }
+                                        catch (Exception)
+                                        {
+                                            Download.Dispose();
+                                        }
+                                    }
+                                    break;
+
+                                case 2:
+                                    {
+                                        try
+                                        {
+                                            using var request = new HttpRequest()
+                                            {
+                                                UserAgent = Http.ChromeUserAgent(),
+                                                ConnectTimeout = 5000,
+                                                CharacterSet = Encoding.GetEncoding("GBK")
+                                            };
+                                            request.Proxy = Socks5ProxyClient.Parse($"127.0.0.1:{(Setting.NyaaSocks5Point == 1088 ? Setting.Socks5Point : 1088)}");
+                                            HttpResponse response = request.Get(url);
+                                            var RetS = response.ToString();
+                                            Setting._GlobalSet.totalDownloadBytes += response.Ret.Length;
+                                            return response.Ret;
+                                            //ret = response.Ret;
+                                            //  Status.Stop();
+                                        }
+                                        catch (Exception)
+                                        {
+                                        }
+                                    }
+                                    break;
+
+                                default:
+                                    break;
+                            }
+                        }
+                        // });
+                        return null;
+                    }
+                }
+                void Wait(string message)
+                {
+                    var time = new Random().Next(1000, 5000);
+                    for (var i = time; i > 0; i -= 1000)
+                    {
+                        if (T66yDownloadCancel.IsCancellationRequested) break;
+                        Setting.T66yDownLoadOldOther = $"{message}-{i / 1000}";
+                        Thread.Sleep(1000);
+                    }
+                }
+            });
+
+            #endregion 下载旧数据
+
             return Task.Run(() =>
             {
                 GetT66yDataTimer = new System.Timers.Timer(1000);
@@ -272,68 +1074,101 @@ namespace SpiderServerInLinux
                     GetT66ySpan.Reset();
                     var RunSpan = new Stopwatch();
                     RunSpan.Start();
-                    T66yDownloadCancel = new CancellationTokenSource();
+
                     var DownloadPage = 1;
                     NewSize = 0;
-                    //var CheckLastPage = DataBaseCommand.GetDataFromMiMi("CheckMiMiStoryLastPage");
-                    /*if (!CheckLastPage)
-                      {
-                          DownloadPage = Setting._GlobalSet.MiMiAiStoryPageIndex;
-                          Loger.Instance.LocalInfo($"从{DownloadPage}页开始获得MiMi小说信息");
-                      }
-                      else
-                      {
-                          Loger.Instance.LocalInfo("开始获取新MiMi小说信息");
-                      }*/
-                    bool SaveFlag = true;
+                    bool SaveFlag = false;
                     while (!T66yDownloadCancel.IsCancellationRequested)
                     {
-                        Setting.T66yDownLoadNow = $"当前下载第{DownloadPage}";
-                        var DoanloadPageHtml = DownloadMainPage(DownloadPage);
-                        if (string.IsNullOrEmpty(DoanloadPageHtml))
+                        var DoanloadPageHtml = string.Empty;
+                        try
                         {
-                            Loger.Instance.LocalInfo("T66y下载到空网页，退出下载进程");
-                            break;
-                        }
-                        //var PageCount = 1;
-                        List<T66yData> ItemList = new List<T66yData>();
-                        foreach (var tempData in AnalyT66yMainPage(HtmlDoc, DoanloadPageHtml))
-                        {
-                            T66yData AddTemp = new T66yData();
-                            //AddTemp.id=
-                            //var AddTemp = HandleStoryPage(DownloadMainPage(_Uri: $"http://{new Uri(Setting._GlobalSet.T66yAddress).Host}/{tempData[0]}"), tempData);
-                            if (AddTemp != null)
+                            Setting.T66yDownLoadNow = $"当前下载第{DownloadPage}";
+                            DoanloadPageHtml = DownloadMainPage(DownloadPage);
+                            if (string.IsNullOrEmpty(DoanloadPageHtml))
                             {
-                                ItemList.Add(AddTemp);
-                                //SaveFlag = DataBaseCommand.SaveToT66yDataUnit();
+                                Loger.Instance.LocalInfo("T66y下载到空网页，退出下载进程");
+                                break;
                             }
+                            var PageCount = 1;
+                            //List<T66yData> ItemList = new List<T66yData>();
+                            foreach (var tempData in AnalyT66yMainPage(HtmlDoc, DoanloadPageHtml))
+                            {
+                                Setting.T66yDownLoadNow = $"开始解析第{tempData[3]}页,日期{tempData[2]}";
+                                /*   var TempData = new string[]
+                                {
+                                   Url,//地址0
+                                   temp.SelectSingleNode("td[2]/h3/a").InnerHtml,//标题1
+                                   temp.SelectSingleNode("td[3]/div/span").Attributes["title"].Value.Split(' ')[2],//日期2
+                                   HtmlTempData.Item1,//编号3
+                                   HtmlTempData.Item2,//内容4
+                                };*/
+                                T66yData AddTemp = new T66yData();
+                                //var AddTemp = HandleStoryPage(DownloadMainPage(_Uri: $"http://{new Uri(Setting._GlobalSet.T66yAddress).Host}/{tempData[0]}"), tempData);
+                                if (tempData != null)
+                                {
+                                    AddTemp.id = int.Parse(tempData[3]);
+                                    AddTemp.Date = tempData[2];
+                                    AddTemp.HtmlData = tempData[4];
+                                    AddTemp.Status = false;
+                                    AddTemp.Title = tempData[1];
+                                    AddTemp.Uri = tempData[0];
+                                    //ItemList.Add(AddTemp);
+                                    SaveFlag = DateTime.Now.ToString("yyyy-MM-dd") != AddTemp.Date
+                                    && !DataBaseCommand.SaveToT66yDataUnit(UnitData: AddTemp);
+                                }
+                                Setting.T66yDownLoadNow = $"当前下载第{DownloadPage}-{PageCount}";
+                                Interlocked.Increment(ref PageCount);
+                                if (SaveFlag) break;
+                            }
+                            //DataBaseCommand.SaveToT66yDataUnit(ItemList);
+                            //ItemList.Clear(); ItemList = null;
+                            GC.Collect();
+                            Interlocked.Increment(ref DownloadPage);
+                            //Setting._GlobalSet.T66yPageIndex = DownloadPage;
                             var time = new Random().Next(1000, 10000);
                             for (var i = time; i > 0; i -= 1000)
                             {
-                                if (MiMiAiStoryDownloadCancel.IsCancellationRequested) break;
-                                Setting.T66yDownLoadNow = $"当前下载第{DownloadPage}-{ItemList.Count}-{i / 1000}";
+                                if (T66yDownloadCancel.IsCancellationRequested) break;
+                                Setting.T66yDownLoadNow = $"当前下载第{DownloadPage}-{i / 1000}";
                                 Thread.Sleep(1000);
                             }
-                            //Interlocked.Increment(ref PageCount);
-                            if (!SaveFlag) break;
+                            if (DownloadPage == 0) break;
+                            if (SaveFlag) break;
                         }
-                        DataBaseCommand.SaveToT66yDataUnit(ItemList);
-                        ItemList.Clear(); ItemList = null;
-                        GC.Collect();
-                        Interlocked.Increment(ref DownloadPage);
-                        if (!SaveFlag) break;
+                        catch (Exception ex)
+                        {
+                            File.WriteAllText($"T66yErrorPage{DateTime.Now:yyyy-MM-dd-ss}.html", DoanloadPageHtml);
+                            Loger.Instance.LocalInfo($"T66y下载错误，错误信息{ex.Message},当前页{DownloadPage}");
+                        }
                     }
-
+                    Loger.Instance.LocalInfo($"T66y:下载完毕,耗时{RunSpan.Elapsed:mm\\分ss\\秒},消耗流量{HumanReadableFilesize(NewSize)}");
                     GetT66yDataTimer.Interval = new Random().Next(12, 24) * 3600 * 1000;
                     Setting.T66yDownLoadNow = DateTime.Now.AddMilliseconds(GetT66yDataTimer.Interval).ToString("MM-dd|HH:mm");
-                    Loger.Instance.LocalInfo($"T66y:下载完毕,耗时{RunSpan.Elapsed:mm\\分ss\\秒},消耗流量{HumanReadableFilesize(NewSize)}");
                     RunSpan.Stop();
                     GetT66ySpan.Restart();
                     GetT66yDataTimer.Start();
+                    if (T66yOtherDownloadTask == null)
+                    {
+                        Loger.Instance.LocalInfo($"T66y:开始附加信息下载");
+
+                        T66yOtherDownloadTask = Task.WhenAll(
+                            Task.Factory.StartNew(ImageDownload, T66yDownloadCancel.Token, TaskCreationOptions.LongRunning, TaskScheduler.Current),
+                            Task.Factory.StartNew(OtherDownload, T66yDownloadCancel.Token, TaskCreationOptions.LongRunning, TaskScheduler.Current),
+                            Task.Factory.StartNew(GetOtherT66yPage, T66yDownloadCancel.Token, TaskCreationOptions.LongRunning, TaskScheduler.Current));
+                    }
+                    else if (T66yOtherDownloadTask.Status != TaskStatus.Running)
+                    {
+                        T66yOtherDownloadTask = null;
+                        GC.Collect();
+                        T66yOtherDownloadTask = Task.WhenAll(
+                            Task.Factory.StartNew(ImageDownload, T66yDownloadCancel.Token, TaskCreationOptions.LongRunning, TaskScheduler.Current),
+                            Task.Factory.StartNew(OtherDownload, T66yDownloadCancel.Token, TaskCreationOptions.LongRunning, TaskScheduler.Current),
+                            Task.Factory.StartNew(GetOtherT66yPage, T66yDownloadCancel.Token, TaskCreationOptions.LongRunning, TaskScheduler.Current));
+                    }
                 };
                 GetT66yDataTimer.Enabled = true;
-            });
-
+            }, T66yDownloadCancel.Token);
             string DownloadMainPage(int Index = -1, string _Uri = "")
             {
                 using (var request = new HttpRequest()
@@ -343,11 +1178,8 @@ namespace SpiderServerInLinux
                     CharacterSet = Encoding.GetEncoding("GBK")
                 })
                 {
-                    if (Setting._GlobalSet.SocksCheck)
-                    {
-                        if (Setting.Socks5Point != 0)
-                            request.Proxy = Socks5ProxyClient.Parse($"127.0.0.1:{Setting.Socks5Point}");
-                    }
+                    if (Setting._GlobalSet.NyaaSocksCheck && Setting.NyaaSocks5Point != 0)
+                        request.Proxy = Socks5ProxyClient.Parse($"127.0.0.1:{Setting.NyaaSocks5Point}");
                     try
                     {
                         int ErrorCount = 1;
@@ -356,18 +1188,22 @@ namespace SpiderServerInLinux
                             var downurl = Index > -1 ? new Uri($"{Setting._GlobalSet.T66yAddress}{Index}") : new Uri($"{_Uri}");
                             try
                             {
+                                Setting.T66yDownLoadNow = $"开始下载第{Index}页";
                                 HttpResponse response = request.Get(downurl);
                                 var RetS = response.ToString();
-                                File.WriteAllBytes("Html", response.Ret);
+                                //File.WriteAllBytes("Html", response.Ret);
                                 NewSize += response.Ret.Length;
-                                return RetS;
+                                Setting.T66yDownLoadNow = $"第{Index}页下载完毕";
+                                return Encoding.GetEncoding("GBK").GetString(response.Ret);
                             }
                             catch (Exception ex)
                             {
+                                if (Setting._GlobalSet.SocksCheck && Setting.Socks5Point != 0)
+                                    request.Proxy = Socks5ProxyClient.Parse($"127.0.0.1:{Setting.Socks5Point}");
                                 if (ex.Message.StartsWith("Cannot access a disposed object"))
                                 {
                                     Loger.Instance.LocalInfo($"SSR异常，退出全部下载进程");
-                                    T66yDownloadCancel.Cancel();
+                                    //T66yDownloadCancel.Cancel();
                                     break;
                                 }
                                 Loger.Instance.LocalInfo($"{ex.Message}");
@@ -402,48 +1238,6 @@ namespace SpiderServerInLinux
                 }
                 return null;
             }
-            MiMiAiStory HandleStoryPage(string Html, string[] PageData = null)
-            {
-                try
-                {
-                    var Temp = new MiMiAiStory();
-                    var _HtmlDoc = new HtmlDocument();
-                    _HtmlDoc.LoadHtml(Html);
-                    Temp.Data = Encoding.Default.GetBytes(_HtmlDoc.DocumentNode.SelectNodes("//div[@class='t_msgfont']")[0].InnerHtml);
-                    var OutPutText = new StringBuilder();
-                    var CN = _HtmlDoc.DocumentNode.SelectNodes("//div[@class='t_msgfont']")[0].ChildNodes;
-                    while (CN.Count == 1)
-                    {
-                        if (CN[0].ChildNodes.Count == 0) break;
-                        CN = CN[0].ChildNodes;
-                    }
-                    foreach (var Child in CN)
-                    {
-                        if (Child.Name == "#text")
-                        {
-                            var TempText = Child.InnerText.Replace("\r\n", "").Replace(" ", "").Replace("", "").Replace("&nbsp;", "");
-                            if (!string.IsNullOrEmpty(TempText))
-                            {
-                                OutPutText.Append(TempText);
-                            }
-                        }
-                    }
-                    Temp.id = int.Parse(PageData[0].Split("=")[1]);
-                    Temp.Title = PageData[1];
-                    if (string.IsNullOrEmpty(OutPutText.ToString()))
-                    {
-                        Loger.Instance.LocalInfo($"MiMiStory页面{PageData[0]}解析错误");
-                        File.AppendAllLines("MiMiStory.txt", new string[] { $"{PageData[0]}|{PageData[1]}" });
-                    }
-                    Temp.Story = OutPutText.ToString();
-                    return Temp;
-                }
-                catch (Exception ex)
-                {
-                    Loger.Instance.LocalInfo($"MiMiStory页面解析错误");
-                }
-                return null;
-            }
             IEnumerable<string[]> AnalyT66yMainPage(HtmlDocument HtmlDoc, string Page)
             {
                 if (string.IsNullOrEmpty(Page))
@@ -451,6 +1245,7 @@ namespace SpiderServerInLinux
                     Loger.Instance.LocalInfo($"T66y页面为空"); yield break;
                 }
                 HtmlDoc.LoadHtml(Page);
+                var Count = HtmlDoc.DocumentNode.SelectNodes(@"/html/body/div[2]/div[2]/table[1]/tbody[1]/tr").Count;
                 foreach (var item in HtmlDoc.DocumentNode.SelectNodes(@"/html/body/div[2]/div[2]/table[1]/tbody[1]/tr"))
                 {
                     if (string.IsNullOrEmpty(item.InnerHtml)) continue;
@@ -458,17 +1253,68 @@ namespace SpiderServerInLinux
                         continue;
                     if (item.Attributes["class"].Value == "tr3 t_one tac" && item.SelectSingleNode("td[1]").InnerHtml.Contains(".::"))
                     {
-                        var temp = HtmlNode.CreateNode(item.OuterHtml);
-                        var TempData = new string[]
+                        var TempData = new string[5];
+                        try
                         {
-                        temp.SelectSingleNode("td[2]/h3/a").Attributes["href"].Value,
-                        temp.SelectSingleNode("td[2]/h3/a").InnerHtml,
-                        temp.SelectSingleNode("td[3]/div/span").Attributes["title"].Value.Split(' ')[2],
-                        bool.FalseString
-                        };
+                            var temp = HtmlNode.CreateNode(item.OuterHtml);
+                            var Url = temp.SelectSingleNode("td[2]/h3/a").Attributes["href"].Value;
+                            var HtmlTempData = Get(ref Url);
+                            var Title = temp.SelectSingleNode("td[2]/h3/a").InnerHtml;
+                            /*  if (Title.Contains("最新 精品发布 醉酒玩丰满甜美型学生妹子"))
+                                  Console.WriteLine();*/
+                            var Data = "";
+                            var DateHtml = temp.SelectSingleNode("td[3]/div").InnerHtml;
+                            if (DateHtml.StartsWith("昨天"))
+                            {
+                                Data = DateTime.Now.AddDays(-1).ToString("yyyy-MM-dd");
+                            }
+                            else if (DateHtml.StartsWith("今天"))
+                            {
+                                Data = DateTime.Now.ToString("yyyy-MM-dd");
+                            }
+                            else if (DateTime.TryParse(DateHtml, out DateTime TempD))
+                                Data = TempD.ToString("yyyy-MM-dd");
+                            else
+                                Data = temp.SelectSingleNode("td[3]/div/span").Attributes["title"].Value.Split(' ')[3];
+
+                            TempData = new string[]
+                            {
+                                Url,//地址
+                                Title ,//标题
+                                Data ,//日期
+                                HtmlTempData.Item1,//编号
+                                HtmlTempData.Item2,//内容
+                            };
+                        }
+                        catch (Exception)
+                        {
+                            Loger.Instance.LocalInfo($"T66y页面解析错误");
+                            File.AppendAllLines("T66y.txt", new string[] { item.OuterHtml });
+                        }
                         yield return TempData;
                     }
-                    yield break;
+                }
+                yield break;
+
+                Tuple<string, string> Get(ref string Url)
+                {
+                    if (Url.StartsWith("htm"))
+                    {
+                        var UrlS = Url.Replace("htm_data", "").Replace(".html", "").Split('/');
+                        return new Tuple<string, string>($"{UrlS[3]}", string.Empty);
+                    }
+                    else
+                    {
+                        var TempDoc = new HtmlDocument();
+                        HttpClient client = new HttpClient();
+                        if (Setting._GlobalSet.NyaaSocksCheck && Setting.NyaaSocks5Point != 0)
+                            client = new HttpClient(new ProxyClientHandler<Socks5>(new ProxySettings { Host = "127.0.0.1", Port = Setting.NyaaSocks5Point }));
+                        else
+                            client = new HttpClient();
+                        TempDoc.Load(client.GetStringAsync($"http://t66y.com/{Url}").Result);
+                        Url = TempDoc.DocumentNode.SelectSingleNode("/html/body/center/div/a[2]").Attributes["href"].Value;
+                        return Get(ref Url);
+                    }
                 }
             }
         }

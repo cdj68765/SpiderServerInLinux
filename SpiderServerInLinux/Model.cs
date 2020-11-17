@@ -25,8 +25,10 @@ namespace SpiderServerInLinux
         internal static Stack<string> LocalInfoC = new Stack<string>();
         internal static Stack<string> Remote = new Stack<string>();
         internal static BlockingCollection<NyaaInfo> WordProcess = new BlockingCollection<NyaaInfo>();
-        internal static ShowInControl ShowInfo;
+
+        //internal static ShowInControl ShowInfo;
         internal static int Socks5Point;
+
         internal static int NyaaSocks5Point;
 
         internal static string JavDownLoadNow;
@@ -34,6 +36,8 @@ namespace SpiderServerInLinux
         internal static string MiMiDownLoadNow;
         internal static string MiMiAiStoryDownLoadNow;
         internal static string T66yDownLoadNow;
+        internal static string T66yDownLoadNowOther;
+        internal static string T66yDownLoadOldOther;
 
         internal static ShadowsocksController SSR;
         internal static ShadowsocksController NyaaSSR;
@@ -119,12 +123,17 @@ namespace SpiderServerInLinux
         internal string JavInterval = Setting.DownloadManage != null ? Setting.DownloadManage.JavSpan.ElapsedMilliseconds == 0 ? Setting.JavDownLoadNow : Setting.DownloadManage.GetJavNewDataTimer.Interval.ToString() : string.Empty;
         internal string NyaaInterval = Setting.DownloadManage != null ? Setting.DownloadManage.NyaaSpan.ElapsedMilliseconds == 0 ? Setting.NyaaDownLoadNow : Setting.DownloadManage.GetNyaaNewDataTimer.Interval.ToString() : string.Empty;
         internal string MiMiStoryInterval = Setting.DownloadManage != null ? Setting.DownloadManage.MiMiStorySpan.ElapsedMilliseconds == 0 ? Setting.MiMiAiStoryDownLoadNow : Setting.DownloadManage.GetMiMiAiStoryDataTimer.Interval.ToString() : string.Empty;
-        internal string Memory = $"内存使用量:{System.Diagnostics.Process.GetCurrentProcess().WorkingSet64 / 1024 / 1024}MB";
+        internal string T66yInterval = Setting.DownloadManage != null ? Setting.DownloadManage.GetT66ySpan.ElapsedMilliseconds == 0 ? Setting.T66yDownLoadNow : Setting.DownloadManage.GetT66yDataTimer.Interval.ToString() : string.Empty;
+        internal string T66yOtherMessage = Setting.DownloadManage != null ? Setting.T66yDownLoadNowOther : string.Empty;
+        internal string T66yOtherOldMessage = Setting.DownloadManage != null ? Setting.T66yDownLoadOldOther : string.Empty;
+
+        internal string Memory = $"内存使用量:{Process.GetCurrentProcess().WorkingSet64 / 1024 / 1024}MB";
 
         internal TimeSpan MiMiSpan = Setting.DownloadManage != null ? Setting.DownloadManage.MiMiSpan.Elapsed : TimeSpan.Zero;
         internal TimeSpan JavSpan = Setting.DownloadManage != null ? Setting.DownloadManage.JavSpan.Elapsed : TimeSpan.Zero;
         internal TimeSpan NyaaSpan = Setting.DownloadManage != null ? Setting.DownloadManage.NyaaSpan.Elapsed : TimeSpan.Zero;
         internal TimeSpan MiMiStorySpan = Setting.DownloadManage != null ? Setting.DownloadManage.MiMiStorySpan.Elapsed : TimeSpan.Zero;
+        internal TimeSpan GetT66ySpan = Setting.DownloadManage != null ? Setting.DownloadManage.GetT66ySpan.Elapsed : TimeSpan.Zero;
 
         internal int NyaaSSRPoint = Setting.NyaaSSR != null ? Setting.NyaaSSR.SocksPort : 0;
         internal int SSRPoint = Setting.SSR != null ? Setting.SSR.SocksPort : 0;
@@ -305,6 +314,7 @@ namespace SpiderServerInLinux
         private int _JavLastPageIndex = 0;
         private int _MiMiAiPageIndex = 0;
         private int _MiMiAiStoryPageIndex = 0;
+        private int _T66yPageIndex = 0;
 
         private int _ConnectPoint = 2222;
         private long _totalUploadBytes = 0;
@@ -329,6 +339,7 @@ namespace SpiderServerInLinux
         internal int ConnectPoint { get { return _ConnectPoint; } set { _ConnectPoint = value; Save(); } }
         internal int MiMiAiPageIndex { get { return _MiMiAiPageIndex; } set { _MiMiAiPageIndex = value; Save(); } }
         internal int MiMiAiStoryPageIndex { get { return _MiMiAiStoryPageIndex; } set { _MiMiAiStoryPageIndex = value; Save(); } }
+        internal int T66yPageIndex { get { return _T66yPageIndex; } set { _T66yPageIndex = value; Save(); } }
 
         internal bool SocksCheck { get { return _SocksCheck; } set { _SocksCheck = value; Save(); } }
         internal bool NyaaSocksCheck { get { return _NyaaSocksCheck; } set { _NyaaSocksCheck = value; Save(); } }
@@ -543,23 +554,42 @@ namespace SpiderServerInLinux
         }
     }
 
+    [Serializable]
     internal class T66yData
     {
         public int id { get; set; }
         public string Title { get; set; }
         public string Uri { get; set; }
         public string Date { get; set; }
-
-        public string HtmlDate { get; set; }
-        public List<BasicData> InfoList { get; set; }
-
+        public string HtmlData { get; set; }
+        public List<string> MainList { get; set; }
+        public List<string> QuoteList { get; set; }
         public bool Status { get; set; }
 
-        internal class BasicData
+        internal byte[] ToByte()
         {
-            public string Type { get; set; }
-            public string info { get; set; }
-            public byte[] Data { get; set; }
+            using var stream = new MemoryStream();
+            IFormatter Fileformatter = new BinaryFormatter();
+            Fileformatter.Serialize(stream, this);
+            return stream.ToArray();
+        }
+    }
+
+    [Serializable]
+    internal class T66yImgData
+    {
+        public string id { get; set; }
+        public string Date { get; set; }
+        public byte[] img { get; set; }
+        public List<int> FromList { get; set; }
+        public bool Status => img != null;
+
+        internal byte[] ToByte()
+        {
+            using var stream = new MemoryStream();
+            IFormatter Fileformatter = new BinaryFormatter();
+            Fileformatter.Serialize(stream, this);
+            return stream.ToArray();
         }
     }
 

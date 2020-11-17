@@ -5,7 +5,6 @@ using System.Linq;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
-using static SpiderServerInLinux.DataBaseCommand;
 
 namespace SpiderServerInLinux
 {

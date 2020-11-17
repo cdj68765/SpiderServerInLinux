@@ -2,19 +2,25 @@
 using HtmlAgilityPack;
 using LiteDB;
 using Shadowsocks.Controller;
+using SocksSharp;
+using SocksSharp.Proxy;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Drawing;
+using System.Drawing.Imaging;
 using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Net.Http;
 using System.Reflection;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using xNet;
@@ -24,65 +30,177 @@ namespace SpiderServerInLinux
 {
     internal static class Program
     {
+        private class Keyword
+        {
+            public int ID { get; set; }
+            public string Title { get; set; }
+            public string Link { get; set; }
+        }
+
         private static async Task<int> Main(string[] args)
         {
             Directory.SetCurrentDirectory(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location));
             Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 
-            using var request = new HttpRequest()
+            // GetOtherT6yyPage();
+            //var Download = DownloadGooglePage(4044141);//.Replace("&raquo;", "").Replace("&nbsp;", "").Replace("&copy;", "").Replace("/r", "").Replace("/t", "").Replace("/n", "").Replace("&amp;", "&"); ;
+            //AnalyGooglePage(File.ReadAllText("4044141.html"));
+            //var RetUrl = AnalyGooglePage(File.ReadAllText("4164642.html"));
+            //var RetHtml = client.GetStringAsync($"{ AnalyGooglePage(DownloadGooglePage(PageCount))}").Result;
+            //var _Table = db.GetCollection<T66yImgData>("ImgData");
+            //var fo = _Table.FindOne(Query.EQ("id", "http://img200.imagexport.com/th/25143/1i1g8gafv3yr.jpg"));
+            //var fo = _Table.Find(x => x["Date"] == "2020-09-03").Count();
+            //var fo = _Table.Find(x => x.Date == "2020-09-03").Count();
+            //var aa = new LiteDB.BsonMapper();
+            // var FFF = aa.ToObject<T66yImgData>(fo);
+            //Console.WriteLine();
+            // HandleT66yPage();
+            void HandleT66yPage(string Data)
             {
-                UserAgent = Http.ChromeUserAgent(),
-                ConnectTimeout = 1000,
-                CharacterSet = Encoding.GetEncoding("GBK"),
-                AllowAutoRedirect = true
-            };
+                var ImgList = new List<T66yImgData>();
+                var TempList = new List<string>();
+                var Quote = new List<string>();
+                var _HtmlDoc = new HtmlDocument();
+                //_HtmlDoc.LoadHtml(Data);
+                // _HtmlDoc.Load(File.OpenRead($"{PageCount}.html"), Encoding.GetEncoding("gbk"));
+                //_HtmlDoc.Save($"{PageCount}.html", Encoding.GetEncoding("gbk"));
 
-            request.Proxy = Socks5ProxyClient.Parse($"127.0.0.1:7070");
-
-            var HtmlDoc = new HtmlDocument();
-            HtmlDoc.Load(new FileStream("Html", System.IO.FileMode.Open), Encoding.GetEncoding("GBK"));
-            int year = 0;
-            int Month = 0;
-            foreach (var item in HtmlDoc.DocumentNode.SelectNodes(@"/html/body/div[2]/div[2]/table[1]/tbody[1]/tr").Reverse())
-            {
-                if (string.IsNullOrEmpty(item.InnerHtml)) continue;
-                if (item.InnerLength < 50)
-                    continue;
-                if (item.Attributes["class"].Value == "tr3 t_one tac" && item.SelectSingleNode("td[1]").InnerHtml.Contains(".::"))
+                //_HtmlDoc.Load("4177015.html");
+                _HtmlDoc.Load("4164637.html", Encoding.GetEncoding("gbk"));
+                try
                 {
-                    var temp = HtmlNode.CreateNode(item.OuterHtml);
-                    var Url = temp.SelectSingleNode("td[2]/h3/a").Attributes["href"].Value;
-                    if (Url.StartsWith("htm"))
+                    //_HtmlDoc.Save($"Html{count++}.html", Encoding.GetEncoding("gbk"));
+                    var ParentNode = _HtmlDoc.DocumentNode.SelectSingleNode("//div[@class='tiptop']").ParentNode;
+                    var Name = ParentNode.SelectSingleNode("//h4");
+                    var MainNode = ParentNode.SelectSingleNode("//div[4]");
+
+                    var Type = ParentNode.SelectSingleNode("//*[@id='main']/div[1]/table[1]/tr[1]/td[1]/b[1]/a[2]");
+                    var Time = ParentNode.SelectSingleNode("//*[@id='main']/div[3]/table[1]/tbody[1]/tr[2]/th[1]/div[1]");//.ChildNodes[2].InnerHtml.Replace("\r\n", "").Replace("Posted:", "");
+                    if (Time == null)
+                        Time = ParentNode.SelectSingleNode("//*[@id='main']/div[3]/table[1]/tr[2]/th[1]/div[1]");//.ChildNodes[2].InnerHtml.Replace("\r\n", "").Replace("Posted:", "");
+                    var STime = Time.ChildNodes[2].InnerHtml.Replace("\r\n", "").Replace("Posted:", "");
+                    // var Date = DateTime.Parse(Time);
+                    /*foreach (var item in CN.SelectNodes("//*[@id='main']/div"))
                     {
-                        var UrlS = Url.Replace("htm_data", "").Replace(".html", "").Split('/');
-                        year = int.Parse(UrlS[1]);
-                        Month = int.Parse(UrlS[2]);
+                        Console.WriteLine();
+                    }*/
+                    var Start = false;
+                    foreach (var item in MainNode.ChildNodes)
+                    {
+                        if (Start)
+                        {
+                            if (item.Name == "blockquote")//TempList.Last().Contains("引用") || TempList.Last().Contains("Quote"))
+                            {
+                                if (item.ChildNodes.Count != 0)
+                                {
+                                    SpildChild(item.ChildNodes, ref Quote);
+                                }
+                            }
+                            else if (!string.IsNullOrWhiteSpace(item.InnerHtml)) // !item.InnerHtml.Contains("&nbsp"))
+                            {
+                                if (item.ChildNodes.Count != 0)
+                                    SpildChild(item.ChildNodes, ref TempList);
+                                else
+                                    TempList.Add(item.InnerHtml);
+                            }
+                            else if (item.Name == "img")
+                            {
+                                var img = item.Attributes["ess-data"].Value.Replace(".th.jpg", ".jpg");
+                                //SaveImg(img);
+                                TempList.Add(img);
+                            }
+                        }
+                        else if (FindFirst(item.InnerHtml, Name.InnerHtml))
+                        {
+                            Start = true;
+                            if (item.ChildNodes.Count != 0)
+                                SpildChild(item.ChildNodes, ref TempList);
+                            else
+                                TempList.Add(item.InnerHtml);
+                        }
+                    }
+                    if (TempList.Count == 0)
+                    {
+                    }
+                    TempList.RemoveAt(TempList.Count - 1);//删除 赞
+                    for (int i = TempList.Count - 1; i > 0; i--)
+                    {
+                        if (TempList[i].ToLower().Contains("quote") || TempList[i].ToLower().Contains("nbsp"))
+                            TempList.RemoveAt(i);
+                    }
+                    var findrmdown = false;
+                    if (!findrmdown)
+                    {
+                        foreach (var item3 in TempList)
+                        {
+                            if (item3.Contains("rmdown"))
+                            {
+                                findrmdown = true;
+                            }
+                        }
+                    }
+                    if (!findrmdown)
+                    {
+                    }
+                }
+                catch (Exception ex)
+                {
+                }
+                void SpildChild(HtmlNodeCollection item, ref List<string> sL)
+                {
+                    foreach (var item2 in item)
+                    {
+                        if (item2.ChildNodes.Count == 0)
+                        {
+                            if (!string.IsNullOrWhiteSpace(item2.InnerHtml) && !item2.InnerHtml.Contains("&nbsp"))
+                                sL.Add(item2.InnerHtml);
+                            if (item2.Name == "img")
+                            {
+                                var img = item2.Attributes["ess-data"].Value.Replace(".th.jpg", ".jpg");
+                                sL.Add(img);
+                                SaveImg(img);
+                            }
+                        }
+                        else
+                        {
+                            SpildChild(item2.ChildNodes, ref sL);
+                        }
+                    }
+                }
+                bool FindFirst(string src, string Title)
+                {
+                    var SearchChar = new HashSet<string>() { "名称", "名稱", "rmdown", Title };
+                    foreach (var item in SearchChar)
+                    {
+                        if (src.Contains(item))
+                        {
+                            return true;
+                        }
+                    }
+                    return false;
+                }
+                void SaveImg(string img)
+                {
+                    T66yImgData SearchImg = DataBaseCommand.GetDataFromT66y("img", img);
+                    if (SearchImg != null)
+                    {
+                        if (!SearchImg.Status)
+                        {
+                        }
                     }
                     else
                     {
-                        Url = $"htm_data/{year}/{Month}/{Url.Split('=')[1]}.html";
-                        // HttpResponse response = request.Get($"http://t66y.com/{Url}");
-                        HttpResponse response = request.Get($"http://t66y.com/htm_data/2011/25/4165230.html");
-                        var RetS = response.ToString();
-                        Console.WriteLine();
                     }
-                    var TempData = new string[]
-                    {
-                        Url,
-                        temp.SelectSingleNode("td[2]/h3/a").InnerHtml,
-                        temp.SelectSingleNode("td[3]/div/span").Attributes["title"].Value.Split(' ')[2],
-                        bool.FalseString
-                    };
                 }
             }
 
             Setting._GlobalSet = GlobalSet.Open();
-
             if (args.Length != 0 && !string.IsNullOrEmpty(args[0]))
             {
                 Setting._GlobalSet.ssr_url = args[0].ToString();
                 Setting._GlobalSet.SocksCheck = true;
             }
+
             Setting._GlobalSet.MiMiFin = true;
             await Init();
             return await Setting.ShutdownResetEvent.Task.ConfigureAwait(false);
@@ -195,7 +313,49 @@ namespace SpiderServerInLinux
             {
                 throw;
             }*/
+            /* ProxySettings ProxySettings = new ProxySettings { Host = "127.0.0.1", Port = 7070 };
+             var client = new HttpClient(new ProxyClientHandler<Socks5>(ProxySettings));
 
+             client.Timeout = new TimeSpan(0, 1, 0);
+             var HtmlDoc = new HtmlDocument();
+             HtmlDoc.Load(new FileStream("Html", System.IO.FileMode.Open), Encoding.GetEncoding("GBK"));
+             foreach (var item in HtmlDoc.DocumentNode.SelectNodes(@"/html/body/div[2]/div[2]/table[1]/tbody[1]/tr"))
+             {
+                 if (string.IsNullOrEmpty(item.InnerHtml)) continue;
+                 if (item.InnerLength < 50)
+                     continue;
+                 if (item.Attributes["class"].Value == "tr3 t_one tac" && item.SelectSingleNode("td[1]").InnerHtml.Contains(".::"))
+                 {
+                     var temp = HtmlNode.CreateNode(item.OuterHtml);
+                     var Url = temp.SelectSingleNode("td[2]/h3/a").Attributes["href"].Value;
+                     var HtmlTempData = Get(ref Url);
+                     var TempData = new string[]
+                     {
+                         Url,//地址
+                         temp.SelectSingleNode("td[2]/h3/a").InnerHtml,//标题
+                         temp.SelectSingleNode("td[3]/div/span").Attributes["title"].Value.Split(' ')[2],//日期
+                         HtmlTempData.Item1,//编号
+                         HtmlTempData.Item2,//内容
+                     };
+                 }
+             }
+             Tuple<string, string> Get(ref string Url)
+             {
+                 if (Url.StartsWith("htm"))
+                 {
+                     var UrlS = Url.Replace("htm_data", "").Replace(".html", "").Split('/');
+                     return new Tuple<string, string>($"{UrlS[1]}{UrlS[2]}{UrlS[3]}", client.GetStringAsync($"http://t66y.com/{Url}").Result);
+                 }
+                 else
+                 {
+                     // Url = $"htm_data/{year}/{Month}/{Url.Split('=')[1]}.html"; var RetHtml = client.GetStringAsync($"http://t66y.com/{Url}").Result;
+                     var TempDoc = new HtmlDocument();
+                     TempDoc.Load(client.GetStringAsync($"http://t66y.com/{Url}").Result);
+                     Url = TempDoc.DocumentNode.SelectSingleNode("/html/body/center/div/a[2]").Attributes["href"].Value;
+                     return Get(ref Url);
+                     //File.WriteAllText("Html2", RetHtml);
+                 }
+             }*/
             //http://www.mmfhd.com/forumdisplay.php?fid=55&page=
             //http://www.mmbuff.com/forumdisplay.php?fid=55&page=
             /* using (var request = new HttpRequest()
@@ -312,12 +472,29 @@ namespace SpiderServerInLinux
             Task.Run(() => DataBaseCommand.InitDataBase()),
             Task.Run(() =>
             {
-                Setting.SSR = new ShadowsocksController();
-                Setting.Socks5Point = Setting.SSR.SocksPort;
-                Setting.SSR.CheckOnline();
-                Setting.NyaaSSR = new ShadowsocksController(Setting._GlobalSet.ssr4Nyaa);
-                Setting.NyaaSocks5Point = Setting.NyaaSSR.SocksPort;
-                Setting.NyaaSSR.CheckOnline(@"https://sukebei.nyaa.si/");
+                try
+                {
+                    Setting.SSR = new ShadowsocksController();
+                    Setting.Socks5Point = Setting.SSR.SocksPort;
+                    Setting.SSR.CheckOnline();
+                    Setting.NyaaSSR = new ShadowsocksController(Setting._GlobalSet.ssr4Nyaa);
+                    Setting.NyaaSocks5Point = Setting.NyaaSSR.SocksPort;
+                }
+                catch (Exception ex)
+                {
+                    Loger.Instance.LocalInfo($"{ex.Message}");
+                }
+                finally
+                {
+                    ThreadPool.QueueUserWorkItem(x =>
+                    {
+                        Setting.NyaaSocks5Point = 1088;
+                        if (Setting.NyaaSSR.CheckOnline(@"https://sukebei.nyaa.si/"))
+                        {
+                            Setting.NyaaSocks5Point = Setting.NyaaSSR.SocksPort;
+                        }
+                    });
+                }
             }),
             Task.Run(() => Setting.server = new server())).ContinueWith(obj
             => Loger.Instance.LocalInfo("数据库初始化完毕")).
@@ -533,8 +710,8 @@ namespace SpiderServerInLinux
             // var ret = new HandlerHtml(File.ReadAllText("save.txt"));
             // SaveToDataBaseFormList(ret.AnalysisData.Values);
             //SaveToDataBaseOneByOne(ret.AnalysisData.Values);
-            var TCPCmd = TCPCommand.Init(1000);
-            TCPCmd.StartListener();
+            //var TCPCmd = TCPCommand.Init(1000);
+            //TCPCmd.StartListener();
         }
 
         #endregion MyRegion
