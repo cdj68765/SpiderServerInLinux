@@ -190,6 +190,7 @@ namespace Client
         internal string T66yInterval;
         internal string T66yOtherMessage;
         internal string T66yOtherOldMessage;
+        internal string SisInterval;
         internal string Memory;
 
         internal TimeSpan MiMiSpan;
@@ -203,6 +204,7 @@ namespace Client
         internal int SocksPoint;
         internal int NyaaSSRPoint;
         internal int NyaaSocksPoint;
+        internal int SisIndex;
         internal long TotalUploadBytes;
         internal long TotalDownloadBytes;
         internal List<string> LocalInfo;
@@ -212,6 +214,7 @@ namespace Client
 
         internal bool OnlyList = true;
         internal bool AutoRun;
+        internal DataCount DataCount;
 
         public static void Open(byte[] data)
         {
@@ -229,9 +232,23 @@ namespace Client
                 {
                     return typeof(OnlineOpera);
                 }
+                if (typeName.EndsWith("DataCount"))
+                {
+                    return typeof(DataCount);
+                }
                 return (Assembly.GetExecutingAssembly()).GetType(typeName);
             }
         }
+    }
+
+    [Serializable]
+    internal class DataCount
+    {
+        internal int D0;
+        internal int D1;
+        internal int D2;
+        internal int D3;
+        internal int T66y;
     }
 
     public class ServerDateOperation : IAsyncWebSocketClientMessageDispatcher

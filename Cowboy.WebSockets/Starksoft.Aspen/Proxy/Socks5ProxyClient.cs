@@ -42,9 +42,9 @@ namespace Starksoft.Aspen.Proxy
         private TcpClient _tcpClient;
         private TcpClient _tcpClientCached;
 
-        private const string PROXY_NAME = "SOCKS5";        
+        private const string PROXY_NAME = "SOCKS5";
         private const int SOCKS5_DEFAULT_PORT = 1080;
-        
+
         private const byte SOCKS5_VERSION_NUMBER = 5;
         private const byte SOCKS5_RESERVED = 0x00;
         private const byte SOCKS5_AUTH_NUMBER_OF_AUTH_METHODS_SUPPORTED = 2;
@@ -103,7 +103,7 @@ namespace Starksoft.Aspen.Proxy
 
             _tcpClientCached = tcpClient;
         }
-        
+
         /// <summary>
         /// Create a Socks5 proxy client object.  The default proxy port 1080 is used.
         /// </summary>
@@ -150,7 +150,7 @@ namespace Starksoft.Aspen.Proxy
 
             if (proxyPassword == null)
                 throw new ArgumentNullException("proxyPassword");
-            
+
             _proxyHost = proxyHost;
             _proxyPort = SOCKS5_DEFAULT_PORT;
             _proxyUserName = proxyUserName;
@@ -177,7 +177,7 @@ namespace Starksoft.Aspen.Proxy
 
             if (proxyPassword == null)
                 throw new ArgumentNullException("proxyPassword");
-            
+
             _proxyHost = proxyHost;
             _proxyPort = proxyPort;
             _proxyUserName = proxyUserName;
@@ -210,7 +210,7 @@ namespace Starksoft.Aspen.Proxy
         {
             get { return PROXY_NAME; }
         }
-        
+
         /// <summary>
         /// Gets or sets proxy authentication user name.
         /// </summary>
@@ -301,6 +301,7 @@ namespace Starksoft.Aspen.Proxy
             catch (Exception ex)
             {
                 throw new ProxyException(String.Format(CultureInfo.InvariantCulture, "Connection to proxy host {0} on port {1} failed.", Utils.GetHost(_tcpClient), Utils.GetPort(_tcpClient)), ex);
+
             }
         }
 
@@ -313,7 +314,7 @@ namespace Starksoft.Aspen.Proxy
             else
                 _proxyAuthMethod = SocksAuthentication.None;
         }
-       
+
         private void NegotiateServerAuthMethod()
         {
             //  get a reference to the network stream
@@ -328,16 +329,16 @@ namespace Starksoft.Aspen.Proxy
             //      +----+----------+----------+
             //      | 1  |    1     | 1 to 255 |
             //      +----+----------+----------+
-            
+
             byte[] authRequest = new byte[4];
             authRequest[0] = SOCKS5_VERSION_NUMBER;
             authRequest[1] = SOCKS5_AUTH_NUMBER_OF_AUTH_METHODS_SUPPORTED;
-            authRequest[2] = SOCKS5_AUTH_METHOD_NO_AUTHENTICATION_REQUIRED; 
-            authRequest[3] = SOCKS5_AUTH_METHOD_USERNAME_PASSWORD; 
+            authRequest[2] = SOCKS5_AUTH_METHOD_NO_AUTHENTICATION_REQUIRED;
+            authRequest[3] = SOCKS5_AUTH_METHOD_USERNAME_PASSWORD;
 
             //  send the request to the server specifying authentication types supported by the client.
             stream.Write(authRequest, 0, authRequest.Length);
-            
+
             //  SERVER AUTHENTICATION RESPONSE
             //  The server selects from one of the methods given in METHODS, and
             //  sends a METHOD selection message:
@@ -366,7 +367,7 @@ namespace Starksoft.Aspen.Proxy
             //  the first byte contains the socks version number (e.g. 5)
             //  the second byte contains the auth method acceptable to the proxy server
             byte acceptedAuthMethod = response[1];
-            
+
             // if the server does not accept any of our supported authenication methods then throw an error
             if (acceptedAuthMethod == SOCKS5_AUTH_METHOD_REPLY_NO_ACCEPTABLE_METHODS)
             {
@@ -399,15 +400,15 @@ namespace Starksoft.Aspen.Proxy
                 // create a data structure (binary array) containing credentials
                 // to send to the proxy server which consists of clear username and password data
                 byte[] credentials = new byte[_proxyUserName.Length + _proxyPassword.Length + 3];
-                
+
                 // for SOCKS5 username/password authentication the VER field must be set to 0x01
                 //  http://en.wikipedia.org/wiki/SOCKS
                 //      field 1: version number, 1 byte (must be 0x01)"
-                credentials[0] = 0x01;  
-                credentials[1] = (byte)_proxyUserName.Length; 
-                Array.Copy(ASCIIEncoding.ASCII.GetBytes(_proxyUserName), 0, credentials, 2, _proxyUserName.Length); 
+                credentials[0] = 0x01;
+                credentials[1] = (byte)_proxyUserName.Length;
+                Array.Copy(ASCIIEncoding.ASCII.GetBytes(_proxyUserName), 0, credentials, 2, _proxyUserName.Length);
                 credentials[_proxyUserName.Length + 2] = (byte)_proxyPassword.Length;
-                Array.Copy(ASCIIEncoding.ASCII.GetBytes(_proxyPassword), 0, credentials, _proxyUserName.Length + 3, _proxyPassword.Length); 
+                Array.Copy(ASCIIEncoding.ASCII.GetBytes(_proxyPassword), 0, credentials, _proxyUserName.Length + 3, _proxyPassword.Length);
 
                 // USERNAME / PASSWORD SERVER RESPONSE
                 // The server verifies the supplied UNAME and PASSWD, and sends the
@@ -446,7 +447,7 @@ namespace Starksoft.Aspen.Proxy
 
             bool result = IPAddress.TryParse(host, out ipAddr);
 
-            if (!result) 
+            if (!result)
                 return SOCKS5_ADDRTYPE_DOMAIN_NAME;
 
             switch (ipAddr.AddressFamily)
@@ -458,7 +459,7 @@ namespace Starksoft.Aspen.Proxy
                 default:
                     throw new ProxyException(String.Format(CultureInfo.InvariantCulture, "The host addess {0} of type '{1}' is not a supported address type.  The supported types are InterNetwork and InterNetworkV6.", host, Enum.GetName(typeof(AddressFamily), ipAddr.AddressFamily)));
             }
-            
+
         }
 
         private byte[] GetDestAddressBytes(byte addressType, string host)
@@ -470,7 +471,7 @@ namespace Starksoft.Aspen.Proxy
                     return IPAddress.Parse(host).GetAddressBytes();
                 case SOCKS5_ADDRTYPE_DOMAIN_NAME:
                     //  create a byte array to hold the host name bytes plus one byte to store the length
-                    byte[] bytes = new byte[host.Length + 1]; 
+                    byte[] bytes = new byte[host.Length + 1];
                     //  if the address field contains a fully-qualified domain name.  The first
                     //  octet of the address field contains the number of octets of name that
                     //  follow, there is no terminating NUL octet.
@@ -527,10 +528,10 @@ namespace Starksoft.Aspen.Proxy
             request[3] = addressType;
             destAddr.CopyTo(request, 4);
             destPort.CopyTo(request, 4 + destAddr.Length);
-            
+
             // send connect request.
             stream.Write(request, 0, request.Length);
-        
+
             //  PROXY SERVER RESPONSE
             //  +----+-----+-------+------+----------+----------+
             //  |VER | REP |  RSV  | ATYP | BND.ADDR | BND.PORT |
@@ -554,15 +555,15 @@ namespace Starksoft.Aspen.Proxy
             // ATYP address itemType of following address
 
             byte[] response = new byte[255];
-            
+
             // read proxy server response
             stream.Read(response, 0, response.Length);
-            
+
             byte replyCode = response[1];
 
             //  evaluate the reply code for an error condition
             if (replyCode != SOCKS5_CMD_REPLY_SUCCEEDED)
-                HandleProxyCommandError(response, destinationHost, destinationPort );
+                HandleProxyCommandError(response, destinationHost, destinationPort);
         }
 
         private void HandleProxyCommandError(byte[] response, string destinationHost, int destinationPort)
@@ -584,7 +585,7 @@ namespace Starksoft.Aspen.Proxy
                     byte[] portBytesDomain = new byte[2];
                     portBytesDomain[0] = response[6 + addrLen];
                     portBytesDomain[1] = response[5 + addrLen];
-                    port = BitConverter.ToInt16(portBytesDomain, 0); 
+                    port = BitConverter.ToInt16(portBytesDomain, 0);
                     break;
 
                 case SOCKS5_ADDRTYPE_IPV4:
@@ -596,7 +597,7 @@ namespace Starksoft.Aspen.Proxy
                     byte[] portBytesIpv4 = new byte[2];
                     portBytesIpv4[0] = response[9];
                     portBytesIpv4[1] = response[8];
-                    port = BitConverter.ToInt16(portBytesIpv4, 0); 
+                    port = BitConverter.ToInt16(portBytesIpv4, 0);
                     break;
 
                 case SOCKS5_ADDRTYPE_IPV6:
@@ -608,7 +609,7 @@ namespace Starksoft.Aspen.Proxy
                     byte[] portBytesIpv6 = new byte[2];
                     portBytesIpv6[0] = response[21];
                     portBytesIpv6[1] = response[20];
-                    port = BitConverter.ToInt16(portBytesIpv6, 0); 
+                    port = BitConverter.ToInt16(portBytesIpv6, 0);
                     break;
             }
 
@@ -651,7 +652,7 @@ namespace Starksoft.Aspen.Proxy
         }
 
 
-#region "Async Methods"
+        #region "Async Methods"
 
         private BackgroundWorker _asyncWorker;
         private Exception _asyncException;
@@ -755,6 +756,6 @@ namespace Starksoft.Aspen.Proxy
 
 
 
-#endregion
+        #endregion
     }
 }

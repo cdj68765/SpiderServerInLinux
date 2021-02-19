@@ -173,22 +173,26 @@ namespace Client
 
         private void button5_Click(object sender, EventArgs e)
         {
-            if (Connect)
-            {
-                //_server.Connect2SetAsync("CloseMiMiStory");
-                Task.Factory.StartNew(async () =>
-                {
-                    var uri = new Uri($"ws://{Settings.Default.ip}:{Settings.Default.point}/Data");
-                    var client = new AsyncWebSocketClient(uri, new ServerDataBaseOperation());
-                    await client.Connect();
-                    await client.SendTextAsync("GetStory|*");
-                });
-            }
+            var F = new Form6();
+            F.Show();
+            /*   if (Connect)
+               {
+                   //_server.Connect2SetAsync("CloseMiMiStory");
+                   Task.Factory.StartNew(async () =>
+                   {
+                       var uri = new Uri($"ws://{Settings.Default.ip}:{Settings.Default.point}/Data");
+                       var client = new AsyncWebSocketClient(uri, new ServerDataBaseOperation());
+                       await client.Connect();
+                       await client.SendTextAsync("GetStory|*");
+                   });
+               }*/
         }
 
         private void Button4_Click(object sender, EventArgs e)
         {
-            if (Connect)
+            var F = new Form6();
+            F.Show();
+            /*if (Connect)
             {
                 Task.Factory.StartNew(async () =>
                 {
@@ -197,7 +201,7 @@ namespace Client
                     await client.Connect();
                     await client.SendTextAsync("GetNullStory");
                 });
-            }
+            }*/
         }
 
         internal void UpdateUI()
@@ -248,9 +252,16 @@ namespace Client
             else T66y.Text = Class1.OnlineOpera.T66yInterval;
             T66yOther.Text = Class1.OnlineOpera.T66yOtherMessage;
             T66yOldOther.Text = Class1.OnlineOpera.T66yOtherOldMessage;
-
+            SIS.Text = Class1.OnlineOpera.SisInterval;
             Memory.Text = Class1.OnlineOpera.Memory;
             Download.Text = HumanReadableFilesize(Class1.OnlineOpera.TotalDownloadBytes);
+            label9.Text = Class1.OnlineOpera.SisIndex.ToString();
+            label10.Text = Class1.OnlineOpera.DataCount.D0.ToString();
+            label11.Text = Class1.OnlineOpera.DataCount.D1.ToString();
+            label12.Text = Class1.OnlineOpera.DataCount.D2.ToString();
+            label13.Text = Class1.OnlineOpera.DataCount.D3.ToString();
+            label14.Text = Class1.OnlineOpera.DataCount.T66y.ToString();
+
             if (!Class1.OnlineOpera.OnlyList)
             {
                 if (textBox2.Text != Class1.OnlineOpera.ConnectPoint.ToString())
@@ -263,7 +274,6 @@ namespace Client
                         textBox2.Text = Class1.OnlineOpera.ConnectPoint.ToString();
                     }
                 }
-
                 textBox3.Text = Class1.OnlineOpera.NyaaSocksPoint.ToString();
                 checkBox2.Checked = Class1.OnlineOpera.NyaaSocksCheck;
                 textBox9.Text = Class1.OnlineOpera.ssr4Nyaa;
@@ -324,12 +334,67 @@ namespace Client
         {
             try
             {
-                var Show = new Form2();
+                var Show = new Form3(dateTimePicker1.Value.ToString("yyyy-MM-dd"));
                 Show.Show();
             }
             catch (Exception)
             {
             }
+        }
+
+        private void button9_Click(object sender, EventArgs e)
+        {
+            if (Connect)
+            {
+                _server.Connect2SetAsync("Close");
+            }
+        }
+
+        private void button10_Click(object sender, EventArgs e)
+        {
+            var Show = new Form2(dateTimePicker1.Value.ToString("yyyy-MM-dd"));
+            Show.Show();
+        }
+
+        private void button11_Click(object sender, EventArgs e)
+        {
+            if (Connect)
+            {
+                _server.Connect2SetAsync("StartSIS");
+            }
+        }
+
+        private void 复制ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            Clipboard.SetDataObject(listBox1.SelectedItem.ToString());
+        }
+
+        private void button12_Click(object sender, EventArgs e)
+        {
+            var Show = new Form4(dateTimePicker1.Value.ToString("yyyy-M-d"));
+            Show.Show();
+        }
+
+        private void button13_Click(object sender, EventArgs e)
+        {
+            if (Connect)
+            {
+                _server.Connect2SetAsync("ReLoad");
+            }
+        }
+
+        private void button14_Click(object sender, EventArgs e)
+        {
+            if (Connect)
+            {
+                _server.Connect2SetAsync("StartJav");
+            }
+        }
+
+        private void button15_Click(object sender, EventArgs e)
+        {
+            var Show = new Form5(dateTimePicker1.Value.ToString("yy-MM-dd"));
+            Show.Show();
         }
     }
 }

@@ -15,8 +15,8 @@
 
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
 		<Optimize>false</Optimize>
-		<AllowUnsafeBlocks>false</AllowUnsafeBlocks>
-		<DefineConstants>TRACE</DefineConstants>
+		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+		<DefineConstants>TRACE;Debug</DefineConstants>
 		<GenerateSerializationAssemblies>Auto</GenerateSerializationAssemblies>
 	</PropertyGroup>
 
@@ -56,6 +56,9 @@
 		<PackageReference Include="CoreZipCode" Version="1.1.2" />
 		<PackageReference Include="HtmlAgilityPack" Version="1.11.26" />
 		<PackageReference Include="LiteDB" Version="4.1.4" />
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="5.0.1" />
+		<PackageReference Include="Microsoft.Extensions.Http" Version="5.0.0" />
+		<PackageReference Include="System.Drawing.Common" Version="5.0.0" />
 		<PackageReference Include="System.IO.FileSystem" Version="4.3.0" />
 		<PackageReference Include="System.Text.Encoding.CodePages" Version="4.7.1" />
 	</ItemGroup>
@@ -90,4 +93,8 @@
 			<Private>true</Private>
 		</Reference>
 	</ItemGroup>
+
+	<Target Name="PostBuild" AfterTargets="PostBuildEvent">
+	  <Exec Command="copy /y &quot;$(TargetPath)&quot; &quot;Z:\publish\&quot;" />
+	</Target>
 </Project>

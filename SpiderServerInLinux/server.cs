@@ -8,6 +8,15 @@ using System.Threading;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Formatters.Binary;
 using static SpiderServerInLinux.OnlineOpera;
+using xNet;
+using System.Net.Http;
+using SocksSharp;
+using SocksSharp.Proxy;
+using System.Drawing;
+using System.Security.Cryptography;
+using System.Net.NetworkInformation;
+using System.Net;
+using System.Collections.Concurrent;
 
 namespace SpiderServerInLinux
 {
@@ -28,9 +37,23 @@ namespace SpiderServerInLinux
                         ModuleCatalog.RegisterModule(new OnlineCheck());
                         ModuleCatalog.RegisterModule(new SetOpera());
                         ModuleCatalog.RegisterModule(new DataOpera());
+                        // _server = new
+                        // AsyncWebSocketServer(CheckIfPortInUse(Setting._GlobalSet.ConnectPoint), ModuleCatalog);
                         _server = new AsyncWebSocketServer(Setting._GlobalSet.ConnectPoint, ModuleCatalog);
+                        int CheckIfPortInUse(int port)
+                        {
+                            IPGlobalProperties ipProperties = IPGlobalProperties.GetIPGlobalProperties();
+                            foreach (IPEndPoint endPoint in ipProperties.GetActiveTcpListeners())
+                            {
+                                if (endPoint.Port == port)
+                                {
+                                    return port;
+                                }
+                            }
+                            return CheckIfPortInUse(port += 1);
+                        }
                         _server.Listen();
-                        Loger.Instance.ServerInfo("主机", $"服务器监听启动，端口{Setting._GlobalSet.ConnectPoint}");
+                        Loger.Instance.ServerInfo("主机", $"服务器监听启动，端口{_server.ListenedEndPoint.Port}");
                     }
                     catch (Exception e)
                     {
@@ -49,7 +72,9 @@ namespace SpiderServerInLinux
             {
                 _sessions.TryAdd(session.SessionKey, session);
                 Loger.Instance.ServerInfo("主机", $"远程{session.RemoteEndPoint}连接");
-                await session.SendBinaryAsync(OnlineOpera.Send(true));
+                var SendData = OnlineOpera.Send(true);
+                await session.SendBinaryAsync(SendData);
+                SendData = null;
 
                 //await session.SendBinaryAsync(Setting._GlobalSet.Send());
                 await Task.CompletedTask;
@@ -139,7 +164,7 @@ namespace SpiderServerInLinux
                                 Setting.DownloadManage.GetMiMiNewDataTimer.Interval = 1000;
                                 Setting.DownloadManage.GetNyaaNewDataTimer.Interval = 1000;
                                 Setting.DownloadManage.GetMiMiAiStoryDataTimer.Interval = 1000;
-                                Setting.DownloadManage.GetT66yDataTimer.Interval = 1000;
+                                Setting.DownloadManage.GetT66yDataTimer.Interval = 10000;
                             }
                         }
                         break;
@@ -155,21 +180,77 @@ namespace SpiderServerInLinux
 
                     case "StartT66y":
                         {
-                            if (Setting.DownloadManage == null)
+                            try
                             {
-                                Setting.DownloadManage = new DownloadManage();
+                                if (Setting.DownloadManage == null)
+                                {
+                                    Setting.DownloadManage = new DownloadManage(false);
+                                }
+                                if (Setting.DownloadManage.GetT66yDataTimer == null)
+                                    Setting.DownloadManage.GetT66yData();
                             }
-                            if (Setting.DownloadManage != null)
+                            catch (Exception)
                             {
-                                Setting.DownloadManage.GetT66yData();
                             }
-                            else if (Setting.DownloadManage.GetT66yDataTimer == null)
+
+                            try
                             {
-                                Setting.DownloadManage.GetT66yData();
+                                if (Setting.DownloadManage.GetT66yDataTimer != null)
+                                    Setting.DownloadManage.GetT66yDataTimer.Interval = 10000;
                             }
-                            else
+                            catch (Exception)
                             {
-                                Setting.DownloadManage.GetT66yDataTimer.Interval = 1000;
+                            }
+                        }
+                        break;
+
+                    case "StartSIS":
+                        {
+                            try
+                            {
+                                if (Setting.DownloadManage == null)
+                                {
+                                    Setting.DownloadManage = new DownloadManage(false);
+                                }
+                                if (Setting.DownloadManage.GetSISDataTimer == null)
+                                    Setting.DownloadManage.GetSis001Data();
+                            }
+                            catch (Exception)
+                            {
+                            }
+
+                            try
+                            {
+                                if (Setting.DownloadManage.GetSISDataTimer != null)
+                                    Setting.DownloadManage.GetSISDataTimer.Interval = 10000;
+                            }
+                            catch (Exception)
+                            {
+                            }
+                        }
+                        break;
+
+                    case "StartJav":
+                        {
+                            try
+                            {
+                                if (Setting.DownloadManage == null)
+                                {
+                                    Setting.DownloadManage = new DownloadManage(false);
+                                }
+                                if (Setting.DownloadManage.GetJavNewDataTimer == null)
+                                    Setting.DownloadManage.GetJavNewData();
+                            }
+                            catch (Exception)
+                            {
+                            }
+
+                            try
+                            {
+                                Setting.DownloadManage.GetJavNewDataTimer.Interval = 10000;
+                            }
+                            catch (Exception)
+                            {
                             }
                         }
                         break;
@@ -209,7 +290,20 @@ namespace SpiderServerInLinux
                             Setting.DownloadManage.Dispose();
                             Setting.DownloadManage = null;
                             GC.Collect();
+                            Setting.ShutdownResetEvent.SetResult(0);
                             Environment.Exit(0);
+                        }
+                        break;
+
+                    case "ReLoad":
+                        {
+                            Loger.Instance.ServerInfo("主机", $"正在关闭下载");
+                            Setting.DownloadManage.Dispose();
+                            Setting.DownloadManage = null;
+                            GC.Collect();
+                            Loger.Instance.ServerInfo("主机", $"下载关闭完成，正在准备重启");
+                            Setting.DownloadManage = new DownloadManage(false);
+                            Loger.Instance.ServerInfo("主机", $"下载进程重启完毕");
                         }
                         break;
 
@@ -223,6 +317,7 @@ namespace SpiderServerInLinux
         public class DataOpera : AsyncWebSocketServerModule
         {
             private string Code = "";
+            private BlockingCollection<string> DownList = null;
 
             public DataOpera() : base(@"/Data")
             {
@@ -280,6 +375,53 @@ namespace SpiderServerInLinux
                         {
                             CancellationTokenSource Storycancel = new CancellationTokenSource();
                             DataBaseCommand.GetDataFromT66y(SearchText[1], SearchText[2], session, Cancel: Storycancel);
+                        }
+                        break;
+
+                    case "GetSIS":
+                        {
+                            CancellationTokenSource Storycancel = new CancellationTokenSource();
+                            DataBaseCommand.GetDataFromT66y(SearchText[1], SearchText[2], session, Cancel: Storycancel);
+                        }
+                        break;
+
+                    case "ReDownloadT66y":
+                        {
+                            CancellationTokenSource Storycancel = new CancellationTokenSource();
+                            if (DownList == null)
+                            {
+                                if (Setting.DownloadManage == null) Setting.DownloadManage = new DownloadManage(false);
+                                DownList = new BlockingCollection<string>();
+                                DownList.Add(SearchText[1]);
+                                ThreadPool.QueueUserWorkItem(async obj =>
+                                {
+                                    foreach (var item in DownList.GetConsumingEnumerable())
+                                    {
+                                        T66yImgData SearchImg = DataBaseCommand.GetDataFromT66y("img", item);
+                                        if (SearchImg != null)
+                                        {
+                                            Loger.Instance.ServerInfo("主机", $"下载图片{SearchImg.id}中");
+                                            var RET = Setting.DownloadManage.DownloadImgAsync(SearchImg.id).Result;
+                                            if (RET != null)
+                                            {
+                                                SearchImg.img = RET;
+                                                SearchImg.Hash = Convert.ToBase64String(new MD5CryptoServiceProvider().ComputeHash(SearchImg.img));
+                                                DataBaseCommand.SaveToT66yDataUnit(UnitData: SearchImg, Update: true);
+                                                Loger.Instance.ServerInfo("主机", $"下载图片{SearchImg.id}成功，发送新图片");
+                                                await session.SendBinaryAsync(SearchImg.ToByte());
+                                            }
+                                            else
+                                            {
+                                                Loger.Instance.ServerInfo("主机", $"下载图片{SearchImg.id}失败，返回空");
+                                            }
+                                        }
+                                    }
+                                });
+                            }
+                            else
+                            {
+                                DownList.Add(SearchText[1]);
+                            }
                         }
                         break;
 

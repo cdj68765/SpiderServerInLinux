@@ -4,12 +4,14 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Formatters.Binary;
+using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -19,7 +21,9 @@ namespace SpiderServerInLinux
 {
     internal static class Setting
     {
+        //internal static LiteDatabase T66yDB = new LiteDatabase(@"T66y.db");
         internal static int LoopTime = 5000;
+
         internal static bool Platform = Environment.GetEnvironmentVariable("PROCESSOR_ARCHITECTURE") == "AMD64" ? true : false;
         internal static GlobalSet _GlobalSet;
         internal static Stack<string> LocalInfoC = new Stack<string>();
@@ -35,9 +39,11 @@ namespace SpiderServerInLinux
         internal static string NyaaDownLoadNow;
         internal static string MiMiDownLoadNow;
         internal static string MiMiAiStoryDownLoadNow;
+        internal static string SISDownLoadNow;
         internal static string T66yDownLoadNow;
         internal static string T66yDownLoadNowOther;
         internal static string T66yDownLoadOldOther;
+        internal static bool T66yDownloadIng = false;
 
         internal static ShadowsocksController SSR;
         internal static ShadowsocksController NyaaSSR;
@@ -50,6 +56,8 @@ namespace SpiderServerInLinux
         internal static string NyaaDay = "";//过去下载每条Nyaa用
         internal static string MiMiDay = "";//过去下载每条MiMi用
         internal static int JavPageCount = 0;
+        internal static int SISPageCount = 1;
+        internal static DataCount DataCount = new DataCount();
 
         internal static bool CheckOnline(bool ssr = false)
         {
@@ -126,6 +134,8 @@ namespace SpiderServerInLinux
         internal string T66yInterval = Setting.DownloadManage != null ? Setting.DownloadManage.GetT66ySpan.ElapsedMilliseconds == 0 ? Setting.T66yDownLoadNow : Setting.DownloadManage.GetT66yDataTimer.Interval.ToString() : string.Empty;
         internal string T66yOtherMessage = Setting.DownloadManage != null ? Setting.T66yDownLoadNowOther : string.Empty;
         internal string T66yOtherOldMessage = Setting.DownloadManage != null ? Setting.T66yDownLoadOldOther : string.Empty;
+        internal string SisInterval = Setting.DownloadManage != null ? Setting.SISDownLoadNow : string.Empty;
+        internal int SisIndex = Setting.SISPageCount;
 
         internal string Memory = $"内存使用量:{Process.GetCurrentProcess().WorkingSet64 / 1024 / 1024}MB";
 
@@ -139,6 +149,7 @@ namespace SpiderServerInLinux
         internal int SSRPoint = Setting.SSR != null ? Setting.SSR.SocksPort : 0;
         internal int SocksPoint = Setting.Socks5Point;
         internal int NyaaSocksPoint = Setting.NyaaSocks5Point;
+        internal DataCount DataCount = Setting.DataCount;
 
         /*
                 public string NyaaAddress
@@ -256,7 +267,14 @@ namespace SpiderServerInLinux
                     Setting._GlobalSet.AutoRun = onlineOpera.AutoRun;
                     Loger.Instance.ServerInfo($"主机", $"自动运行模式更改为{Setting._GlobalSet.AutoRun}");
                 }
-
+                if (onlineOpera.SisIndex != Setting._GlobalSet.SISPageIndex)
+                {
+                    if (onlineOpera.SisIndex != 0)
+                    {
+                        Setting.SISPageCount = onlineOpera.SisIndex;
+                        Loger.Instance.ServerInfo($"主机", $"SIS下载页面更改为{Setting.SISPageCount}");
+                    }
+                }
                 return Task.CompletedTask;
             });
         }
@@ -294,9 +312,23 @@ namespace SpiderServerInLinux
                 {
                     return typeof(OnlineOpera);
                 }
+                if (typeName.EndsWith("DataCount"))
+                {
+                    return typeof(DataCount);
+                }
                 return (Assembly.GetExecutingAssembly()).GetType(typeName);
             }
         }
+    }
+
+    [Serializable]
+    internal class DataCount
+    {
+        internal int D0;
+        internal int D1;
+        internal int D2;
+        internal int D3;
+        internal int T66y;
     }
 
     [Serializable]
@@ -315,6 +347,8 @@ namespace SpiderServerInLinux
         private int _MiMiAiPageIndex = 0;
         private int _MiMiAiStoryPageIndex = 0;
         private int _T66yPageIndex = 0;
+        private int _SISPageIndex = 0;
+        private int _SISSkip = 0;
 
         private int _ConnectPoint = 2222;
         private long _totalUploadBytes = 0;
@@ -333,6 +367,8 @@ namespace SpiderServerInLinux
 
         internal string ssr_url { get { return _ssr_url; } set { _ssr_url = value; Save(); } }
         internal string ssr4Nyaa { get { return _ssr4Nyaa; } set { _ssr4Nyaa = value; Save(); } }
+        internal int SISPageIndex { get { return _SISPageIndex; } set { _SISPageIndex = value; Save(); } }
+        internal int SISSkip { get { return _SISSkip; } set { _SISSkip = value; Save(); } }
 
         internal int NyaaLastPageIndex { get { return _NyaaLastPageIndex; } set { _NyaaLastPageIndex = value; Save(); } }
         internal int JavLastPageIndex { get { return _JavLastPageIndex; } set { _JavLastPageIndex = value; Save(); } }
@@ -573,6 +609,32 @@ namespace SpiderServerInLinux
             Fileformatter.Serialize(stream, this);
             return stream.ToArray();
         }
+
+        public static T66yData ToClass(byte[] data)
+        {
+            using var stream = new MemoryStream(data);
+            IFormatter Fileformatter = new BinaryFormatter();
+            Fileformatter.Binder = new UBinder();
+            return Fileformatter.Deserialize(stream) as T66yData;
+        }
+
+        public class UBinder : SerializationBinder
+        {
+            public override Type BindToType(string assemblyName, string typeName)
+            {
+                if (typeName.EndsWith("T66yData"))
+                {
+                    return typeof(T66yData);
+                }
+                return (Assembly.GetExecutingAssembly()).GetType(typeName);
+            }
+        }
+    }
+
+    [Serializable]
+    internal class SISData : T66yData
+    {
+        public string Type { get; set; }
     }
 
     [Serializable]
@@ -580,6 +642,8 @@ namespace SpiderServerInLinux
     {
         public string id { get; set; }
         public string Date { get; set; }
+        public string Hash { get; set; }
+
         public byte[] img { get; set; }
         public List<int> FromList { get; set; }
         public bool Status => img != null;
@@ -590,6 +654,52 @@ namespace SpiderServerInLinux
             IFormatter Fileformatter = new BinaryFormatter();
             Fileformatter.Serialize(stream, this);
             return stream.ToArray();
+        }
+    }
+
+    [Serializable]
+    internal class SISImgData : T66yImgData
+    {
+        new public byte[] img
+        {
+            get { return base.img; }
+            set
+            {
+                if (value != null)
+                {
+                    try
+                    {
+                        using (var mem = new MemoryStream(value))
+                        {
+                            base.img = value;
+                            Hash = Convert.ToBase64String(new MD5CryptoServiceProvider().ComputeHash(base.img));
+                            /*Image img = Image.FromStream(mem);
+                            if (img.RawFormat.Equals(System.Drawing.Imaging.ImageFormat.Gif))
+                            {
+                                base.img = value;
+                                Hash = Convert.ToBase64String(new MD5CryptoServiceProvider().ComputeHash(base.img));
+                            }
+                            else
+                            {
+                                base.img = Setting.DownloadManage.Compress(img, 75).ToArray();
+                                Hash = Convert.ToBase64String(new MD5CryptoServiceProvider().ComputeHash(base.img));
+                            }*/
+                        }
+                    }
+                    catch (Exception)
+                    {
+                        base.img = value;
+                        Hash = Convert.ToBase64String(new MD5CryptoServiceProvider().ComputeHash(base.img));
+                        /* try
+                         {
+                             File.WriteAllBytes($"{new Uri(id).Segments.Last()}", base.img);
+                         }
+                         catch (Exception)
+                         {
+                         }*/
+                    }
+                }
+            }
         }
     }
 

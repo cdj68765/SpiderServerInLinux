@@ -266,7 +266,8 @@ namespace SpiderServerInLinux
                         Console.SetCursorPosition(Console.WindowWidth / 2 + Console.WindowWidth / 3 - 3, 1);
                         try
                         {
-                            Console.Write($"SSR流量:{HumanReadableFilesize((double)Setting._GlobalSet.totalDownloadBytes)}");
+                            if (Setting._GlobalSet != null)
+                                Console.Write($"SSR流量:{HumanReadableFilesize((double)Setting._GlobalSet.totalDownloadBytes)}");
                         }
                         catch (Exception)
                         {

@@ -188,8 +188,8 @@ namespace xNet
         #region Статические свойства (открытые)
 
         /// <summary>
-        /// Возвращает или задаёт значение, указывающие, нужно ли использовать прокси-клиент Internet
-        /// Explorer'a, если нет прямого подключения к интернету и не задан прокси-клиент.
+        /// Возвращает или задаёт значение, указывающие, нужно ли использовать прокси-клиент
+        /// Internet Explorer'a, если нет прямого подключения к интернету и не задан прокси-клиент.
         /// </summary>
         /// <value>Значение по умолчанию — <see langword="false"/>.</value>
         public static bool UseIeProxy { get; set; }
@@ -401,7 +401,8 @@ namespace xNet
         }
 
         /// <summary>
-        /// Возвращает или задает время ожидания в миллисекундах при записи в поток или при чтении из него.
+        /// Возвращает или задает время ожидания в миллисекундах при записи в поток или при чтении
+        /// из него.
         /// </summary>
         /// <value>Значение по умолчанию - 60.000, что равняется одной минуте.</value>
         /// <exception cref="System.ArgumentOutOfRangeException">
@@ -448,10 +449,10 @@ namespace xNet
         /// <remarks>
         /// Если значение равно <see langword="true"/>, то дополнительно отправляется заголовок
         /// 'Connection: Keep-Alive', иначе отправляется заголовок 'Connection: Close'. Если для
-        /// подключения используется HTTP-прокси, то вместо заголовка - 'Connection', устанавливается
-        /// заголовок - 'Proxy-Connection'. В случае, если сервер оборвёт постоянное соединение, <see
-        /// cref="HttpResponse"/> попытается подключиться заново, но это работает только, если
-        /// подключение идёт напрямую с HTTP-сервером, либо с HTTP-прокси.
+        /// подключения используется HTTP-прокси, то вместо заголовка - 'Connection',
+        /// устанавливается заголовок - 'Proxy-Connection'. В случае, если сервер оборвёт постоянное
+        /// соединение, <see cref="HttpResponse"/> попытается подключиться заново, но это работает
+        /// только, если подключение идёт напрямую с HTTP-сервером, либо с HTTP-прокси.
         /// </remarks>
         public bool KeepAlive { get; set; }
 
@@ -497,8 +498,8 @@ namespace xNet
         /// Значение параметра меньше 1.
         /// </exception>
         /// <remarks>
-        /// Если количество запросов превысило максимальное, то будет создано новое подключение. Если
-        /// сервер вернёт своё значение максимального кол-ва запросов <see
+        /// Если количество запросов превысило максимальное, то будет создано новое подключение.
+        /// Если сервер вернёт своё значение максимального кол-ва запросов <see
         /// cref="HttpResponse.MaximumKeepAliveRequests"/>, тогда будет использовано именно оно.
         /// </remarks>
         public int MaximumKeepAliveRequests
@@ -691,8 +692,8 @@ namespace xNet
         /// </summary>
         /// <value>Значение по умолчанию — <see langword="null"/>.</value>
         /// <remarks>
-        /// Куки могут изменяться ответом от HTTP-сервера. Чтобы не допустить этого, нужно установить
-        /// свойство <see cref="xNet.Net.CookieDictionary.IsLocked"/> равным <see langword="true"/>.
+        /// Куки могут изменяться ответом от HTTP-сервера. Чтобы не допустить этого, нужно
+        /// установить свойство <see cref="xNet.Net.CookieDictionary.IsLocked"/> равным <see langword="true"/>.
         /// </remarks>
         public CookieDictionary Cookies { get; set; }
 
@@ -756,7 +757,8 @@ namespace xNet
         /// </exception>
         /// <exception cref="System.ArgumentException">
         /// Значение параметра <paramref name="headerName"/> является пустой строкой.
-        /// -или- Установка значения HTTP-заголовка, который должен задаваться с помощью специального свойства/метода.
+        /// -или- Установка значения HTTP-заголовка, который должен задаваться с помощью
+        ///  специального свойства/метода.
         /// </exception>
         /// <remarks>
         /// Список HTTP-заголовков, которые должны задаваться только с помощью специальных свойств/методов:
@@ -2057,7 +2059,8 @@ namespace xNet
         /// <exception cref="System.ArgumentException">
         /// Значение параметра <paramref name="name"/> является пустой строкой.
         /// -или- Значение параметра <paramref name="value"/> является пустой строкой.
-        /// -или- Установка значения HTTP-заголовка, который должен задаваться с помощью специального свойства/метода.
+        /// -или- Установка значения HTTP-заголовка, который должен задаваться с помощью
+        ///  специального свойства/метода.
         /// </exception>
         /// <remarks>Данный HTTP-заголовок будет стёрт после первого запроса.</remarks>
         public HttpRequest AddHeader(string name, string value)
@@ -2113,7 +2116,8 @@ namespace xNet
         /// </exception>
         /// <exception cref="System.ArgumentException">
         /// Значение параметра <paramref name="value"/> является пустой строкой.
-        /// -или- Установка значения HTTP-заголовка, который должен задаваться с помощью специального свойства/метода.
+        /// -или- Установка значения HTTP-заголовка, который должен задаваться с помощью
+        ///  специального свойства/метода.
         /// </exception>
         /// <remarks>Данный HTTP-заголовок будет стёрт после первого запроса.</remarks>
         public HttpRequest AddHeader(HttpHeader header, string value)
@@ -2164,8 +2168,8 @@ namespace xNet
         /// </summary>
         /// <param name="headerName">Название HTTP-заголовка.</param>
         /// <returns>
-        /// Значение <see langword="true"/>, если указанный HTTP-заголовок содержится, иначе значение
-        /// <see langword="false"/>.
+        /// Значение <see langword="true"/>, если указанный HTTP-заголовок содержится, иначе
+        /// значение <see langword="false"/>.
         /// </returns>
         /// <exception cref="System.ArgumentNullException">
         /// Значение параметра <paramref name="headerName"/> равно <see langword="null"/>.
@@ -2197,8 +2201,8 @@ namespace xNet
         /// </summary>
         /// <param name="header">HTTP-заголовок.</param>
         /// <returns>
-        /// Значение <see langword="true"/>, если указанный HTTP-заголовок содержится, иначе значение
-        /// <see langword="false"/>.
+        /// Значение <see langword="true"/>, если указанный HTTP-заголовок содержится, иначе
+        /// значение <see langword="false"/>.
         /// </returns>
         public bool ContainsHeader(HttpHeader header)
         {
@@ -2230,8 +2234,8 @@ namespace xNet
 
         /// Освобождает неуправляемые (а при необходимости и управляемые) ресурсы, используемые
         /// объектом <see cref="HttpRequest"/>. </summary> <param name="disposing">Значение <see
-        /// langword="true"/> позволяет освободить управляемые и неуправляемые ресурсы; значение <see
-        /// langword="false"/> позволяет освободить только неуправляемые ресурсы.</param>
+        /// langword="true"/> позволяет освободить управляемые и неуправляемые ресурсы; значение
+        /// <see langword="false"/> позволяет освободить только неуправляемые ресурсы.</param>
         protected virtual void Dispose(bool disposing)
         {
             if (disposing && _connection != null)
@@ -2362,8 +2366,8 @@ namespace xNet
                     return ReconnectAfterFail();
 
                 // Если сервер оборвал постоянное соединение вернув пустой ответ, то пробуем
-                // подключиться заново. Он мог оборвать соединение потому, что достигнуто максимально
-                // допустимое кол-во запросов или вышло время простоя.
+                // подключиться заново. Он мог оборвать соединение потому, что достигнуто
+                // максимально допустимое кол-во запросов или вышло время простоя.
                 if (KeepAlive && !_keepAliveReconnected && !createdNewConnection && ex.EmptyMessageBody)
                     return KeepAliveReconect();
 
@@ -2493,14 +2497,21 @@ namespace xNet
             _bytesSent = 0;
             _totalBytesSent = startingLineBytes.Length + headersBytes.Length + contentLength;
 
-            _connectionCommonStream.Write(startingLineBytes, 0, startingLineBytes.Length);
-            _connectionCommonStream.Write(headersBytes, 0, headersBytes.Length);
+            if (_connectionCommonStream != null)
+            {
+                _connectionCommonStream.Write(startingLineBytes, 0, startingLineBytes.Length);
+                _connectionCommonStream.Write(headersBytes, 0, headersBytes.Length);
 
-            var hasRequestBody = (_content != null) && (contentLength > 0);
+                var hasRequestBody = (_content != null) && (contentLength > 0);
 
-            // Отправляем тело запроса, если оно не присутствует.
-            if (hasRequestBody)
-                _content.WriteTo(_connectionCommonStream);
+                // Отправляем тело запроса, если оно не присутствует.
+                if (hasRequestBody)
+                    _content.WriteTo(_connectionCommonStream);
+            }
+            else
+            {
+                throw new HttpException("_connectionCommonStream is null");
+            }
         }
 
         private void ReceiveResponseHeaders(HttpMethod method)

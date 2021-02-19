@@ -101,6 +101,7 @@ namespace SpiderServerInLinux
             {
                 using (var db = new LiteDatabase(@"T66y.db"))
                 {
+                    //var db = Setting.T66yDB;
                     if (!db.CollectionExists("T66yData"))
                     {
                         Loger.Instance.LocalInfo("创建T66y数据库");
@@ -118,8 +119,36 @@ namespace SpiderServerInLinux
                     {
                         var T66yDB = db.GetCollection<T66yImgData>("ImgData");
                         T66yDB.EnsureIndex(x => x.Status);
+                        T66yDB.EnsureIndex(x => x.Hash);
                         T66yDB.EnsureIndex(x => x.id);
                         T66yDB.EnsureIndex(x => x.Date);
+                    }
+                }
+            }
+            void InitSISDataBase()
+            {
+                using (var db = new LiteDatabase(@"SIS.db"))
+                {
+                    if (!db.CollectionExists("SISData"))
+                    {
+                        Loger.Instance.LocalInfo("创建SIS数据库");
+                        var SISDB = db.GetCollection<SISData>("SISData");
+                        SISDB.EnsureIndex(x => x.Title);
+                        SISDB.EnsureIndex(x => x.Uri);
+                        SISDB.EnsureIndex(x => x.Date);
+                        Loger.Instance.LocalInfo("创建SIS数据库成功");
+                    }
+                    else
+                    {
+                        Loger.Instance.LocalInfo("打开SIS数据库正常");
+                    }
+                    if (!db.CollectionExists("ImgData"))
+                    {
+                        var SISDB = db.GetCollection<SISImgData>("ImgData");
+                        SISDB.EnsureIndex(x => x.Status);
+                        SISDB.EnsureIndex(x => x.Hash);
+                        SISDB.EnsureIndex(x => x.id);
+                        SISDB.EnsureIndex(x => x.Date);
                     }
                 }
             }
@@ -128,6 +157,7 @@ namespace SpiderServerInLinux
             InitMiMiAiDataBase();
             InitMiMiAiStoryDataBase();
             InitT66yDataBase();
+            InitSISDataBase();
         }
 
         #region 从数据库读取
@@ -337,8 +367,11 @@ namespace SpiderServerInLinux
         internal static dynamic GetDataFromT66y(string Code, string search = "", Cowboy.WebSockets.AsyncWebSocketSession session = null, CancellationTokenSource Cancel = null, params string[] Data)
         {
             // var T66yDB = db.GetCollection<T66yData>("T66yData"); var T66yDB = db.GetCollection<T66yImgData>("ImgData");
-            using (var db = new LiteDatabase(@"T66y.db"))
+            //using (var db = new LiteDatabase(@"T66y.db"))
+            using (var db = new LiteDatabase("Filename=T66y.db;Connection=Shared;ReadOnly=True"))
             {
+                //var db = Setting.T66yDB;
+
                 switch (Code)
                 {
                     case "GetImgFromDate":
@@ -465,10 +498,132 @@ namespace SpiderServerInLinux
             return Task.CompletedTask;
         }
 
+        internal static dynamic GetDataFromSIS(string Code, string search = "", Cowboy.WebSockets.AsyncWebSocketSession session = null, CancellationTokenSource Cancel = null, params string[] Data)
+        {
+            // var T66yDB = db.GetCollection<T66yData>("T66yData"); var T66yDB = db.GetCollection<T66yImgData>("ImgData");
+            using (var db = new LiteDatabase(@"SIS.db"))
+            {
+                switch (Code)
+                {
+                    case "GetImgFromDate":
+                        {
+                            Task.Factory.StartNew(async () =>
+                            {
+                                try
+                                {
+                                    Loger.Instance.ServerInfo("主机", $"搜索SIS图片{search}");
+                                    var _Table = db.GetCollection<SISImgData>("ImgData");
+                                    var Search = _Table.Find(x => x.Date == search);
+                                    foreach (var item in Search)
+                                    {
+                                        await session.SendBinaryAsync(item.ToByte());
+                                    }
+                                }
+                                catch (Exception)
+                                {
+                                }
+                            }, Cancel.Token);
+                        }
+                        break;
+
+                    case "GetTotalImg":
+                        {
+                            Task.Factory.StartNew(async () =>
+                            {
+                                try
+                                {
+                                    Loger.Instance.ServerInfo("主机", $"搜索SIS图片{Code}");
+                                    var _Table = db.GetCollection<SISImgData>("ImgData");
+                                    var Search = _Table.FindAll();
+                                    foreach (var item in Search)
+                                    {
+                                        await session.SendBinaryAsync(item.ToByte());
+                                    }
+                                }
+                                catch (Exception)
+                                {
+                                }
+                            }, Cancel.Token);
+                        }
+                        break;
+
+                    case "GetImgFromId":
+                        {
+                            Task.Factory.StartNew(async () =>
+                            {
+                                try
+                                {
+                                    Loger.Instance.ServerInfo("主机", $"搜索SIS图片{search}");
+                                    var _Table = db.GetCollection<SISImgData>("ImgData");
+                                    var Search = _Table.Find(x => x.id == search);
+                                    foreach (var item in Search)
+                                    {
+                                        await session.SendBinaryAsync(item.ToByte());
+                                    }
+                                }
+                                catch (Exception)
+                                {
+                                }
+                            }, Cancel.Token);
+                        }
+                        break;
+
+                    case "GetDataFromDate":
+                        {
+                            Task.Factory.StartNew(async () =>
+                            {
+                                Loger.Instance.ServerInfo("主机", $"搜索SIS数据{search}");
+                                var _Table = db.GetCollection<SISData>("SISData");
+                                var Search = _Table.Find(x => x.Date == search);
+                                foreach (var item in Search)
+                                {
+                                    await session.SendBinaryAsync(item.ToByte());
+                                }
+                            }, Cancel.Token);
+                        }
+                        break;
+
+                    case "GetDataFromID":
+                        {
+                            Task.Factory.StartNew(async () =>
+                            {
+                                Loger.Instance.ServerInfo("主机", $"搜索SIS数据{search}");
+                                var _Table = db.GetCollection<SISData>("SISData");
+                                var Search = _Table.Find(x => x.id == int.Parse(search));
+                                foreach (var item in Search)
+                                {
+                                    await session.SendBinaryAsync(item.ToByte());
+                                }
+                            }, Cancel.Token);
+                        }
+                        break;
+
+                    case "GetDataFromName":
+                        {
+                            Task.Factory.StartNew(async () =>
+                            {
+                                Loger.Instance.ServerInfo("主机", $"搜索SIS数据{search}");
+                                var _Table = db.GetCollection<SISData>("SISData");
+                                var Search = _Table.Find(x => x.Title.Contains(search));
+                                foreach (var item in Search)
+                                {
+                                    await session.SendBinaryAsync(item.ToByte());
+                                }
+                            }, Cancel.Token);
+                        }
+                        break;
+                }
+            }
+            return Task.CompletedTask;
+        }
+
         internal static dynamic GetDataFromT66y(string Code = "", string search = "")
         {
-            using (var db = new LiteDatabase(@"T66y.db"))
+            //using (var db = new LiteDatabase(@"T66y.db"))
+            using (var db = new LiteDatabase("Filename=T66y.db;Connection=Shared;ReadOnly=True"))
             {
+                //var db = Setting.T66yDB;
+
                 switch (Code)
                 {
                     case "CheckT66yExists":
@@ -496,7 +651,56 @@ namespace SpiderServerInLinux
                             {
                                 if (T66yImgDb.Exists(x => x.Status == false))
                                 {
+                                    return T66yImgDb.Find(x => x.Status == false).ToList(); ;
                                     return T66yImgDb.Find(x => x.Status == false);
+                                }
+                                else
+                                {
+                                    return null;
+                                }
+                            }
+                        }
+                    default:
+                        {
+                            var T66yDb = db.GetCollection<T66yData>("T66yData");
+                            return T66yDb.Find(x => x.Status == false);
+                        }
+                }
+            }
+        }
+
+        internal static dynamic GetDataFromSIS(string Code = "", string search = "")
+        {
+            using (var db = new LiteDatabase(@"SIS.db"))
+            {
+                switch (Code)
+                {
+                    case "CheckSISExists":
+                        {
+                            var Db = db.GetCollection<SISData>("SISData");
+                            return Db.Exists(x => x.id == int.Parse(search));
+                        }
+                        break;
+
+                    case "img":
+                        {
+                            var ImgDb = db.GetCollection<T66yImgData>("ImgData");
+                            if (!string.IsNullOrEmpty(search))
+                            {
+                                if (ImgDb.Exists(x => x.id == search))
+                                {
+                                    return ImgDb.FindOne(x => x.id == search);
+                                }
+                                else
+                                {
+                                    return null;
+                                }
+                            }
+                            else
+                            {
+                                if (ImgDb.Exists(x => x.Status == false))
+                                {
+                                    return ImgDb.Find(x => x.Status == false);
                                 }
                                 else
                                 {
@@ -667,12 +871,13 @@ namespace SpiderServerInLinux
                 try
                 {
                     var JavDB = db.GetCollection<JavInfo>("JavDB");
-                    if (JavDB.Update(item2))
+                    /*if (JavDB.Update(item2))
                     {
                         return true;
                     }
                     JavDB.Insert(item2);
-                    return false;
+                    return false;*/
+                    return JavDB.Upsert(item2);
                 }
                 catch (Exception ex)
                 {
@@ -904,35 +1109,31 @@ namespace SpiderServerInLinux
                         return false;
                     }
                 }
-
-                db.Dispose();
             }
         }
 
-        internal static bool SaveToT66yDataUnit(ICollection<T66yData> Data = null, T66yData UnitData = null)
+        internal static bool T66yWriteIng = false;
+
+        internal static bool SaveToT66yDataUnit(string Collection, ICollection<T66yData> Data = null, T66yData UnitData = null)
         {
+            T66yWriteIng = true;
+            var Fin = false;
             using (var db = new LiteDatabase(@"T66y.db"))
             {
-                var T66yDb = db.GetCollection<T66yData>("T66yData");
+                //var db = Setting.T66yDB;
+
+                var T66yDb = db.GetCollection<T66yData>(Collection);
                 if (UnitData != null)
                 {
                     try
                     {
-                        if (T66yDb.Exists(x => x.id == UnitData.id))
-                        {
-                            return false;
-                            //return T66yDb.Update(UnitData);
-                        }
-                        else
-                        {
-                            return T66yDb.Upsert(UnitData);
-                        }
+                        Fin = T66yDb.Upsert(UnitData);
                     }
                     catch (Exception ex)
                     {
                         Loger.Instance.LocalInfo($"T66y数据库添加失败{ex.Message}");
 
-                        return false;
+                        Fin = false;
                         // return T66yDb.Update(UnitData);
                     }
                 }
@@ -941,7 +1142,7 @@ namespace SpiderServerInLinux
                     try
                     {
                         T66yDb.InsertBulk(Data);
-                        return true;
+                        Fin = true;
                     }
                     catch (LiteException e)
                     {
@@ -950,27 +1151,42 @@ namespace SpiderServerInLinux
                         {
                             try
                             {
-                                T66yDb.Upsert(VARIABLE);
+                                Fin = T66yDb.Upsert(VARIABLE);
                             }
                             catch (LiteException ex)
                             {
                                 Loger.Instance.LocalInfo($"单独添加失败失败原因{ex.Message}");
                             }
                         }
-                        return false;
+                        Fin = false;
                     }
                 }
             }
+            T66yWriteIng = false;
+            return Fin;
         }
 
-        internal static bool SaveToT66yDataUnit(ICollection<T66yImgData> Data = null, T66yImgData UnitData = null)
+        internal static bool SaveToT66yDataUnit(ICollection<T66yImgData> Data = null, T66yImgData UnitData = null, bool Update = false)
         {
-            using var db = new LiteDatabase(@"T66y.db");
+            T66yWriteIng = true;
+            var Fin = false;
+
+            using (var db = new LiteDatabase(@"T66y.db"))
             {
+                //var db = Setting.T66yDB;
                 var T66yDb = db.GetCollection<T66yImgData>("ImgData");
                 if (UnitData != null)
                 {
-                    return T66yDb.Upsert(UnitData);
+                    /* if (Update)
+                     {
+                         T66yDb.Delete(x => x.id == UnitData.id);
+                         T66yDb.Insert(UnitData);
+                         var FO = T66yDb.FindOne(x => x.id == UnitData.id);
+                         db.Dispose();
+                     }
+                     else*/
+
+                    Fin = T66yDb.Upsert(UnitData);
                 }
                 else
                 {
@@ -981,7 +1197,7 @@ namespace SpiderServerInLinux
                             return false;
                         }
                         T66yDb.InsertBulk(Data);
-                        return true;
+                        Fin = true;
                     }
                     catch (LiteException e)
                     {
@@ -990,17 +1206,47 @@ namespace SpiderServerInLinux
                         {
                             try
                             {
-                                T66yDb.Upsert(VARIABLE);
+                                Fin = T66yDb.Upsert(VARIABLE);
                             }
                             catch (LiteException ex)
                             {
                                 Loger.Instance.LocalInfo($"单独添加失败失败原因{ex.Message}");
                             }
                         }
-                        return false;
+                        Fin = false;
                     }
                 }
             }
+            T66yWriteIng = false;
+            return Fin;
+        }
+
+        internal static bool SaveToSISDataUnit(string Collection, dynamic UnitData = null)
+        {
+            var Ret = false;
+            using (var db = new LiteDatabase(@"SIS.db"))
+            {
+                switch (Collection)
+                {
+                    case "SISData":
+                        {
+                            var STSDB = db.GetCollection<SISData>("SISData");
+                            if (UnitData != null)
+                            {
+                                Ret = STSDB.Upsert(UnitData);
+                            }
+                        }
+                        break;
+
+                    case "img":
+                        {
+                            var STSDB = db.GetCollection<SISImgData>("ImgData");
+                            Ret = STSDB.Upsert(UnitData);
+                        }
+                        break;
+                }
+            }
+            return Ret;
         }
 
         internal static void SaveToMiMiDataUnit(MiMiAiData Data)

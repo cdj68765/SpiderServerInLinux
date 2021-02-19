@@ -15,7 +15,8 @@ namespace Client
     {
         private static AsyncWebSocketClient _client;
 
-        public static async Task Main(string[] args)
+        [STAThread]
+        public static void Main(string[] args)
         {
             /* await Task.Run(async () =>
              {
