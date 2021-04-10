@@ -1,11 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
-using Shadowsocks.Controller;
+using ShadowsocksR.Controller;
 using System.Text.RegularExpressions;
 using System.Net;
 
-namespace Shadowsocks.Model
+namespace ShadowsocksR.Model
 {
     public class DnsBuffer
     {

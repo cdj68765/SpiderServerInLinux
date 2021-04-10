@@ -12,11 +12,13 @@ namespace SpiderServerInLinux
 {
     internal class DataBaseCommand
     {
+        internal static string BaseUri = @"/media/sda1/publish/";
+
         internal static void InitDataBase()
         {
             void InitNyaaDataBase()
             {
-                using (var db = new LiteDatabase(@"Nyaa.db"))
+                using (var db = new LiteDatabase(@$"{BaseUri}Nyaa.db"))
                 {
                     if (!db.CollectionExists("NyaaDB"))
                     {
@@ -36,7 +38,7 @@ namespace SpiderServerInLinux
             }
             void InitJavDataBase()
             {
-                using (var db = new LiteDatabase(@"Jav.db"))
+                using (var db = new LiteDatabase(@$"{BaseUri}Jav.db"))
                 {
                     if (!db.CollectionExists("JavDB"))
                     {
@@ -58,7 +60,7 @@ namespace SpiderServerInLinux
             }
             void InitMiMiAiDataBase()
             {
-                using (var db = new LiteDatabase(@"MiMi.db"))
+                using (var db = new LiteDatabase(@$"{BaseUri}MiMi.db"))
                 {
                     if (!db.CollectionExists("MiMiDB"))
                     {
@@ -80,7 +82,7 @@ namespace SpiderServerInLinux
             }
             void InitMiMiAiStoryDataBase()
             {
-                using (var db = new LiteDatabase(@"MiMi.db"))
+                using (var db = new LiteDatabase(@$"{BaseUri}MiMi.db"))
                 {
                     if (!db.CollectionExists("MiMiStory"))
                     {
@@ -99,7 +101,7 @@ namespace SpiderServerInLinux
             }
             void InitT66yDataBase()
             {
-                using (var db = new LiteDatabase(@"T66y.db"))
+                using (var db = new LiteDatabase(@$"{BaseUri}T66y.db"))
                 {
                     //var db = Setting.T66yDB;
                     if (!db.CollectionExists("T66yData"))
@@ -127,7 +129,7 @@ namespace SpiderServerInLinux
             }
             void InitSISDataBase()
             {
-                using (var db = new LiteDatabase(@"SIS.db"))
+                using (var db = new LiteDatabase(@$"{BaseUri}SIS.db"))
                 {
                     if (!db.CollectionExists("SISData"))
                     {
@@ -164,7 +166,7 @@ namespace SpiderServerInLinux
 
         internal static DateRecord GetNyaaDateInfo(string Date)
         {
-            using (var db = new LiteDatabase(@"Nyaa.db"))
+            using (var db = new LiteDatabase(@$"{BaseUri}Nyaa.db"))
             {
                 var DateRecord = db.GetCollection<DateRecord>("DateRecord");
                 var FindData = DateRecord.FindOne(Dt => Dt._id == Date);
@@ -178,7 +180,7 @@ namespace SpiderServerInLinux
 
         internal static bool GetWebInfoFromNyaa(string Date)
         {
-            using (var db = new LiteDatabase(@"Nyaa.db"))
+            using (var db = new LiteDatabase(@$"{BaseUri}Nyaa.db"))
             {
                 var DateRecord = db.GetCollection<DateRecord>("DateRecord");
                 if (DateRecord.Exists(x => x._id == Date))
@@ -194,7 +196,7 @@ namespace SpiderServerInLinux
 
         internal static int GetNyaaCheckPoint()
         {
-            using (var db = new LiteDatabase(@"Nyaa.db"))
+            using (var db = new LiteDatabase(@$"{BaseUri}Nyaa.db"))
             {
                 Stopwatch Time = new Stopwatch();
                 Loger.Instance.WithTimeStart("数据查找中", Time);
@@ -208,7 +210,7 @@ namespace SpiderServerInLinux
 
         internal static bool GetNyaaCheckPoint(int ID)
         {
-            using (var db = new LiteDatabase(@"Nyaa.db"))
+            using (var db = new LiteDatabase(@$"{BaseUri}Nyaa.db"))
             {
                 var DateRecord = db.GetCollection<NyaaInfo>("NyaaDB");
                 if (DateRecord.Exists(x => x.id == ID)) return true;
@@ -222,7 +224,7 @@ namespace SpiderServerInLinux
 
         internal static void GetDataFromDataBase()
         {
-            using (var db = new LiteDatabase(@"Nyaa.db"))
+            using (var db = new LiteDatabase(@$"{BaseUri}Nyaa.db"))
             {
                 var NyaaDB = db.GetCollection<NyaaInfo>("NyaaDB");
                 //var FindAdress = NyaaDB.Find(x=>x.== "Address");
@@ -231,7 +233,7 @@ namespace SpiderServerInLinux
 
         internal static dynamic GetDataFromMiMi(string Code, Cowboy.WebSockets.AsyncWebSocketSession session = null, CancellationTokenSource Cancel = null, params string[] Data)
         {
-            using (var db = new LiteDatabase(@"MiMi.db"))
+            using (var db = new LiteDatabase(@$"{BaseUri}MiMi.db"))
             {
                 switch (Code)
                 {
@@ -309,7 +311,7 @@ namespace SpiderServerInLinux
 
         internal static BsonDocument GetWebInfoFromMiMi(string Code)
         {
-            using (var db = new LiteDatabase(@"MiMi.db"))
+            using (var db = new LiteDatabase(@$"{BaseUri}MiMi.db"))
             {
                 var _Table = db.GetCollection("WebPage");
                 var F = _Table.Find(x => x["_id"] == Code);
@@ -319,7 +321,7 @@ namespace SpiderServerInLinux
 
         internal static bool GetWebInfoFromJav(string Date)
         {
-            using (var db = new LiteDatabase(@"Jav.db"))
+            using (var db = new LiteDatabase(@$"{BaseUri}Jav.db"))
             {
                 var _Table = db.GetCollection("WebPage");
                 if (_Table.Exists(x => x["_id"] == Date))
@@ -336,7 +338,7 @@ namespace SpiderServerInLinux
 
         internal static bool GetOrSaveWebInfoFromJav(string Code)
         {
-            using (var db = new LiteDatabase(@"Jav.db"))
+            using (var db = new LiteDatabase(@$"{BaseUri}Jav.db"))
             {
                 var _Table = db.GetCollection("WebPage");
                 if (_Table.Exists(x => x["_id"] == Code))
@@ -367,7 +369,7 @@ namespace SpiderServerInLinux
         internal static dynamic GetDataFromT66y(string Code, string search = "", Cowboy.WebSockets.AsyncWebSocketSession session = null, CancellationTokenSource Cancel = null, params string[] Data)
         {
             // var T66yDB = db.GetCollection<T66yData>("T66yData"); var T66yDB = db.GetCollection<T66yImgData>("ImgData");
-            //using (var db = new LiteDatabase(@"T66y.db"))
+            //using (var db = new LiteDatabase(@$"{BaseUri}T66y.db"))
             using (var db = new LiteDatabase("Filename=T66y.db;Connection=Shared;ReadOnly=True"))
             {
                 //var db = Setting.T66yDB;
@@ -501,7 +503,7 @@ namespace SpiderServerInLinux
         internal static dynamic GetDataFromSIS(string Code, string search = "", Cowboy.WebSockets.AsyncWebSocketSession session = null, CancellationTokenSource Cancel = null, params string[] Data)
         {
             // var T66yDB = db.GetCollection<T66yData>("T66yData"); var T66yDB = db.GetCollection<T66yImgData>("ImgData");
-            using (var db = new LiteDatabase(@"SIS.db"))
+            using (var db = new LiteDatabase(@$"{BaseUri}SIS.db"))
             {
                 switch (Code)
                 {
@@ -619,7 +621,7 @@ namespace SpiderServerInLinux
 
         internal static dynamic GetDataFromT66y(string Code = "", string search = "")
         {
-            //using (var db = new LiteDatabase(@"T66y.db"))
+            //using (var db = new LiteDatabase(@$"{BaseUri}T66y.db"))
             using (var db = new LiteDatabase("Filename=T66y.db;Connection=Shared;ReadOnly=True"))
             {
                 //var db = Setting.T66yDB;
@@ -671,7 +673,7 @@ namespace SpiderServerInLinux
 
         internal static dynamic GetDataFromSIS(string Code = "", string search = "")
         {
-            using (var db = new LiteDatabase(@"SIS.db"))
+            using (var db = new LiteDatabase(@$"{BaseUri}SIS.db"))
             {
                 switch (Code)
                 {
@@ -725,7 +727,7 @@ namespace SpiderServerInLinux
         {
             Stopwatch Time = new Stopwatch();
             Loger.Instance.WithTimeStart("数据库保存中", Time);
-            using (var db = new LiteDatabase(@"Nyaa.db"))
+            using (var db = new LiteDatabase(@$"{BaseUri}Nyaa.db"))
             {
                 var NyaaDB = db.GetCollection<NyaaInfo>("NyaaDB");
                 try
@@ -758,7 +760,7 @@ namespace SpiderServerInLinux
         internal static void ChangeJavActress()
         {
             bool CompareChar(string c) => (char.Parse(c) >= 'A' && char.Parse(c) <= 'Z');
-            using (var db = new LiteDatabase(@"Jav.db"))
+            using (var db = new LiteDatabase(@$"{BaseUri}Jav.db"))
             {
                 var JavDB = db.GetCollection<JavInfo>("JavDB");
                 {
@@ -841,7 +843,7 @@ namespace SpiderServerInLinux
         {
             Stopwatch Time = new Stopwatch();
             Loger.Instance.WithTimeStart("数据库保存中", Time);
-            using (var db = new LiteDatabase(@"Nyaa.db"))
+            using (var db = new LiteDatabase(@$"{BaseUri}Nyaa.db"))
             {
                 db.GetCollection<DateRecord>("DateRecord")
                     .Upsert(new DateRecord { _id = Data.ElementAt(0).Day, Status = false });
@@ -866,7 +868,7 @@ namespace SpiderServerInLinux
 
         internal static bool SaveToJavDataBaseOneObject(JavInfo item2)
         {
-            using (var db = new LiteDatabase(@"Jav.db"))
+            using (var db = new LiteDatabase(@$"{BaseUri}Jav.db"))
             {
                 try
                 {
@@ -889,7 +891,7 @@ namespace SpiderServerInLinux
 
         internal static void SaveToJavDataBaseRange(ICollection<JavInfo> Collect)
         {
-            using (var db = new LiteDatabase(@"Jav.db"))
+            using (var db = new LiteDatabase(@$"{BaseUri}Jav.db"))
             {
                 try
                 {
@@ -905,7 +907,7 @@ namespace SpiderServerInLinux
 
         internal static bool SaveToNyaaDataBaseRange(ICollection<NyaaInfo> Collect)
         {
-            using (var db = new LiteDatabase(@"Nyaa.db"))
+            using (var db = new LiteDatabase(@$"{BaseUri}Nyaa.db"))
             {
                 try
                 {
@@ -923,7 +925,7 @@ namespace SpiderServerInLinux
         internal static void SaveToNyaaDateInfo(DateRecord Date)
         {
             if (string.IsNullOrWhiteSpace(Date._id)) return;
-            using (var db = new LiteDatabase(@"Nyaa.db"))
+            using (var db = new LiteDatabase(@$"{BaseUri}Nyaa.db"))
             {
                 try
                 {
@@ -938,7 +940,7 @@ namespace SpiderServerInLinux
 
         internal static bool SaveToNyaaDataBaseOneObject(NyaaInfo item2, bool Mode = true)
         {
-            using (var db = new LiteDatabase(@"Nyaa.db"))
+            using (var db = new LiteDatabase(@$"{BaseUri}Nyaa.db"))
             {
                 try
                 {
@@ -975,7 +977,7 @@ namespace SpiderServerInLinux
 
         internal static void SaveToJavDataBaseOneByOne(ICollection<JavInfo> Collect)
         {
-            using (var db = new LiteDatabase(@"Jav.db"))
+            using (var db = new LiteDatabase(@$"{BaseUri}Jav.db"))
             {
                 var JavDB = db.GetCollection<JavInfo>("JavDB");
                 foreach (var item in Collect)
@@ -994,7 +996,7 @@ namespace SpiderServerInLinux
 
         internal static void SavePage(string Page)
         {
-            using (var db = new LiteDatabase(@"Nyaa.db"))
+            using (var db = new LiteDatabase(@$"{BaseUri}Nyaa.db"))
             {
                 db.GetCollection("WebPage")
                     .Upsert(new BsonDocument { ["_id"] = ObjectId.NewObjectId(), ["Page"] = Encoding.Unicode.GetBytes(Page) });
@@ -1003,7 +1005,7 @@ namespace SpiderServerInLinux
 
         internal static bool SaveToMiMiDataTablet(string[] tempData, bool UseSave = true)
         {
-            using (var db = new LiteDatabase(@"MiMi.db"))
+            using (var db = new LiteDatabase(@$"{BaseUri}MiMi.db"))
             {
                 var _Table = db.GetCollection("WebPage");
                 if (!_Table.Exists(X => X["Uri"] == tempData[0]))//以链接检查是否存在，不存在则进入
@@ -1041,7 +1043,7 @@ namespace SpiderServerInLinux
 
         internal static void SaveToMiMiDataTablet(BsonDocument tempData)
         {
-            using (var db = new LiteDatabase(@"MiMi.db"))
+            using (var db = new LiteDatabase(@$"{BaseUri}MiMi.db"))
             {
                 var _Table = db.GetCollection("WebPage");
                 _Table.Upsert(tempData);
@@ -1050,7 +1052,7 @@ namespace SpiderServerInLinux
 
         internal static void SaveToMiMiDataUnit(ICollection<MiMiAiData> Data)
         {
-            using (var db = new LiteDatabase(@"MiMi.db"))
+            using (var db = new LiteDatabase(@$"{BaseUri}MiMi.db"))
             {
                 var MiMiDb = db.GetCollection<MiMiAiData>("MiMiDB");
                 try
@@ -1078,7 +1080,7 @@ namespace SpiderServerInLinux
 
         internal static bool SaveToMiMiStoryDataUnit(ICollection<MiMiAiStory> Data = null, MiMiAiStory UnitData = null)
         {
-            using (var db = new LiteDatabase(@"MiMi.db"))
+            using (var db = new LiteDatabase(@$"{BaseUri}MiMi.db"))
             {
                 var MiMiDb = db.GetCollection<MiMiAiStory>("MiMiStory");
                 if (UnitData != null)
@@ -1118,7 +1120,7 @@ namespace SpiderServerInLinux
         {
             T66yWriteIng = true;
             var Fin = false;
-            using (var db = new LiteDatabase(@"T66y.db"))
+            using (var db = new LiteDatabase(@$"{BaseUri}T66y.db"))
             {
                 //var db = Setting.T66yDB;
 
@@ -1171,7 +1173,7 @@ namespace SpiderServerInLinux
             T66yWriteIng = true;
             var Fin = false;
 
-            using (var db = new LiteDatabase(@"T66y.db"))
+            using (var db = new LiteDatabase(@$"{BaseUri}T66y.db"))
             {
                 //var db = Setting.T66yDB;
                 var T66yDb = db.GetCollection<T66yImgData>("ImgData");
@@ -1201,7 +1203,7 @@ namespace SpiderServerInLinux
                     }
                     catch (LiteException e)
                     {
-                        Loger.Instance.LocalInfo("集群添加失败，转入单独添加");
+                        //Loger.Instance.LocalInfo($"集群添加失败，转入单独添加，失败原因{e.Message}");
                         foreach (var VARIABLE in Data)
                         {
                             try
@@ -1210,7 +1212,7 @@ namespace SpiderServerInLinux
                             }
                             catch (LiteException ex)
                             {
-                                Loger.Instance.LocalInfo($"单独添加失败失败原因{ex.Message}");
+                                Loger.Instance.LocalInfo($"单独添加失败，失败原因{ex.Message}");
                             }
                         }
                         Fin = false;
@@ -1224,7 +1226,7 @@ namespace SpiderServerInLinux
         internal static bool SaveToSISDataUnit(string Collection, dynamic UnitData = null)
         {
             var Ret = false;
-            using (var db = new LiteDatabase(@"SIS.db"))
+            using (var db = new LiteDatabase(@$"{BaseUri}SIS.db"))
             {
                 switch (Collection)
                 {
@@ -1251,7 +1253,7 @@ namespace SpiderServerInLinux
 
         internal static void SaveToMiMiDataUnit(MiMiAiData Data)
         {
-            using (var db = new LiteDatabase(@"MiMi.db"))
+            using (var db = new LiteDatabase(@$"{BaseUri}MiMi.db"))
             {
                 var MiMiDb = db.GetCollection<MiMiAiData>("MiMiDB");
                 try
@@ -1267,7 +1269,7 @@ namespace SpiderServerInLinux
 
         internal static void SaveToMiMiDataErrorUnit(string[] ErrorInfo)
         {
-            using (var db = new LiteDatabase(@"MiMi.db"))
+            using (var db = new LiteDatabase(@$"{BaseUri}MiMi.db"))
             {
                 var MiMiDb = db.GetCollection("Error");
                 try

@@ -6,10 +6,10 @@ using System.Text;
 using System.Threading;
 using System.Timers;
 using OpenDNS;
-using Shadowsocks.Model;
-using Shadowsocks.Util;
+using ShadowsocksR.Model;
+using ShadowsocksR.Util;
 
-namespace Shadowsocks.Controller
+namespace ShadowsocksR.Controller
 {
     internal class Socks5Forwarder : Listener.Service
     {
@@ -79,7 +79,7 @@ namespace Shadowsocks.Controller
                                 {
                                     if (_config.proxyRuleMode == (int)ProxyRuleMode.UserCustom)
                                     {
-                                        Shadowsocks.Model.HostMap hostMap = HostMap.Instance();
+                                        ShadowsocksR.Model.HostMap hostMap = HostMap.Instance();
                                         string host_addr;
                                         if (hostMap.GetHost(host, out host_addr))
                                         {
@@ -154,7 +154,7 @@ namespace Shadowsocks.Controller
                 {
                     if (_config.proxyRuleMode == (int)ProxyRuleMode.UserCustom)
                     {
-                        Shadowsocks.Model.HostMap hostMap = HostMap.Instance();
+                        ShadowsocksR.Model.HostMap hostMap = HostMap.Instance();
                         string host_addr;
                         if (hostMap.GetIP(ipAddress, out host_addr))
                         {
@@ -275,7 +275,7 @@ namespace Shadowsocks.Controller
                                 {
                                     if (_config.proxyRuleMode == (int)ProxyRuleMode.UserCustom)
                                     {
-                                        Shadowsocks.Model.HostMap hostMap = HostMap.Instance();
+                                        ShadowsocksR.Model.HostMap hostMap = HostMap.Instance();
                                         string host_addr;
                                         if (hostMap.GetHost(_remote_host, out host_addr))
                                         {
@@ -329,7 +329,7 @@ namespace Shadowsocks.Controller
                     }
                     if (ipAddress != null && _config.proxyRuleMode == (int)ProxyRuleMode.UserCustom)
                     {
-                        Shadowsocks.Model.HostMap hostMap = HostMap.Instance();
+                        ShadowsocksR.Model.HostMap hostMap = HostMap.Instance();
                         string host_addr;
                         if (hostMap.GetIP(ipAddress, out host_addr))
                         {

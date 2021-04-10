@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace Shadowsocks.Model
+namespace ShadowsocksR.Model
 {
     public struct MinSearchTreeNode
     {

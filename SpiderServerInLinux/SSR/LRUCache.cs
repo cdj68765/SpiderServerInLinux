@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
-using Shadowsocks.Controller;
+using ShadowsocksR.Controller;
 
-namespace Shadowsocks.Model
+namespace ShadowsocksR.Model
 {
     public class LRUCache<K, V>
     {

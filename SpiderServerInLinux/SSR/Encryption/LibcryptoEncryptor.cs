@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace Shadowsocks.Encryption
+namespace ShadowsocksR.Encryption
 {
     public class LibcryptoEncryptor
         : IVEncryptor, IDisposable

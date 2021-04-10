@@ -2,7 +2,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace Shadowsocks.Obfs
+namespace ShadowsocksR.Obfs
 {
     public abstract class ObfsBase: IObfs
     {

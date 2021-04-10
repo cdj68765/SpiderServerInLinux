@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace Shadowsocks.Obfs
+namespace ShadowsocksR.Obfs
 {
     public class Plain : ObfsBase
     {

@@ -1,13 +1,13 @@
-﻿using Shadowsocks.Controller;
+﻿using ShadowsocksR.Controller;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Text;
 using System.Threading;
-using Shadowsocks.Encryption;
+using ShadowsocksR.Encryption;
 
-namespace Shadowsocks.Model
+namespace ShadowsocksR.Model
 {
     public class UriVisitTime : IComparable
     {

@@ -2,9 +2,9 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
-using Shadowsocks.Model;
+using ShadowsocksR.Model;
 
-namespace Shadowsocks.Controller
+namespace ShadowsocksR.Controller
 {
     internal class SpeedTester
     {

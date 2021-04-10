@@ -1,4 +1,4 @@
-﻿using Shadowsocks.Model;
+﻿using ShadowsocksR.Model;
 using System;
 using System.Collections.Generic;
 using System.Net;
@@ -7,7 +7,7 @@ using System.Net.Sockets;
 using System.Text;
 using System.Timers;
 
-namespace Shadowsocks.Controller
+namespace ShadowsocksR.Controller
 {
     public class Listener
     {

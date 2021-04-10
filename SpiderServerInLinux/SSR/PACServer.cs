@@ -1,11 +1,11 @@
-﻿using Shadowsocks.Model;
+﻿using ShadowsocksR.Model;
 using System;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
 
-namespace Shadowsocks.Controller
+namespace ShadowsocksR.Controller
 {
     internal class PACServer : Listener.Service
     {

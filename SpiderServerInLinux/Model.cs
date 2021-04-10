@@ -1,5 +1,5 @@
 ﻿using LiteDB;
-using Shadowsocks.Controller;
+using ShadowsocksR.Controller;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -45,8 +45,8 @@ namespace SpiderServerInLinux
         internal static string T66yDownLoadOldOther;
         internal static bool T66yDownloadIng = false;
 
-        internal static ShadowsocksController SSR;
-        internal static ShadowsocksController NyaaSSR;
+        internal static ShadowsocksRController SSR;
+        internal static ShadowsocksRController NyaaSSR;
 
         internal static server server;
         internal static DownloadManage DownloadManage;
@@ -57,6 +57,8 @@ namespace SpiderServerInLinux
         internal static string MiMiDay = "";//过去下载每条MiMi用
         internal static int JavPageCount = 0;
         internal static int SISPageCount = 1;
+        internal static int HttpConnectCount = 1;
+
         internal static DataCount DataCount = new DataCount();
 
         internal static bool CheckOnline(bool ssr = false)
@@ -85,7 +87,7 @@ namespace SpiderServerInLinux
                 {
                     if (SSR == null)
                     {
-                        SSR = new ShadowsocksController();
+                        SSR = new ShadowsocksRController();
                     }
                     Loger.Instance.Error("连接失败，尝试使用SSR连接");
                     if (!ssr)
@@ -135,7 +137,7 @@ namespace SpiderServerInLinux
         internal string T66yOtherMessage = Setting.DownloadManage != null ? Setting.T66yDownLoadNowOther : string.Empty;
         internal string T66yOtherOldMessage = Setting.DownloadManage != null ? Setting.T66yDownLoadOldOther : string.Empty;
         internal string SisInterval = Setting.DownloadManage != null ? Setting.SISDownLoadNow : string.Empty;
-        internal int SisIndex = Setting.SISPageCount;
+        internal int SisIndex = Setting.HttpConnectCount;
 
         internal string Memory = $"内存使用量:{Process.GetCurrentProcess().WorkingSet64 / 1024 / 1024}MB";
 
@@ -225,7 +227,7 @@ namespace SpiderServerInLinux
                 }
                 if (onlineOpera.ssr_url != Setting._GlobalSet.ssr_url)
                 {
-                    var TestSSR = new ShadowsocksController(onlineOpera.ssr_url);
+                    var TestSSR = new ShadowsocksRController(onlineOpera.ssr_url);
                     if (TestSSR.CheckOnline())
                     {
                         if (Setting.Socks5Point == Setting.SSR.SocksPort)
@@ -248,7 +250,7 @@ namespace SpiderServerInLinux
                 }
                 if (onlineOpera.ssr4Nyaa != Setting._GlobalSet.ssr4Nyaa)
                 {
-                    var TestSSR = new ShadowsocksController(onlineOpera.ssr4Nyaa);
+                    var TestSSR = new ShadowsocksRController(onlineOpera.ssr4Nyaa);
                     if (TestSSR.CheckOnline(@"https://sukebei.nyaa.si/"))
                     {
                         if (Setting.NyaaSocks5Point == Setting.NyaaSSR.SocksPort)
@@ -646,7 +648,7 @@ namespace SpiderServerInLinux
 
         public byte[] img { get; set; }
         public List<int> FromList { get; set; }
-        public bool Status => img != null;
+        public bool Status => img != null && (img.Length > 1024 || Hash == "Fail");
 
         internal byte[] ToByte()
         {
@@ -669,27 +671,30 @@ namespace SpiderServerInLinux
                 {
                     try
                     {
-                        using (var mem = new MemoryStream(value))
+                        if (value.Length > 1024)
                         {
-                            base.img = value;
-                            Hash = Convert.ToBase64String(new MD5CryptoServiceProvider().ComputeHash(base.img));
-                            /*Image img = Image.FromStream(mem);
-                            if (img.RawFormat.Equals(System.Drawing.Imaging.ImageFormat.Gif))
+                            //using (var mem = new MemoryStream(value))
                             {
                                 base.img = value;
                                 Hash = Convert.ToBase64String(new MD5CryptoServiceProvider().ComputeHash(base.img));
+                                /*Image img = Image.FromStream(mem);
+                                if (img.RawFormat.Equals(System.Drawing.Imaging.ImageFormat.Gif))
+                                {
+                                    base.img = value;
+                                    Hash = Convert.ToBase64String(new MD5CryptoServiceProvider().ComputeHash(base.img));
+                                }
+                                else
+                                {
+                                    base.img = Setting.DownloadManage.Compress(img, 75).ToArray();
+                                    Hash = Convert.ToBase64String(new MD5CryptoServiceProvider().ComputeHash(base.img));
+                                }*/
                             }
-                            else
-                            {
-                                base.img = Setting.DownloadManage.Compress(img, 75).ToArray();
-                                Hash = Convert.ToBase64String(new MD5CryptoServiceProvider().ComputeHash(base.img));
-                            }*/
                         }
                     }
                     catch (Exception)
                     {
-                        base.img = value;
-                        Hash = Convert.ToBase64String(new MD5CryptoServiceProvider().ComputeHash(base.img));
+                        //base.img = value;
+                        //Hash = Convert.ToBase64String(new MD5CryptoServiceProvider().ComputeHash(base.img));
                         /* try
                          {
                              File.WriteAllBytes($"{new Uri(id).Segments.Last()}", base.img);

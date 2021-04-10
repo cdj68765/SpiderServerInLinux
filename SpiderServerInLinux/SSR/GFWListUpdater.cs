@@ -4,10 +4,10 @@ using System.Text;
 using System.Net;
 using System.IO;
 using SimpleJson;
-using Shadowsocks.Util;
-using Shadowsocks.Model;
+using ShadowsocksR.Util;
+using ShadowsocksR.Model;
 
-namespace Shadowsocks.Controller
+namespace ShadowsocksR.Controller
 {
     public class GFWListUpdater
     {

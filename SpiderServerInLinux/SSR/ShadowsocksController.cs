@@ -1,5 +1,5 @@
 ﻿using System.IO;
-using Shadowsocks.Model;
+using ShadowsocksR.Model;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -10,7 +10,7 @@ using System.Net.NetworkInformation;
 using SpiderServerInLinux;
 using xNet;
 
-namespace Shadowsocks.Controller
+namespace ShadowsocksR.Controller
 {
     public enum ProxyMode
     {
@@ -20,7 +20,7 @@ namespace Shadowsocks.Controller
         Global,
     }
 
-    public class ShadowsocksController
+    public class ShadowsocksRController
     {
         // controller: handle user actions manipulates UI interacts with low level logic
 
@@ -93,7 +93,7 @@ namespace Shadowsocks.Controller
 
         public int SocksPort;
 
-        public ShadowsocksController()
+        public ShadowsocksRController()
         {
             if (string.IsNullOrEmpty(Setting._GlobalSet.ssr_url))
             {
@@ -128,7 +128,7 @@ namespace Shadowsocks.Controller
              }*/
         }
 
-        public ShadowsocksController(string ssr_url)
+        public ShadowsocksRController(string ssr_url)
         {
             if (string.IsNullOrEmpty(ssr_url))
             {
@@ -151,7 +151,7 @@ namespace Shadowsocks.Controller
             Reload();
         }
 
-        public bool CheckOnline(string uri = "")
+        public bool CheckOnline(string uri = "", int Port = -1)
         {
             try
             {
@@ -160,7 +160,11 @@ namespace Shadowsocks.Controller
                     Thread.Sleep(1000);
                     request.ConnectTimeout = 1000;
                     request.UserAgent = Http.ChromeUserAgent();
-                    request.Proxy = Socks5ProxyClient.Parse($"127.0.0.1:{_config.localPort}");
+                    if (Port == -1)
+                        request.Proxy = Socks5ProxyClient.Parse($"127.0.0.1:{_config.localPort}");
+                    else
+                        request.Proxy = Socks5ProxyClient.Parse($"127.0.0.1:{Port}");
+
                     HttpResponse response = null;
                     if (string.IsNullOrEmpty(uri))
                     {

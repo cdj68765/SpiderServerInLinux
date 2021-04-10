@@ -85,15 +85,17 @@ namespace Client
                    , null, null, null);
                     await client.Connect();
                     using var db = new LiteDatabase(@"Filename=Z:\publish\T66y.db;Connection=Shared;ReadOnly=True");
+                    //using var db = new LiteDatabase(@"Filename=D:\T66y.db;Connection=Shared;ReadOnly=True");
+
                     {
                         var SISDB = db.GetCollection<T66yImgData>("ImgData");
-                        var Findd = SISDB.Find(x => x.Date == v);
+                        var Findd = SISDB.Find(x => x.Date == v).ToArray();
                         foreach (var Img in Findd)
                         {
                             this.Invoke(new MethodInvoker(() =>
                             {
                                 Temp.Add(Img);
-                                if (Img.Status)
+                                if (Img.Status && Img.img.Length > 1024)
                                 {
                                     imageList1.Images.Add(Image.FromStream(new MemoryStream(Img.img)));
                                     listView1.Items.Add(Img.FromList.First().ToString());
@@ -102,9 +104,15 @@ namespace Client
                                 else
                                 {
                                     var Bit = new Bitmap(256, 256);
+
                                     for (int i = 0; i < 256; i++)
                                     {
                                         Bit.SetPixel(i, i, Color.Black);
+                                    }
+                                    if (Img.img != null)
+                                    {
+                                        var g = Graphics.FromImage(Bit);
+                                        g.DrawString(Encoding.UTF8.GetString(Img.img), this.Font, Brushes.Black, 10, 10);
                                     }
                                     imageList1.Images.Add(Bit);
                                     listView1.Items.Add(Img.FromList.First().ToString());
@@ -178,7 +186,9 @@ namespace Client
                 ReWrite = true;
                 foreach (int item in SelectList)
                 {
-                    await client.SendTextAsync($"ReDownloadT66y|{Temp[item].id}");
+                    var Find = Temp[item];
+                    //File.WriteAllBytes("Error.txt", Find.img);
+                    // await client.SendTextAsync($"ReDownloadT66y|{Find.id}");
                 }
             });
         }

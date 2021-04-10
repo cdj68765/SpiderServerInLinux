@@ -11,10 +11,10 @@ using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 using OpenDNS;
-using Shadowsocks.Encryption;
-using Shadowsocks.Model;
+using ShadowsocksR.Encryption;
+using ShadowsocksR.Model;
 
-namespace Shadowsocks.Util
+namespace ShadowsocksR.Util
 {
     public class Utils
     {

@@ -1,7 +1,7 @@
 ﻿using Cowboy.WebSockets;
 using HtmlAgilityPack;
 using LiteDB;
-using Shadowsocks.Controller;
+using ShadowsocksR.Controller;
 using SocksSharp;
 using SocksSharp.Proxy;
 using System;
@@ -26,6 +26,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using xNet;
 
+//copy /y "$(TargetPath)" "Z:\publish\"
 // netsh winsock reset
 namespace SpiderServerInLinux
 {
@@ -33,16 +34,74 @@ namespace SpiderServerInLinux
     {
         private static async Task<int> Main(string[] args)
         {
+            #region PPV
+
+            {
+                HandleMainPage(File.ReadAllText(@"D:\141PPV\1 - 141PPV.com - Free Uncensored JAV Torrents.html"));
+                void InitPPVDataBase()
+                {
+                    using (var db = new LiteDatabase(@$"Jav.db"))
+                    {
+                        if (!db.CollectionExists("PPVDB"))
+                        {
+                            Loger.Instance.LocalInfo("创建PPVDB数据库");
+                            var PPVDB = db.GetCollection<JavInfo>("PPVDB");
+                            PPVDB.EnsureIndex(x => x.id);
+                            PPVDB.EnsureIndex(x => x.Date);
+                            PPVDB.EnsureIndex(x => x.Size);
+                            Loger.Instance.LocalInfo("创建PPV数据库成功");
+                        }
+                        else
+                        {
+                            Loger.Instance.LocalInfo("打开PPV数据库正常");
+                        }
+                    }
+                }
+                IEnumerable<JavInfo> HandleMainPage(string html)
+                {
+                    var HtmlDoc = new HtmlDocument();
+                    HtmlDoc.LoadHtml(html);
+                    foreach (var CardPage in HtmlDoc.DocumentNode.SelectNodes("/html[1]/body[1]/div[1]/div"))
+                    {
+                        var TempPPVInfo = new JavInfo();
+                        try
+                        {
+                            if (CardPage.Attributes["class"].Value != "card mb-3") continue;
+                            TempPPVInfo.ImgUrl = CardPage.SelectSingleNode("div[1]/div[1]/div[1]/img[1]").Attributes["src"].Value;
+                            TempPPVInfo.id = CardPage.SelectSingleNode("div[1]/div[1]/div[2]/div[1]/h5[1]/a[1]").InnerText.Replace("\n", "").Replace(" ", "");
+                            //TempPPVInfo.Describe = CardPage.SelectSingleNode("div[1]/div[1]/div[2]/div[1]/h5[1]/a[1]").Attributes["href"].Value;
+                            TempPPVInfo.Size = CardPage.SelectSingleNode("div[1]/div[1]/div[2]/div[1]/h5[1]/span[1]").InnerText;
+                            DateTime.TryParse(CardPage.SelectSingleNode("div[1]/div[1]/div[2]/div[1]/p[1]/a[1]").InnerText, out DateTime Date);
+                            TempPPVInfo.Date = Date.ToString("yyyy-MM-dd");
+                            TempPPVInfo.Describe = CardPage.SelectSingleNode("div[1]/div[1]/div[2]/div[1]/p[2]").InnerText.Replace("\n", "").Replace(" ", "");
+                            TempPPVInfo.Magnet = CardPage.SelectSingleNode("div[1]/div[1]/div[2]/div[1]/a[1]").Attributes["href"].Value;
+                        }
+                        catch (Exception EX)
+                        {
+                            HtmlDoc.Save($"{DateTime.Now:mm:dd}.html");
+                            Loger.Instance.LocalInfo($"PPV页面解析错误");
+                        }
+                        yield return TempPPVInfo;
+                    }
+                    yield break;
+                }
+            }
+
+            #endregion PPV
+
+            //DataBaseCommand.BaseUri = @"D:\";
             Directory.SetCurrentDirectory(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location));
             Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
             AppContext.SetSwitch("System.Net.Http.UseSocketsHttpHandler", true);
+            //var SSR = new Shadowsocks.Controller.ShadowsocksController("https://bulink.xyz/api/subscribe/?token=nfcnx&sub_type=vmess");
             // HandleT66yPage(File.ReadAllText(@"Z:\publish\3940263.html", Encoding.GetEncoding(936)));
-
-            /*while (!Debugger.IsAttached)
-            {
-                Thread.Sleep(1000);
-            }
-            Debugger.Break();*/
+            /* while (!Debugger.IsAttached)
+             {
+                 Console.WriteLine("wait");
+                 Thread.Sleep(1000);
+             }
+             Debugger.Break();*/
+            // Setting.DownloadManage = new DownloadManage();
             var D = new DirectoryInfo(@"./");
             var FileD = D.GetFiles("*.html");
             var count = 0;
@@ -274,6 +333,7 @@ namespace SpiderServerInLinux
                     }
                 }
             }
+            //HandleT66yPage(File.ReadAllText("1.htm", Encoding.GetEncoding("gbk")));
             void HandleT66yPage(string Html)
             {
                 var TempData = new T66yData() { HtmlData = Html };
@@ -324,6 +384,7 @@ namespace SpiderServerInLinux
                             {
                                 var img = item.Attributes["ess-data"].Value.Replace(".th.jpg", ".jpg");
                                 TempList.Add(img);
+                                ImgList.Add(new T66yImgData() { id = img });
                             }
                         }
                         else if (FindFirst(item.InnerHtml, TempData.Title))
@@ -816,17 +877,16 @@ namespace SpiderServerInLinux
             AppDomain.CurrentDomain.ProcessExit += delegate
             {
                 Setting.DownloadManage?.Dispose();
-                Console.Clear();
-                Console.WriteLine("程序退出");
+                // Console.Clear(); Console.WriteLine("程序退出");
             };
             AppDomain.CurrentDomain.UnhandledException += delegate
             {
-                Console.Clear();
-                Console.WriteLine("程序异常");
+                //Console.Clear();
+                // Console.WriteLine("程序异常");
             };
             TaskScheduler.UnobservedTaskException += (s, e) =>
             {
-                Loger.Instance.ServerInfo("主机", $"线程异常{e.Exception.StackTrace}");
+                // Loger.Instance.ServerInfo("主机", $"线程异常{e.Exception.StackTrace}");
             };
             await InitCoreAsync().ConfigureAwait(false);
         }
@@ -839,10 +899,10 @@ namespace SpiderServerInLinux
             {
                 try
                 {
-                    Setting.SSR = new ShadowsocksController();
+                    Setting.SSR = new ShadowsocksRController();
                     Setting.Socks5Point = Setting.SSR.SocksPort;
                     Setting.SSR.CheckOnline();
-                    Setting.NyaaSSR = new ShadowsocksController(Setting._GlobalSet.ssr4Nyaa);
+                    Setting.NyaaSSR = new ShadowsocksRController(Setting._GlobalSet.ssr4Nyaa);
                     Setting.NyaaSocks5Point = Setting.NyaaSSR.SocksPort;
                 }
                 catch (Exception ex)
@@ -854,13 +914,12 @@ namespace SpiderServerInLinux
                     ThreadPool.QueueUserWorkItem(x =>
                     {
                         Setting.NyaaSocks5Point = 1088;
-                        if (Setting.NyaaSSR.CheckOnline(@"https://sukebei.nyaa.si/"))
-                        {
-                            Setting.NyaaSocks5Point = Setting.NyaaSSR.SocksPort;
-                        }
+                        /*if (!Setting.NyaaSSR.CheckOnline(@"https://sukebei.nyaa.si/", Setting.NyaaSocks5Point))
+                            Setting.NyaaSocks5Point = Setting.NyaaSSR.SocksPort;*/
                     });
                 }
             }),
+
             Task.Run(() => Setting.server = new server())).ContinueWith(obj
             => Loger.Instance.LocalInfo("数据库初始化完毕")).
             ContinueWith(obj =>
@@ -882,7 +941,7 @@ namespace SpiderServerInLinux
                 //Task.Run(() => DataBaseCommand.ChangeJavActress());
                 if (Setting._GlobalSet.AutoRun) Setting.DownloadManage = new DownloadManage(); else Loger.Instance.LocalInfo("自动运行关闭，等待命令");
 
-                /*var _controller = new ShadowsocksController();
+                /*var _controller = new ShadowsocksRController();
                 _controller.Start();
                 using (var request = new HttpRequest())
                 {

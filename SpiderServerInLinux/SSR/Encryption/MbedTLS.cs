@@ -2,11 +2,11 @@
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
-using Shadowsocks.Controller;
-using Shadowsocks.Util;
+using ShadowsocksR.Controller;
+using ShadowsocksR.Util;
 using SpiderServerInLinux;
 
-namespace Shadowsocks.Encryption
+namespace ShadowsocksR.Encryption
 {
     public class MbedTLS
     {

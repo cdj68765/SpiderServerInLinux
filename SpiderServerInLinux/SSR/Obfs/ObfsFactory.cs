@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Reflection;
 
-namespace Shadowsocks.Obfs
+namespace ShadowsocksR.Obfs
 {
     public static class ObfsFactory
     {

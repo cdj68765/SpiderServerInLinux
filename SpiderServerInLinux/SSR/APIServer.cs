@@ -3,13 +3,13 @@ using System.Collections.Generic;
 using System.Text;
 using System.Net;
 using System.Net.Sockets;
-using Shadowsocks.Model;
+using ShadowsocksR.Model;
 
-namespace Shadowsocks.Controller
+namespace ShadowsocksR.Controller
 {
     internal class APIServer : Listener.Service
     {
-        private ShadowsocksController _controller;
+        private ShadowsocksRController _controller;
         private Configuration _config;
 
         public const int RecvSize = 16384;
@@ -17,7 +17,7 @@ namespace Shadowsocks.Controller
         private string connection_request;
         private Socket _local;
 
-        public APIServer(ShadowsocksController controller, Configuration config)
+        public APIServer(ShadowsocksRController controller, Configuration config)
         {
             _controller = controller;
             _config = config;
@@ -213,7 +213,7 @@ namespace Shadowsocks.Controller
                         string content = SimpleJson.SimpleJson.SerializeObject(servers);
 
                         string text = String.Format(@"HTTP/1.1 200 OK
-Server: ShadowsocksR
+Server: ShadowsocksRR
 Content-Type: text/plain
 Content-Length: {0}
 Connection: Close
@@ -234,7 +234,7 @@ Connection: Close
                                 ret_code = "403 Forbid";
                             }
                             string text = String.Format(@"HTTP/1.1 {0}
-Server: ShadowsocksR
+Server: ShadowsocksRR
 Content-Type: text/plain
 Content-Length: {1}
 Connection: Close
@@ -252,7 +252,7 @@ Connection: Close
                             _config.token = token;
 
                             string text = String.Format(@"HTTP/1.1 200 OK
-Server: ShadowsocksR
+Server: ShadowsocksRR
 Content-Type: text/plain
 Content-Length: {0}
 Connection: Close

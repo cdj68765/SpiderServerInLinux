@@ -1,7 +1,7 @@
 ﻿using System.Security.Cryptography;
 using System.Text;
 
-namespace Shadowsocks.Encryption
+namespace ShadowsocksR.Encryption
 {
     public struct EncryptorInfo
     {

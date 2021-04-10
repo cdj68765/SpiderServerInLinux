@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace Shadowsocks.Util
+namespace ShadowsocksR.Util
 {
     class CRC32
     {

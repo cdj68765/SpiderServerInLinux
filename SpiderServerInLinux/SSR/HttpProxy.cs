@@ -4,7 +4,7 @@ using System.Text;
 using System.Net;
 using System.Net.Sockets;
 
-namespace Shadowsocks.Controller
+namespace ShadowsocksR.Controller
 {
     class HttpPraser
     {

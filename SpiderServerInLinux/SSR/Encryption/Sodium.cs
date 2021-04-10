@@ -1,4 +1,4 @@
-﻿using Shadowsocks.Controller;
+﻿using ShadowsocksR.Controller;
 using SpiderServerInLinux;
 using System;
 using System.Collections.Generic;
@@ -6,7 +6,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace Shadowsocks.Encryption
+namespace ShadowsocksR.Encryption
 {
     public class Sodium
     {

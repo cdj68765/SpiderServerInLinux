@@ -742,6 +742,8 @@ namespace xNet
             }
         }
 
+        public bool Busy { get; internal set; }
+
         #region Индексаторы (открытые)
 
         /// <summary>
@@ -758,7 +760,7 @@ namespace xNet
         /// <exception cref="System.ArgumentException">
         /// Значение параметра <paramref name="headerName"/> является пустой строкой.
         /// -или- Установка значения HTTP-заголовка, который должен задаваться с помощью
-        ///  специального свойства/метода.
+        /// специального свойства/метода.
         /// </exception>
         /// <remarks>
         /// Список HTTP-заголовков, которые должны задаваться только с помощью специальных свойств/методов:
@@ -1008,7 +1010,7 @@ namespace xNet
             {
                 _temporaryUrlParams = urlParams;
             }
-
+            Busy = true;
             return Raw(HttpMethod.GET, address);
         }
 
@@ -1620,6 +1622,7 @@ namespace xNet
                     content.Dispose();
 
                 ClearRequestData();
+                Busy = false;
             }
         }
 
@@ -2060,7 +2063,7 @@ namespace xNet
         /// Значение параметра <paramref name="name"/> является пустой строкой.
         /// -или- Значение параметра <paramref name="value"/> является пустой строкой.
         /// -или- Установка значения HTTP-заголовка, который должен задаваться с помощью
-        ///  специального свойства/метода.
+        /// специального свойства/метода.
         /// </exception>
         /// <remarks>Данный HTTP-заголовок будет стёрт после первого запроса.</remarks>
         public HttpRequest AddHeader(string name, string value)
@@ -2117,7 +2120,7 @@ namespace xNet
         /// <exception cref="System.ArgumentException">
         /// Значение параметра <paramref name="value"/> является пустой строкой.
         /// -или- Установка значения HTTP-заголовка, который должен задаваться с помощью
-        ///  специального свойства/метода.
+        /// специального свойства/метода.
         /// </exception>
         /// <remarks>Данный HTTP-заголовок будет стёрт после первого запроса.</remarks>
         public HttpRequest AddHeader(HttpHeader header, string value)
@@ -2674,9 +2677,8 @@ namespace xNet
 
                     if (connectException is SocketException)
                     {
-                        Loger.Instance.Error(connectException.Message);
-                        // throw NewHttpException(Resources.HttpException_FailedConnect,
-                        // connectException, HttpExceptionStatus.ConnectFailure);
+                        // Loger.Instance.Error(connectException.Message); throw
+                        // NewHttpException(Resources.HttpException_FailedConnect, connectException, HttpExceptionStatus.ConnectFailure);
                     }
 
                     //throw connectException;

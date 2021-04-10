@@ -28,6 +28,7 @@
 	  <Compile Remove="Code.cs" />
 	  <Compile Remove="DownNyaaLoop.cs" />
 	  <Compile Remove="HandlerHtml.cs" />
+	  <Compile Remove="NetManage.cs" />
 	  <Compile Remove="ShowInControl.cs" />
 	  <Compile Remove="TCPCommand.cs" />
 	  <Compile Remove="WebClientEx.cs" />
@@ -36,6 +37,8 @@
 
 	<ItemGroup>
 	  <None Remove="Cowboy.WebSockets.dll" />
+	  <None Remove="dll.zip" />
+	  <None Remove="DownloadManage 2021-02-27备份更改数据读取模式.zip" />
 	</ItemGroup>
 
 	<ItemGroup>
@@ -93,8 +96,4 @@
 			<Private>true</Private>
 		</Reference>
 	</ItemGroup>
-
-	<Target Name="PostBuild" AfterTargets="PostBuildEvent">
-	  <Exec Command="copy /y &quot;$(TargetPath)&quot; &quot;Z:\publish\&quot;" />
-	</Target>
 </Project>

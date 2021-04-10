@@ -3,7 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Text;
 
-namespace Shadowsocks.Model
+namespace ShadowsocksR.Model
 {
     public class IPAddressCmp : System.Net.IPAddress, IComparable
     {

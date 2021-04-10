@@ -3,13 +3,13 @@ using System.Collections.Generic;
 using System.Text;
 using System.Net;
 using System.Net.Sockets;
-using Shadowsocks.Encryption;
-using Shadowsocks.Obfs;
-using Shadowsocks.Model;
+using ShadowsocksR.Encryption;
+using ShadowsocksR.Obfs;
+using ShadowsocksR.Model;
 using System.Timers;
 using System.Threading;
 
-namespace Shadowsocks.Controller
+namespace ShadowsocksR.Controller
 {
     public class ProtocolException : Exception
     {
