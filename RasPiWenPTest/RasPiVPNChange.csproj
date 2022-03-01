@@ -1,0 +1,33 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net6.0</TargetFramework>
+    <StartupObject>RasPiVPNChange.Program</StartupObject>
+  </PropertyGroup>
+
+	<ItemGroup>
+		<Compile Remove="Program.cs" />
+	</ItemGroup>
+
+  <ItemGroup>
+    <None Remove="config.json" />
+  </ItemGroup>
+
+  <ItemGroup>
+	  <Compile Include="Program.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+	  <EmbeddedResource Include="config.json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="LiteDB" Version="4.1.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Cowboy.WebSockets\Cowboy.WebSockets.csproj" />
+  </ItemGroup>
+
+</Project>

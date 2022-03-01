@@ -86,14 +86,15 @@
     <Reference Include="HtmlAgilityPack, Version=1.11.26.0, Culture=neutral, PublicKeyToken=bd319b19eaf3b43a, processorArchitecture=MSIL">
       <HintPath>..\packages\HtmlAgilityPack.1.11.26\lib\Net45\HtmlAgilityPack.dll</HintPath>
     </Reference>
-    <Reference Include="LiteDB, Version=4.1.4.0, Culture=neutral, PublicKeyToken=4ee40123013c9f27, processorArchitecture=MSIL">
-      <HintPath>..\packages\LiteDB.4.1.4\lib\net40\LiteDB.dll</HintPath>
+    <Reference Include="LiteDB, Version=5.0.11.0, Culture=neutral, PublicKeyToken=4ee40123013c9f27, processorArchitecture=MSIL">
+      <HintPath>..\packages\LiteDB.5.0.11\lib\net45\LiteDB.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.VisualBasic" />
     <Reference Include="System" />
     <Reference Include="System.Configuration" />
     <Reference Include="System.Core" />
     <Reference Include="System.Drawing" />
+    <Reference Include="System.Runtime" />
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
@@ -148,96 +149,16 @@
       <DependentUpon>Settings.settings</DependentUpon>
     </Compile>
     <Compile Include="server.cs" />
-    <Compile Include="SevenZip\ArchiveEmulationStreamProxy.cs" />
-    <Compile Include="SevenZip\ArchiveExtractCallback.cs" />
-    <Compile Include="SevenZip\ArchiveFileInfo.cs" />
-    <Compile Include="SevenZip\ArchiveOpenCallback.cs" />
-    <Compile Include="SevenZip\ArchiveProperty.cs" />
-    <Compile Include="SevenZip\ArchiveUpdateCallback.cs" />
-    <Compile Include="SevenZip\CallbackBase.cs" />
-    <Compile Include="SevenZip\COM.cs" />
-    <Compile Include="SevenZip\CompressionMode.cs" />
-    <Compile Include="SevenZip\EventArguments\ExtractFileCallback.cs" />
-    <Compile Include="SevenZip\EventArguments\ExtractFileCallbackArgs.cs" />
-    <Compile Include="SevenZip\EventArguments\ExtractFileCallbackReason.cs" />
-    <Compile Include="SevenZip\EventArguments\FileInfoEventArgs.cs" />
-    <Compile Include="SevenZip\EventArguments\FileNameEventArgs.cs" />
-    <Compile Include="SevenZip\EventArguments\FileOverwriteEventArgs.cs" />
-    <Compile Include="SevenZip\EventArguments\ICancellable.cs" />
-    <Compile Include="SevenZip\EventArguments\IntEventArgs.cs" />
-    <Compile Include="SevenZip\EventArguments\OpenEventArgs.cs" />
-    <Compile Include="SevenZip\EventArguments\PercentDoneEventArgs.cs" />
-    <Compile Include="SevenZip\EventArguments\ProgressEventArgs.cs" />
-    <Compile Include="SevenZip\EventSynchronizationStrategy.cs" />
-    <Compile Include="SevenZip\Exceptions\CompressionFailedException.cs" />
-    <Compile Include="SevenZip\Exceptions\ExtractionFailedException.cs" />
-    <Compile Include="SevenZip\Exceptions\LzmaException.cs" />
-    <Compile Include="SevenZip\Exceptions\SevenZipArchiveException.cs" />
-    <Compile Include="SevenZip\Exceptions\SevenZipCompressionFailedException.cs" />
-    <Compile Include="SevenZip\Exceptions\SevenZipException.cs" />
-    <Compile Include="SevenZip\Exceptions\SevenZipExtractionFailedException.cs" />
-    <Compile Include="SevenZip\Exceptions\SevenZipInvalidFileNamesException.cs" />
-    <Compile Include="SevenZip\Exceptions\SevenZipLibraryException.cs" />
-    <Compile Include="SevenZip\Exceptions\SevenZipSfxValidationException.cs" />
-    <Compile Include="SevenZip\FileChecker.cs" />
-    <Compile Include="SevenZip\Formats.cs" />
-    <Compile Include="SevenZip\InternalCompressionMode.cs" />
-    <Compile Include="SevenZip\LibraryFeature.cs" />
-    <Compile Include="SevenZip\LibraryManager.cs" />
-    <Compile Include="SevenZip\LZMA\LzmaDecodeStream.cs" />
-    <Compile Include="SevenZip\LZMA\LzmaEncodeStream.cs" />
-    <Compile Include="SevenZip\LZMA\LzmaProgressCallback.cs" />
-    <Compile Include="SevenZip\NativeMethods.cs" />
-    <Compile Include="SevenZip\sdk\Common\CRC.cs" />
-    <Compile Include="SevenZip\sdk\Common\InBuffer.cs" />
-    <Compile Include="SevenZip\sdk\Common\OutBuffer.cs" />
-    <Compile Include="SevenZip\sdk\Compress\LZMA\LzmaBase.cs" />
-    <Compile Include="SevenZip\sdk\Compress\LZMA\LzmaDecoder.cs" />
-    <Compile Include="SevenZip\sdk\Compress\LZMA\LzmaEncoder.cs" />
-    <Compile Include="SevenZip\sdk\Compress\LZ\IMatchFinder.cs" />
-    <Compile Include="SevenZip\sdk\Compress\LZ\LzBinTree.cs" />
-    <Compile Include="SevenZip\sdk\Compress\LZ\LzInWindow.cs" />
-    <Compile Include="SevenZip\sdk\Compress\LZ\LzOutWindow.cs" />
-    <Compile Include="SevenZip\sdk\Compress\RangeCoder\RangeCoder.cs" />
-    <Compile Include="SevenZip\sdk\Compress\RangeCoder\RangeCoderBit.cs" />
-    <Compile Include="SevenZip\sdk\Compress\RangeCoder\RangeCoderBitTree.cs" />
-    <Compile Include="SevenZip\sdk\ICoder.cs" />
-    <Compile Include="SevenZip\SevenZipBase.cs" />
-    <Compile Include="SevenZip\SevenZipCompressor.cs" />
-    <Compile Include="SevenZip\SevenZipCompressorAsynchronous.cs" />
-    <Compile Include="SevenZip\SevenZipExtractor.cs" />
-    <Compile Include="SevenZip\SevenZipExtractorAsynchronous.cs" />
-    <Compile Include="SevenZip\SevenZipSfx.cs" />
-    <Compile Include="SevenZip\StreamWrappers.cs" />
-    <Compile Include="SevenZip\UpdateData.cs" />
-    <Compile Include="SevenZip\ZipEncryptionMethod.cs" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\.editorconfig">
+      <Link>.editorconfig</Link>
+    </None>
     <None Include="App.config" />
     <None Include="packages.config" />
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
-    </None>
-    <None Include="SevenZip\SevenZip.csproj" />
-    <None Include="SevenZip\SevenZip.csproj.DotSettings" />
-    <None Include="SevenZip\SevenZip.snk" />
-    <None Include="SevenZip\sfx\7z.sfx" />
-    <None Include="SevenZip\sfx\7zCon.sfx" />
-    <None Include="SevenZip\sfx\7zS.sfx" />
-    <None Include="SevenZip\sfx\7zSD.sfx" />
-    <None Include="SevenZip\sfx\7zxSD_All.sfx" />
-    <None Include="SevenZip\sfx\7zxSD_All_x64.sfx" />
-    <None Include="SevenZip\sfx\7zxSD_Deflate.sfx" />
-    <None Include="SevenZip\sfx\7zxSD_Deflate_x64.sfx" />
-    <None Include="SevenZip\sfx\7zxSD_LZMA.sfx" />
-    <None Include="SevenZip\sfx\7zxSD_LZMA2.sfx" />
-    <None Include="SevenZip\sfx\7zxSD_LZMA2_x64.sfx" />
-    <None Include="SevenZip\sfx\7zxSD_LZMA_x64.sfx" />
-    <None Include="SevenZip\sfx\7zxSD_PPMd.sfx" />
-    <None Include="SevenZip\sfx\7zxSD_PPMd_x64.sfx" />
-    <None Include="SevenZip\sfx\Configs.xsd">
-      <SubType>Designer</SubType>
     </None>
   </ItemGroup>
   <ItemGroup>
@@ -277,15 +198,6 @@
       <Project>{3a79448c-5d23-4325-8076-576e64ba65be}</Project>
       <Name>Cowboy.WebSockets</Name>
     </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
-    <Content Include="SevenZip\7z.dll" />
-    <Content Include="SevenZip\7z64.dll" />
-    <Content Include="SevenZip\gpl.txt" />
-    <Content Include="SevenZip\lgpl.txt" />
-    <Content Include="SevenZip\sfx\Configs.xml" />
-    <Content Include="SevenZip\sfx\Configs.xslt" />
-    <Content Include="SevenZip\sfx\sample.txt" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">

@@ -283,6 +283,16 @@ namespace SpiderServerInLinux
                     WindowHeight = Console.WindowHeight;
                     WindowWidth = Console.WindowWidth;
                 }
+                try
+                {
+                    if (Setting.Remote.Count > 1024)
+                        Setting.Remote.Clear();
+                    if (Setting.LocalInfoC.Count > 1024)
+                        Setting.LocalInfoC.Clear();
+                }
+                catch (Exception e)
+                {
+                }
                 String HumanReadableFilesize(double size)
                 {
                     var units = new[] { "B", "KB", "MB", "GB", "TB", "PB" };

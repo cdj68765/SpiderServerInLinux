@@ -1,26 +1,22 @@
-﻿using HtmlAgilityPack;
+﻿using CoreZipCode.Services.Postcode.PostcodesIoApi;
+using HtmlAgilityPack;
 using LiteDB;
-using Microsoft.Extensions.DependencyInjection;
-using ShadowsocksR.Controller;
 using SocksSharp;
 using SocksSharp.Proxy;
 using System;
+using System.Buffers;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
-using System.Globalization;
 using System.IO;
-using System.IO.Compression;
 using System.Linq;
-using System.Net;
 using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Timers;
 using xNet;
 
 namespace SpiderServerInLinux
@@ -50,6 +46,7 @@ namespace SpiderServerInLinux
         public Stopwatch GetSISSpan = new Stopwatch();
 
         public bool JavOldDownloadRunning = false;
+        public string localhost = "192.168.2.116";
 
         public DownloadManage(bool v = true)
         {
@@ -63,7 +60,42 @@ namespace SpiderServerInLinux
             {
                 Loger.Instance.LocalInfo("网络连接正常，正在加载下载进程");
                 Loger.Instance.LocalInfo("初始化下载");
+                _ = Task.Factory.StartNew(() =>
+                {
+                    foreach (var item in Setting.SaveImgOpera.GetConsumingEnumerable())
+                    {
+                        try
+                        {
+                            using var Tempdb = new LiteDatabase($@"Filename={DataBaseCommand.ImageUri}Image{Path.DirectorySeparatorChar}{item.Date}.db;");
+                            if (!Tempdb.CollectionExists("WebpData"))
+                            {
+                                var TempWebp = Tempdb.GetCollection<WebpImage>("WebpData");
+                                TempWebp.EnsureIndex(x => x.id);
+                                TempWebp.EnsureIndex(x => x.From);
+                                TempWebp.EnsureIndex(x => x.Status);
+                            }
+                            try
+                            {
+                                var Find = Tempdb.GetCollection<WebpImage>("WebpData");
+                                if (!Find.Exists(x => x.id == item.id))
+                                {
+                                    Find.Upsert(item);
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                Loger.Instance.LocalInfo($"图片添加到日期数据库失败,{ex.Message}");
+                            }
+                            finally { Tempdb.Dispose(); }
+                        }
+                        catch (Exception)
+                        {
+                        }
+                    }
+                });
                 await Task.WhenAll(GetJavNewData(), GetNyaaNewData(), GetMiMiData(), GetMiMiAiStoryData(), GetT66yData(), GetSis001Data());
+
+                // await Task.WhenAll(GetJavNewData(), GetNyaaNewData(), GetMiMiData(), GetMiMiAiStoryData());
             }
             else
             {
@@ -76,13 +108,10 @@ namespace SpiderServerInLinux
 
         public Task GetSis001Data()
         {
+            var NextStartTime = string.Empty;
             //Setting._GlobalSet.SISSkip = 0;
             // Setting._GlobalSet.SISPageIndex = 220;
-            var db = new LiteDatabase($"Filename={DataBaseCommand.BaseUri}SIS.db;ReadOnly=True");
-            var SISDB = db.GetCollection<SISData>("SISData");
             //var STSDB = db.GetCollection<SISData>("SISData");
-            var STSImg = db.GetCollection<SISImgData>("ImgData");
-
             if (!string.IsNullOrEmpty(Setting.SISDownLoadNow)) return Task.CompletedTask;
             int PageCount = 0;
             Task.Factory.StartNew(() =>
@@ -91,6 +120,10 @@ namespace SpiderServerInLinux
                 do
                 {
                     //var dbimg = new LiteDatabase("SIS.db;Connection=Shared;ReadOnly=True");
+                    using var db = new LiteDatabase(File.Open(@$"{DataBaseCommand.BaseUri}SIS.db", FileMode.Open, FileAccess.Read, FileShare.ReadWrite));
+
+                    var SISDB = db.GetCollection<SISData>("SISData");
+
                     var Fitem = SISDB.FindOne(x => !x.Status);
                     //dbimg.Dispose();
                     try
@@ -133,16 +166,16 @@ namespace SpiderServerInLinux
                     }
                 } while (true);
             });
-            Task.Factory.StartNew(() =>
+            Task.Factory.StartNew(async () =>
             {
                 var ContinueCount = 0;
                 Loger.Instance.LocalInfo($"开始SIS下载,计数{ContinueCount}");
                 Thread.Sleep(2000);
+                Setting._GlobalSet.SISPageIndex = 100;
                 while (!SISDownloadCancel.IsCancellationRequested)
                 {
                     var DoanloadPageHtml = string.Empty;
                     Interlocked.Increment(ref Setting.SISPageCount);
-
                     Setting.SISDownLoadNow = $"当前下载第{Setting.SISPageCount}";
                     DoanloadPageHtml = DownloadMainPage(Setting.SISPageCount);
                     if (string.IsNullOrEmpty(DoanloadPageHtml))
@@ -160,10 +193,13 @@ namespace SpiderServerInLinux
                             Temp.id = int.Parse(item[3]);
                             Setting.SISDownLoadNow = $"当前下载{Temp.Date}日第{Setting.SISPageCount}页\n\r第{PageCount}篇,计数{ContinueCount}";
                             //using (var db = new LiteDatabase(@$"{BaseUri}SIS.db"))
+                            var db = new LiteDatabase(File.Open(@$"{DataBaseCommand.BaseUri}SIS.db", FileMode.Open, FileAccess.Read, FileShare.ReadWrite));
+
+                            var SISDB = db.GetCollection<SISData>("SISData");
                             {
-                                if (SISDB.Exists(x => x.id == Temp.id))
+                                var Search = Temp.id;
+                                if (SISDB.Exists(x => x.id == Search))
                                 {
-                                    //db.Dispose();
                                     Interlocked.Increment(ref ContinueCount);
                                     if (ContinueCount > 100)
                                     {
@@ -220,8 +256,8 @@ namespace SpiderServerInLinux
                                                }*/
                                             //dbimg.Dispose();
                                         }
-                                        ContinueCount = 0;
-                                        Setting.SISPageCount = Setting._GlobalSet.SISPageIndex;
+
+                                        //Setting.SISPageCount = Setting._GlobalSet.SISPageIndex;
                                         break;
                                     }
                                     continue;
@@ -231,10 +267,12 @@ namespace SpiderServerInLinux
                                     ContinueCount = 0;
                                 }
                             }
+                            db.Dispose();
                             Temp.Date = item[2];
                             Temp.Type = item[4];
                             Temp.Title = item[1];
                             Temp.Uri = item[0];
+                            // Loger.Instance.LocalInfo(Temp.Title);
 
                             Temp.HtmlData = DownloadMainPage(_Uri: $"http://www.sis001.com/forum/{Temp.Uri}");
                             if (!string.IsNullOrEmpty(Temp.HtmlData))
@@ -268,10 +306,30 @@ namespace SpiderServerInLinux
                         if (Setting.SISPageCount == 0) break;
                         PageCount += 1;
                     }
-                    if (Setting.SISPageCount > 100)
+
+                    /*if (Setting._GlobalSet.SISPageIndex < Setting.SISPageCount)
                     {
-                        Setting._GlobalSet.SISPageIndex = Setting.SISPageCount;
+                        Setting._GlobalSet.SISPageIndex = Setting.SISPageCount - 1;
+                    }*/
+                    if (ContinueCount > 100)
+                    {
+                        Setting.SISDownloadIng = false;
+                        ContinueCount = 0;
+                        // Setting.SISPageCount = Setting._GlobalSet.SISPageIndex;
+                        do
+                        {
+                            var SISTIME = TimeSpan.FromMilliseconds(GetSISDataTimer.Interval) - GetSISSpan.Elapsed;
+                            Setting.SISDownLoadNow = $"下载完成，下次开始时间{NextStartTime}\r\n剩余时间{SISTIME:hh\\:mm\\:ss}";
+                            await Task.Delay(1000);
+                        } while (Setting.SISPageCount != 0);
                     }
+
+                    /*do
+                    {
+                        var SISTIME = TimeSpan.FromMilliseconds(GetSISDataTimer.Interval) - GetSISSpan.Elapsed;
+                        Setting.SISDownLoadNow = $"下载完成，下次开始时间{NextStartTime}\r\n剩余时间{SISTIME:hh\\:mm\\:ss}";
+                        await Task.Delay(1000);
+                    } while (Setting.SISPageCount != 0);*/
                 }
             }, SISDownloadCancel.Token);
             return Task.Run(() =>
@@ -283,15 +341,16 @@ namespace SpiderServerInLinux
                     GetSISDataTimer.Stop();
                     GetSISSpan.Reset();
                     Setting.SISPageCount = 0;
+                    Setting.SISDownloadIng = true;
                     GetSISDataTimer.Interval = new Random().Next(12, 24) * 3600 * 1000;
-                    Loger.Instance.LocalInfo($"SIS下次获得新数据为{DateTime.Now.AddMilliseconds(GetSISDataTimer.Interval).ToString("MM-dd|HH:mm")}");
+                    NextStartTime = DateTime.Now.AddMilliseconds(GetSISDataTimer.Interval).ToString("MM-dd|HH:mm");
+                    Loger.Instance.LocalInfo($"SIS下次获得新数据为{NextStartTime}");
 
                     GetSISSpan.Restart();
                     GetSISDataTimer.Start();
                 };
                 GetSISDataTimer.Enabled = true;
             }, SISDownloadCancel.Token);
-
             string DownloadMainPage(int Index = -1, string _Uri = "")
             {
                 using (var request = new HttpRequest()
@@ -301,7 +360,7 @@ namespace SpiderServerInLinux
                 })
                 {
                     if (Setting._GlobalSet.NyaaSocksCheck && Setting.NyaaSocks5Point != 0)
-                        request.Proxy = Socks5ProxyClient.Parse($"localhost:{Setting.NyaaSocks5Point}");
+                        request.Proxy = Socks5ProxyClient.Parse($"{localhost}:{Setting.NyaaSocks5Point}");
                     try
                     {
                         int ErrorCount = 1;
@@ -329,7 +388,7 @@ namespace SpiderServerInLinux
                             catch (Exception ex)
                             {
                                 if (Setting._GlobalSet.SocksCheck && Setting.Socks5Point != 0)
-                                    request.Proxy = Socks5ProxyClient.Parse($"localhost:{Setting.Socks5Point}");
+                                    request.Proxy = Socks5ProxyClient.Parse($"{localhost}:{Setting.Socks5Point}");
                                 if (ex.Message.StartsWith("Cannot access a disposed object"))
                                 {
                                     Loger.Instance.LocalInfo($"SSR异常，退出全部下载进程");
@@ -422,7 +481,12 @@ namespace SpiderServerInLinux
                 var HtmlDoc = new HtmlDocument();
                 HtmlDoc.LoadHtml(HTMLDATA);
                 var Title = HtmlDoc.DocumentNode.SelectSingleNode("/html[1]/body[1]/div[4]/div[1]/form[1]/div[1]/table[1]/tr[1]/td[2]/div[3]/h2");
-                foreach (var item in HtmlDoc.DocumentNode.SelectSingleNode("/html[1]/body[1]/div[4]/div[1]/form[1]/div[1]/table[1]/tr[1]/td[2]/div[3]/div[3]").ChildNodes)
+                var FindOne = HtmlDoc.DocumentNode.SelectSingleNode("/html[1]/body[1]/div[4]/div[1]/form[1]/div[1]/table[1]/tr[1]/td[2]/div[3]/div[3]");
+                if (FindOne == null)
+                {
+                    FindOne = HtmlDoc.DocumentNode.SelectSingleNode("/html[1]/body[1]/div[4]/div[1]/form[1]/div[1]/table[1]/tr[1]/td[2]/div[4]/div[3]");
+                }
+                foreach (var item in FindOne.ChildNodes)
                 {
                     switch (item.Name)
                     {
@@ -435,14 +499,44 @@ namespace SpiderServerInLinux
                         case "img":
                             try
                             {
+                                var ImgUri = item.Attributes["src"].Value.Replace(".th.", ".");
                                 ImageCount += 1;
+                                Setting.SISDownLoadNow = $"下载{temp.Date}日第{PageNum}页第{PageCount + 1}篇\n\r{temp.id}页第{ImageCount}张图片";
+                                if (!ImgExist(ImgUri))
+                                {
+                                    var TempImg = new SISImgData() { id = ImgUri, Date = temp.Date };
+                                    TempImg.img = DownloadImgAsync(ImgUri);
+                                    try
+                                    {
+                                        if (TempImg.img != null)
+                                        {
+                                            temp.MainList.Add($"SIS-{TempImg.Hash}");
+                                            TempImg.FromList = new List<int>();
+                                            TempImg.FromList.Add(temp.id);
+                                            DataBaseCommand.SaveToSISDataUnit("img", UnitData: TempImg);
+                                        }
+                                        else
+                                        {
+                                            temp.MainList.Add($"SIS-{TempImg.id}");
+                                        }
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        Loger.Instance.LocalInfo($"SIS错误，下载图片发生错误{ex.Message}");
+                                    }
+                                }
+                                break;
+                                var db = new LiteDatabase(File.Open(@$"{DataBaseCommand.BaseUri}SIS.db", FileMode.Open, FileAccess.Read, FileShare.ReadWrite));
+                                var STSImg = db.GetCollection<SISImgData>("ImgData");
+
                                 //temp.MainList.Add(item.Attributes["src"].Value);
-                                var ImgUri = item.Attributes["src"].Value;
                                 //var db = new LiteDatabase("Filename=SIS.db;Connection=Shared;ReadOnly=True");
 
                                 // var db = new LiteDatabase(@$"{BaseUri}SIS.db");
                                 {
-                                    if (STSImg.Exists(x => x.id == ImgUri))
+                                    var Search = ImgUri;
+                                    //if (STSImg.Exists(x => x.id == Search))
+                                    if (false)
                                     {
                                         try
                                         {
@@ -450,7 +544,8 @@ namespace SpiderServerInLinux
                                             var FindImg = STSImg.FindOne(x => x.id == ImgUri);
                                             if (FindImg.FromList != null)
                                             {
-                                                if (!FindImg.FromList.Exists(x => x == temp.id))
+                                                var searchid = temp.id;
+                                                if (!FindImg.FromList.Exists(x => x == searchid))
                                                     FindImg.FromList.Add(temp.id);
                                             }
                                             else
@@ -461,7 +556,7 @@ namespace SpiderServerInLinux
                                             {
                                                 Setting.SISDownLoadNow = $"{temp.Date}日第{PageNum}页第{PageCount + 1}篇\n\r第{ImageCount}张图片下载中";
 
-                                                FindImg.img = DownloadImgAsync(ImgUri).Result;
+                                                FindImg.img = DownloadImgAsync(ImgUri);
                                             }
                                             temp.MainList.Add($"SIS-{FindImg.id}");
                                             DataBaseCommand.SaveToSISDataUnit("img", UnitData: FindImg);
@@ -478,23 +573,26 @@ namespace SpiderServerInLinux
                                         break;
                                     }
                                     else
-                                    {                                            //db.Dispose();
-                                        Setting.SISDownLoadNow = $"下载{temp.Date}日第{PageNum}页第{PageCount + 1}篇\n\r{temp.id}页第{ImageCount}张图片";
+                                    {
+                                        //db.Dispose();
                                         var TempImg = new SISImgData() { id = ImgUri, Date = temp.Date };
-                                        var imgdata = DownloadImgAsync(ImgUri).Result;
+                                        var imgdata = DownloadImgAsync(ImgUri);
                                         try
                                         {
                                             if (imgdata != null)
                                             {
                                                 // db = new LiteDatabase(@$"{BaseUri}SIS.db");
                                                 TempImg.img = imgdata;
-                                                if (STSImg.Exists(x => x.Hash == TempImg.Hash))
+                                                var search = TempImg.Hash;
+                                                //if (STSImg.Exists(x => x.Hash == search))
+                                                if (false)
                                                 {
                                                     Setting.SISDownLoadNow = $"{PageNum}-{PageCount + 1}-{ImageCount}在SIS找到重复项";
                                                     var FindImg = STSImg.FindOne(x => x.Hash == TempImg.Hash);
                                                     if (FindImg.FromList != null)
                                                     {
-                                                        if (!FindImg.FromList.Exists(x => x == temp.id))
+                                                        var SearchID = temp.id;
+                                                        if (!FindImg.FromList.Exists(x => x == SearchID))
                                                             FindImg.FromList.Add(temp.id);
                                                     }
                                                     else
@@ -504,12 +602,15 @@ namespace SpiderServerInLinux
                                                     temp.MainList.Add($"SIS-{FindImg.Hash}");
                                                     //db.Dispose();
                                                 }
-                                                else if (!DataBaseCommand.T66yWriteIng)
+                                                //else if (!DataBaseCommand.T66yWriteIng)
+                                                else if (false)
                                                 {
                                                     //var T66ydb = Setting.T66yDB;
-                                                    using var T66ydb = new LiteDatabase("Filename=T66y.db;Connection=Shared;ReadOnly=True");
+                                                    var T66ydb = new LiteDatabase(File.Open(@$"{DataBaseCommand.BaseUri}T66y.db", FileMode.Open, FileAccess.Read, FileShare.ReadWrite));
+
                                                     var T66yDB = T66ydb.GetCollection<T66yImgData>("ImgData");
-                                                    if (T66yDB.Exists(x => x.Hash == TempImg.Hash))
+                                                    var SearchHash = TempImg.Hash;
+                                                    if (T66yDB.Exists(x => x.Hash == SearchHash))
                                                     {
                                                         Setting.SISDownLoadNow = $"{PageNum}-{PageCount + 1}-{ImageCount}在T66y找到重复项";
                                                         Setting.DataCount.T66y += 1;
@@ -523,6 +624,7 @@ namespace SpiderServerInLinux
                                                         Setting.SISDownLoadNow = $"{PageNum}-{PageCount + 1}-{ImageCount}保存到数据库";
                                                         //db.Dispose();
                                                     }
+                                                    T66ydb.Dispose();
                                                 }
                                                 else
                                                 {
@@ -543,11 +645,13 @@ namespace SpiderServerInLinux
 
                                         TempImg.FromList = new List<int>();
                                         TempImg.FromList.Add(temp.id);
-                                        DataBaseCommand.SaveToSISDataUnit("img", UnitData: TempImg);
-                                        TempImg.img = null;
-                                        TempImg = null;
+                                        if (TempImg.img != null)
+                                        {
+                                            DataBaseCommand.SaveToSISDataUnit("img", UnitData: TempImg);
+                                        }
                                     }
                                 }
+                                db.Dispose();
                             }
                             catch (Exception ex)
                             {
@@ -566,15 +670,31 @@ namespace SpiderServerInLinux
                 }
                 try
                 {
-                    var HASH = HtmlDoc.DocumentNode.SelectSingleNode("/html[1]/body[1]/div[4]/div[1]/form[1]/div[1]/table[1]/tr[1]/td[2]/div[3]/div[4]/dl[1]/dt[1]/a[1]").Attributes["href"].Value;
-                    var DownloadUrl = HtmlDoc.DocumentNode.SelectSingleNode("/html[1]/body[1]/div[4]/div[1]/form[1]/div[1]/table[1]/tr[1]/td[2]/div[3]/div[4]/dl[1]/dt[1]/a[2]").Attributes["href"].Value;
-                    temp.MainList.Add(HASH);
-                    temp.MainList.Add(DownloadUrl);
+                    var HASH = "";
+                    var DownloadUrl = "";
+                    var HashFind = HtmlDoc.DocumentNode.SelectSingleNode("/html[1]/body[1]/div[4]/div[1]/form[1]/div[1]/table[1]/tr[1]/td[2]/div[3]/div[4]/dl[1]/dt[1]/a[1]");
+                    if (HashFind == null)
+                    {
+                        HashFind = HtmlDoc.DocumentNode.SelectSingleNode("/html[1]/body[1]/div[4]/div[1]/form[1]/div[1]/table[1]/tr[1]/td[2]/div[4]/div[4]/dl[1]/dt[1]/a[1]");
+                        if (HashFind != null)
+                        {
+                            HASH = HashFind.Attributes["href"].Value;
+                            DownloadUrl = HtmlDoc.DocumentNode.SelectSingleNode("/html[1]/body[1]/div[4]/div[1]/form[1]/div[1]/table[1]/tr[1]/td[2]/div[4]/div[4]/dl[1]/dt[1]/a[2]").Attributes["href"].Value;
+                        }
+                    }
+                    else
+                    {
+                        HASH = HashFind.Attributes["href"].Value;
+                        DownloadUrl = HtmlDoc.DocumentNode.SelectSingleNode("/html[1]/body[1]/div[4]/div[1]/form[1]/div[1]/table[1]/tr[1]/td[2]/div[3]/div[4]/dl[1]/dt[1]/a[2]").Attributes["href"].Value;
+                    }
+                    if (!string.IsNullOrEmpty(HASH))
+                        temp.MainList.Add(HASH);
+                    if (!string.IsNullOrEmpty(DownloadUrl))
+                        temp.MainList.Add(DownloadUrl);
                 }
                 catch (Exception)
                 {
                 }
-
                 temp.Status = true;
                 void FontInPut(SISData temp, HtmlNodeCollection childNodes)
                 {
@@ -691,7 +811,7 @@ namespace SpiderServerInLinux
             {
                 if (string.IsNullOrEmpty(Url))
                     Url = $"http://www.t66y.com/read.php?tid={DownloadPage}";
-                var Download = new HttpClient(new ProxyClientHandler<Socks5>(new ProxySettings { Host = "localhost", Port = Setting.NyaaSocks5Point }));
+                var Download = new HttpClient(new ProxyClientHandler<Socks5>(new ProxySettings { Host = $"{localhost}", Port = Setting.NyaaSocks5Point }));
                 for (int i = 0; i < 2; i++)
                 {
                     try
@@ -703,7 +823,7 @@ namespace SpiderServerInLinux
                     catch (Exception ex)
                     {
                         Download.Dispose();
-                        Download = new HttpClient(new ProxyClientHandler<Socks5>(new ProxySettings { Host = "localhost", Port = Setting.Socks5Point }));
+                        Download = new HttpClient(new ProxyClientHandler<Socks5>(new ProxySettings { Host = $"{localhost}", Port = Setting.Socks5Point }));
                     }
                 }
                 return null;
@@ -711,7 +831,7 @@ namespace SpiderServerInLinux
             string DownloadMainPage(int Index = -1, string _Uri = "")
             {
                 var down = Index > -1 ? new Uri($"http://{new Uri(Setting._GlobalSet.MiMiAiAddress).Authority}/forumdisplay.php?fid=11&filter=0&orderby=dateline&page={Index}") : new Uri($"{_Uri}");
-                var Download = new HttpClient(new ProxyClientHandler<Socks5>(new ProxySettings { Host = "localhost", Port = Setting.Socks5Point }));
+                var Download = new HttpClient(new ProxyClientHandler<Socks5>(new ProxySettings { Host = $"{localhost}", Port = Setting.Socks5Point }));
                 for (int i = 0; i < 2; i++)
                 {
                     try
@@ -723,7 +843,7 @@ namespace SpiderServerInLinux
                     catch (Exception ex)
                     {
                         Download.Dispose();
-                        Download = new HttpClient(new ProxyClientHandler<Socks5>(new ProxySettings { Host = "localhost", Port = Setting.NyaaSocks5Point }));
+                        Download = new HttpClient(new ProxyClientHandler<Socks5>(new ProxySettings { Host = $"{localhost}", Port = Setting.NyaaSocks5Point }));
                     }
                 }
                 return null;
@@ -735,7 +855,7 @@ namespace SpiderServerInLinux
                 })
                 {
                     if (Setting._GlobalSet.SocksCheck && Setting.Socks5Point != 0)
-                        request.Proxy = Socks5ProxyClient.Parse($"localhost:{Setting.Socks5Point}");
+                        request.Proxy = Socks5ProxyClient.Parse($"{localhost}:{Setting.Socks5Point}");
                     try
                     {
                         int ErrorCount = 1;
@@ -752,7 +872,7 @@ namespace SpiderServerInLinux
                             catch (Exception ex)
                             {
                                 if (Setting._GlobalSet.SocksCheck && Setting.Socks5Point != 0)
-                                    request.Proxy = Socks5ProxyClient.Parse($"localhost:{Setting.Socks5Point}");
+                                    request.Proxy = Socks5ProxyClient.Parse($"{localhost}:{Setting.Socks5Point}");
                                 if (request.Response.RedirectAddress != null)
                                 {
                                     if (request.Response.RedirectAddress.Authority != downurl.Authority)
@@ -858,7 +978,6 @@ namespace SpiderServerInLinux
 
                 Setting.T66yDownLoadOldOther = $"停止下载";
                 // copy /y "$(TargetPath)" "Z:\publish\"
-
                 var GetOtherT66yPage = new Action(() =>
                 {
                     Loger.Instance.LocalInfo($"开始T66y旧数据下载");
@@ -868,8 +987,8 @@ namespace SpiderServerInLinux
 
                     //using var db = new LiteDatabase(@$"{BaseUri}T66y.db");
                     //var db = Setting.T66yDB;
-                    using var db = new LiteDatabase("Filename=T66y.db;Connection=Shared;ReadOnly=True");
-                    var DownloadPage = db.GetCollection<T66yData>("T66yData").Min(x => x.id).AsInt32;
+                    var db = new LiteDatabase(File.Open(@$"{DataBaseCommand.BaseUri}T66y.db", FileMode.Open, FileAccess.Read, FileShare.ReadWrite));
+                    var DownloadPage = db.GetCollection<T66yData>("T66yData").Min(x => x.id);
                     var PageCount = 0;
                     var HisList = new List<string>();
                     if (File.Exists(@"T66yHis.txt"))
@@ -881,8 +1000,8 @@ namespace SpiderServerInLinux
                         if (T66yDownloadCancel.IsCancellationRequested ||
                         Setting.T66yDownloadIng) break; if (Setting.T66yDownLoadNowOther != "T66y附加信息未启用") break;
                         Interlocked.Decrement(ref DownloadPage);
-
-                        if (HisList.Exists(x => x == DownloadPage.ToString())) continue; else File.AppendAllLines(@"T66yHis.txt", new[] { DownloadPage.ToString() });
+                        var Search = DownloadPage.ToString();
+                        if (HisList.Exists(x => x == Search)) continue; else File.AppendAllLines(@"T66yHis.txt", new[] { DownloadPage.ToString() });
                         if (DataBaseCommand.GetDataFromT66y("CheckT66yExists", DownloadPage.ToString()))
                             continue;
                         Interlocked.Increment(ref PageCount);
@@ -926,6 +1045,7 @@ namespace SpiderServerInLinux
                         }
                     }
                     Setting.T66yDownLoadOldOther = $"停止下载";
+
                     string DownloadGooglePage(int DownloadPage)
                     {
                         using (var request = new HttpRequest()
@@ -936,7 +1056,7 @@ namespace SpiderServerInLinux
                         })
                         {
                             if (Setting._GlobalSet.NyaaSocksCheck && Setting.NyaaSocks5Point != 0)
-                                request.Proxy = Socks5ProxyClient.Parse($"localhost:{Setting.NyaaSocks5Point}");
+                                request.Proxy = Socks5ProxyClient.Parse($"{localhost}:{Setting.NyaaSocks5Point}");
                             try
                             {
                                 int ErrorCount = 1;
@@ -952,7 +1072,7 @@ namespace SpiderServerInLinux
                                     catch (Exception ex)
                                     {
                                         if (Setting._GlobalSet.SocksCheck && Setting.Socks5Point != 0)
-                                            request.Proxy = Socks5ProxyClient.Parse($"localhost:{Setting.Socks5Point}");
+                                            request.Proxy = Socks5ProxyClient.Parse($"{localhost}:{Setting.Socks5Point}");
                                         var time = new Random().Next(30000, 60000);
                                         for (var i = time; i > 0; i -= 1000)
                                         {
@@ -993,7 +1113,7 @@ namespace SpiderServerInLinux
                     {
                         if (string.IsNullOrEmpty(Url))
                             Url = $"http://www.t66y.com/read.php?tid={DownloadPage}";
-                        var Download = new HttpClient(new ProxyClientHandler<Socks5>(new ProxySettings { Host = "localhost", Port = Setting.NyaaSocks5Point }));
+                        var Download = new HttpClient(new ProxyClientHandler<Socks5>(new ProxySettings { Host = $"{localhost}", Port = Setting.NyaaSocks5Point }));
                         for (int i = 0; i < 2; i++)
                         {
                             try
@@ -1005,7 +1125,7 @@ namespace SpiderServerInLinux
                             catch (Exception ex)
                             {
                                 Download.Dispose();
-                                Download = new HttpClient(new ProxyClientHandler<Socks5>(new ProxySettings { Host = "localhost", Port = Setting.Socks5Point }));
+                                Download = new HttpClient(new ProxyClientHandler<Socks5>(new ProxySettings { Host = $"{localhost}", Port = Setting.Socks5Point }));
                             }
                         }
                         return null;
@@ -1065,7 +1185,7 @@ namespace SpiderServerInLinux
                                     }
                                     else if (item.Name == "img")
                                     {
-                                        var img = item.Attributes["ess-data"].Value.Replace(".th.jpg", ".jpg");
+                                        var img = item.Attributes["ess-data"].Value.Replace(".th.", ".");
                                         SaveImg(img);
                                         TempList.Add(img);
                                     }
@@ -1149,7 +1269,7 @@ namespace SpiderServerInLinux
                                         sL.Add(item2.InnerHtml);
                                     if (item2.Name == "img")
                                     {
-                                        var img = item2.Attributes["ess-data"].Value.Replace(".th.jpg", ".jpg");
+                                        var img = item2.Attributes["ess-data"].Value.Replace(".th.", ".");
                                         sL.Add(img);
                                         SaveImg(img);
                                     }
@@ -1177,12 +1297,13 @@ namespace SpiderServerInLinux
                             try
                             {
                                 T66yImgData SearchImg = DataBaseCommand.GetDataFromT66y("img", img);
+
                                 if (SearchImg != null)
                                 {
                                     Setting.T66yDownLoadOldOther = "T66y找到重复图片";
                                     if (!SearchImg.Status)
                                     {
-                                        var imgdata = DownloadImgAsync(img).Result;
+                                        var imgdata = DownloadImgAsync(img);
                                         if (imgdata != null && imgdata.Length > 1024)
                                         {
                                             try
@@ -1200,8 +1321,8 @@ namespace SpiderServerInLinux
                                     {
                                         if (SearchImg.FromList.Count > 1)
                                             SearchImg.FromList = SearchImg.FromList.Distinct().ToList();
-
-                                        if (!SearchImg.FromList.Exists(x => x == TempData.id))
+                                        var Search = TempData.id;
+                                        if (!SearchImg.FromList.Exists(x => x == Search))
                                             SearchImg.FromList.Add(TempData.id);
                                     }
                                     else
@@ -1214,7 +1335,7 @@ namespace SpiderServerInLinux
                                 {
                                     var TempImg = new T66yImgData() { id = img, Date = TempData.Date };
                                     Setting.T66yDownLoadOldOther = $"下载{TempData.id}|{TempData.Date}页面\r\n图片{PageCount}第{ImgList.Count + 1}张图片";
-                                    var imgdata = DownloadImgAsync(img).Result;
+                                    var imgdata = DownloadImgAsync(img);
                                     if (imgdata != null && imgdata.Length > 1024)
                                     {
                                         try
@@ -1262,7 +1383,8 @@ namespace SpiderServerInLinux
                     //if (Setting.T66yDownLoadNowOther != "T66y附加信息未启用") return;
                     // List<T66yImgData> FindList = DataBaseCommand.GetDataFromT66y("img");
                     var Count = 0;
-                    var db = new LiteDatabase($"Filename={DataBaseCommand.BaseUri}T66y.db;ReadOnly=True");
+                    var db = new LiteDatabase(File.Open(@$"{DataBaseCommand.BaseUri}T66y.db", FileMode.Open, FileAccess.Read, FileShare.ReadWrite));
+
                     var T66yImgDb = db.GetCollection<T66yImgData>("ImgData");
                     //T66yImgDb.Find(x => x.Hash != "Fail" || string.IsNullOrEmpty(x.Hash));
                     //var FindItemList = T66yImgDb.Find(x => x.Hash != "Fail" || string.IsNullOrEmpty(x.Hash));
@@ -1282,7 +1404,7 @@ namespace SpiderServerInLinux
                             if (FindItem != null)
                             {
                                 Setting.T66yDownLoadOldOther = $"开始{FindItem.Date}日图片下载{FindItem.FromList.First()}页面第{Count}篇/{FindItemList.Count}";
-                                FindItem.img = DownloadImgAsync(FindItem.id).Result;
+                                FindItem.img = DownloadImgAsync(FindItem.id);
                                 if (FindItem.img.Length < 1024)
                                 {
                                     FindItem.Hash = "Fail";
@@ -1292,7 +1414,6 @@ namespace SpiderServerInLinux
                                     FindItem.Hash = Convert.ToBase64String(new MD5CryptoServiceProvider().ComputeHash(FindItem.img));
                                 }
                                 DataBaseCommand.SaveToT66yDataUnit(UnitData: FindItem);
-                                FindItem.img = null;
                             }
                             else
                             {
@@ -1335,30 +1456,42 @@ namespace SpiderServerInLinux
 
                 #region 下载详细数据
 
+                ////
                 Setting.T66yDownLoadNowOther = "T66y附加信息未启用";
-                var OtherDownload = new Action(() =>
+
+                void OtherDownload(BlockingCollection<T66yData> SaveToDataBase)
                 {
                     if (Setting.T66yDownLoadNowOther != "T66y附加信息未启用") return;
                     var PageCount = "";
                     int ErrorCount = 0;
                     Loger.Instance.LocalInfo($"开始T66y附加信息下载");
                     var HisList = new List<string>();
-                    HttpClient client = new HttpClient(new ProxyClientHandler<Socks5>(new ProxySettings { Host = "localhost", Port = Setting.NyaaSocks5Point }));
-
+                    HttpClient client = new HttpClient(new ProxyClientHandler<Socks5>(new ProxySettings { Host = $"{localhost}", Port = Setting.NyaaSocks5Point }));
                     //foreach (T66yData GetTempData in SearCH)
-
                     //while (!T66yDownloadCancel.IsCancellationRequested)
                     {
-                        Setting.T66yDownLoadNowOther = $"正在搜索数据库";
-                        //using var db = new LiteDatabase(@$"{BaseUri}T66y.db");
-                        var db = new LiteDatabase($"Filename={DataBaseCommand.BaseUri}T66y.db;ReadOnly=True");
-                        var GetTempDataL = db.GetCollection<T66yData>("T66yData").Find(x => x.Status == false).ToList();
-                        GetTempDataL.Reverse();
-                        db.Dispose();
-                        foreach (var GetTempData in GetTempDataL)
+                        //  if (SaveToDataBase.Count == 0)
                         {
+                            Setting.T66yDownLoadNowOther = $"正在搜索数据库";
+                            //using var db = new LiteDatabase(@$"{BaseUri}T66y.db");
+                            using var db = new LiteDatabase(File.Open(@$"{DataBaseCommand.BaseUri}T66y.db", FileMode.Open, FileAccess.Read, FileShare.ReadWrite));
+                            foreach (var item in db.GetCollection<T66yData>("T66yData").Find(x => x.Status == false))
+                            {
+                                SaveToDataBase.Add(item);
+                                Setting.T66yDownLoadNowOther = $"待处理{SaveToDataBase.Count}条";
+                            }
+                            db.Dispose();
+                            //   var GetTempDataL = db.GetCollection<T66yData>("T66yData").Find(x => x.Status == false).ToList();
+                            //GetTempDataL.Reverse();
+                        }
+                        var CurrectCount = 0;
+                        var TotallyCount = SaveToDataBase.Count;
+                        SaveToDataBase.CompleteAdding();
+                        foreach (var GetTempData in SaveToDataBase.GetConsumingEnumerable())
+                        {
+                            CurrectCount += 1;
                         start:
-                            PageCount = $"{GetTempDataL.IndexOf(GetTempData)}|{GetTempDataL.Count}";
+                            PageCount = $"{CurrectCount}|{TotallyCount}";
                             if (GetTempData == null) break;
                             Setting.T66yDownLoadNowOther = $"开始处理{GetTempData.id}|{GetTempData.Date}";
                             if (T66yDownloadCancel.IsCancellationRequested) break;
@@ -1385,21 +1518,18 @@ namespace SpiderServerInLinux
                                 catch (Exception e)
                                 {
                                     ErrorCount += 1;
-
                                     if (e.Message.Contains("403"))
                                     {
                                         Loger.Instance.LocalInfo($"T66y下载内容出错，错误信息{e.Message},推测IP已被Ban");
-                                        client = new HttpClient(new ProxyClientHandler<Socks5>(new ProxySettings { Host = "localhost", Port = Setting.NyaaSocks5Point == 1088 ? Setting.Socks5Point : 1088 }));
+                                        client = new HttpClient(new ProxyClientHandler<Socks5>(new ProxySettings { Host = $"{localhost}", Port = Setting.NyaaSocks5Point == 1088 ? Setting.Socks5Point : 1088 }));
                                     }
                                     else if (e.Message.Contains("404"))
                                     {
                                         Loger.Instance.LocalInfo($"T66y下载内容出错，错误信息{e.Message},地址不存在");
-                                        //using var DelDB = new LiteDatabase(@$"{BaseUri}T66y.db");
-                                        //var DelDB = Setting.T66yDB;
-                                        using var DelDB = new LiteDatabase($"Filename={DataBaseCommand.BaseUri}T66y.db;Connection=Shared;ReadOnly=True");
 
-                                        DelDB.GetCollection<T66yData>("T66yData").Delete(x => x.id == GetTempData.id);
-                                        // db.Dispose();
+                                        using var DelDB = new LiteDatabase($"Filename={DataBaseCommand.BaseUri}T66y.db;Connection=Shared;");
+                                        DelDB.GetCollection<T66yData>("T66yData").Delete(GetTempData.id);
+                                        DelDB.Dispose();
                                     }
                                     else if (e.Message.Contains("proxy"))
                                     {
@@ -1415,7 +1545,7 @@ namespace SpiderServerInLinux
                                         continue;
                                     }
                                     client.Dispose();
-                                    client = new HttpClient(new ProxyClientHandler<Socks5>(new ProxySettings { Host = "localhost", Port = Setting.NyaaSocks5Point }));
+                                    client = new HttpClient(new ProxyClientHandler<Socks5>(new ProxySettings { Host = $"{localhost}", Port = Setting.NyaaSocks5Point }));
                                     Wait($"错误等待");
                                     goto start;
                                 }
@@ -1423,21 +1553,22 @@ namespace SpiderServerInLinux
                             HandleT66yPage(GetTempData, client);
                             client.Dispose();
                             client = null;
-                            client = new HttpClient(new ProxyClientHandler<Socks5>(new ProxySettings { Host = "localhost", Port = Setting.NyaaSocks5Point }));
+                            client = new HttpClient(new ProxyClientHandler<Socks5>(new ProxySettings { Host = $"{localhost}", Port = Setting.NyaaSocks5Point }));
                             // File.WriteAllText($"text.html", GetTempData.HtmlDate, Encoding.GetEncoding("gbk"));
                         }
                     }
 
                     Loger.Instance.LocalInfo($"T66y附加信息结束下载");
                     Setting.T66yDownLoadNowOther = "T66y附加信息未启用";
+                    Setting.T66yDownloadIng = false;
                     //Task.Factory.StartNew(GetOtherT66yPage);
                     //Task.Factory.StartNew(GetOtherT66yPage);
-                    Task.Factory.StartNew(ImageDownload);
+                    //Task.Factory.StartNew(ImageDownload);
                     string DownloadT66yPage(string Url = "", string DownloadPage = "")
                     {
                         if (string.IsNullOrEmpty(Url))
                             Url = $"http://www.t66y.com/read.php?tid={DownloadPage}";
-                        var Download = new HttpClient(new ProxyClientHandler<Socks5>(new ProxySettings { Host = "localhost", Port = Setting.NyaaSocks5Point }));
+                        var Download = new HttpClient(new ProxyClientHandler<Socks5>(new ProxySettings { Host = $"{localhost}", Port = Setting.NyaaSocks5Point }));
                         for (int i = 0; i < 2; i++)
                         {
                             try
@@ -1449,7 +1580,7 @@ namespace SpiderServerInLinux
                             catch (Exception ex)
                             {
                                 Download.Dispose();
-                                Download = new HttpClient(new ProxyClientHandler<Socks5>(new ProxySettings { Host = "localhost", Port = Setting.Socks5Point }));
+                                Download = new HttpClient(new ProxyClientHandler<Socks5>(new ProxySettings { Host = $"{localhost}", Port = Setting.Socks5Point }));
                             }
                         }
                         return null;
@@ -1490,6 +1621,7 @@ namespace SpiderServerInLinux
                                 return;
                             }
                             var Start = false;
+                            var ImgCount = 0;
                             foreach (var item in DIV4.ChildNodes)
                             {
                                 Setting.T66yDownLoadNowOther = $"{TempData.id}|{TempData.Date}页面解析中{PageCount}";
@@ -1511,7 +1643,10 @@ namespace SpiderServerInLinux
                                     }
                                     else if (item.Name == "img")
                                     {
-                                        var img = item.Attributes["ess-data"].Value.Replace(".th.jpg", ".jpg");
+                                        ImgCount += 1;
+                                        Setting.T66yDownLoadNowOther = $"第{PageCount}页{TempData.Date}-{TempData.id}\r\n下载第{ImgCount}张图片";
+
+                                        var img = item.Attributes["ess-data"].Value.Replace(".th.", ".");
                                         SaveImg(img);
                                         TempList.Add(img);
                                     }
@@ -1604,7 +1739,7 @@ namespace SpiderServerInLinux
                                         sL.Add(item2.InnerHtml);
                                     if (item2.Name == "img")
                                     {
-                                        var img = item2.Attributes["ess-data"].Value.Replace(".th.jpg", ".jpg");
+                                        var img = item2.Attributes["ess-data"].Value.Replace(".th.", ".");
                                         sL.Add(img);
                                         SaveImg(img);
                                     }
@@ -1631,8 +1766,49 @@ namespace SpiderServerInLinux
                         {
                             try
                             {
+                                if (!ImgExist(img))
+                                {
+                                    var TempImg = new T66yImgData() { id = img, Date = TempData.Date };
+                                    if (TempImg.FromList == null) TempImg.FromList = new List<int>();
+                                    TempImg.FromList.Add(TempData.id);
+                                    var imgdata = DownloadImgAsync(img);
+                                    if (imgdata != null && imgdata.Length > 1024)
+                                    {
+                                        try
+                                        {
+                                            TempImg.img = imgdata;
+                                            TempImg.Hash = Convert.ToBase64String(new MD5CryptoServiceProvider().ComputeHash(TempImg.img));
+                                            var Date = string.Empty;
+                                            if (DateTime.TryParse(TempImg.Date, out DateTime date))
+                                                Date = date.ToString("yyyy-MM-dd");
+                                            else
+                                                Date = "1970-01-01";
+                                            var ImageT = DataBaseCommand.GetFileImageTypeFromHeader(TempImg.img);
+                                            if (ImageT != DataBaseCommand.ImageType.Unknown)
+                                            {
+                                                var Add = new WebpImage()
+                                                {
+                                                    Date = Date,
+                                                    From = "T66y",
+                                                    FromList = TempImg.FromList,
+                                                    Hash = TempImg.Hash,
+                                                    id = TempImg.id,
+                                                    img = TempImg.img,
+                                                    Status = false,
+                                                    Type = ImageT.ToString()
+                                                };
+                                                Setting.SaveImgOpera.Add(Add);
+                                                return;
+                                            }
+                                        }
+                                        catch (Exception)
+                                        {
+                                        }
+                                    }
+                                    ImgList.Add(TempImg);
+                                }
+                                return;
                                 Setting.T66yDownLoadNowOther = "T66y搜索重复图片";
-
                                 T66yImgData SearchImg = DataBaseCommand.GetDataFromT66y("img", img);
                                 if (SearchImg != null)
                                 {
@@ -1641,7 +1817,7 @@ namespace SpiderServerInLinux
                                     {
                                         Setting.T66yDownLoadNowOther = $"第{PageCount}页{TempData.Date}-{TempData.id}\r\n下载第{ImgList.Count + 1}张图片";
 
-                                        var imgdata = DownloadImgAsync(img).Result;
+                                        var imgdata = DownloadImgAsync(img);
                                         if (imgdata != null && imgdata.Length > 1024)
                                         {
                                             try
@@ -1662,7 +1838,8 @@ namespace SpiderServerInLinux
                                         {
                                             SearchImg.FromList = SearchImg.FromList.Distinct().ToList();
                                         }
-                                        if (!SearchImg.FromList.Exists(x => x == TempData.id))
+                                        var Search = TempData.id;
+                                        if (!SearchImg.FromList.Exists(x => x == Search))
                                             SearchImg.FromList.Add(TempData.id);
                                     }
                                     else
@@ -1676,7 +1853,7 @@ namespace SpiderServerInLinux
                                     var TempImg = new T66yImgData() { id = img, Date = TempData.Date };
 
                                     Setting.T66yDownLoadNowOther = $"第{PageCount}页{TempData.Date}-{TempData.id}\r\n下载第{ImgList.Count + 1}张图片";
-                                    var imgdata = DownloadImgAsync(img).Result;
+                                    var imgdata = DownloadImgAsync(img);
                                     Setting.T66yDownLoadNowOther = "T66y下载图片完成";
                                     if (imgdata != null && imgdata.Length > 1024)
                                     {
@@ -1713,7 +1890,7 @@ namespace SpiderServerInLinux
                             Thread.Sleep(1000);
                         }
                     }
-                });
+                }
 
                 #endregion 下载详细数据
 
@@ -1721,6 +1898,7 @@ namespace SpiderServerInLinux
                 GetT66yDataTimer = new System.Timers.Timer(1000);
                 GetT66yDataTimer.Elapsed += async delegate
                 {
+                    var SaveToDataBase = new BlockingCollection<T66yData>();
                     Setting.T66yDownloadIng = true;
                     /*if (Setting.T66yDownloadIng) return;
                     while (Setting.T66yDownLoadOldOther != $"停止下载")
@@ -1755,6 +1933,7 @@ namespace SpiderServerInLinux
                                     Loger.Instance.LocalInfo("T66y下载到空网页，退出下载进程");
                                     break;
                                 }
+                                SaveToDataBase = new BlockingCollection<T66yData> { };
                                 var PageCount = 1;
                                 //List<T66yData> ItemList = new List<T66yData>();
                                 foreach (var tempData in AnalyT66yMainPage(HtmlDoc, DoanloadPageHtml))
@@ -1778,14 +1957,17 @@ namespace SpiderServerInLinux
                                         AddTemp.Title = tempData[1];
                                         AddTemp.Uri = tempData[0];
                                         //ItemList.Add(AddTemp);
+
                                         Setting.T66yDownLoadNow = $"开始解析第{tempData[3]}页,日期{tempData[2]},计数{ContinueCount}";
-                                        var db = new LiteDatabase(@$"{DataBaseCommand.BaseUri}T66y.db");
+                                        var db = new LiteDatabase(File.Open(@$"{DataBaseCommand.BaseUri}T66y.db", FileMode.Open, FileAccess.Read, FileShare.ReadWrite));
                                         {
                                             var STSDB = db.GetCollection<T66yData>("T66yData");
-                                            if (!STSDB.Exists(x => x.id == AddTemp.id))
+                                            var Search = AddTemp.id;
+                                            if (!STSDB.Exists(x => x.id == Search))
                                             {
                                                 ContinueCount = 0;
                                                 db.Dispose();
+                                                SaveToDataBase.Add(AddTemp);
                                                 DataBaseCommand.SaveToT66yDataUnit("T66yData", UnitData: AddTemp);
                                             }
                                             else
@@ -1824,11 +2006,10 @@ namespace SpiderServerInLinux
                     RunSpan.Stop();
                     GetT66ySpan.Restart();
                     GetT66yDataTimer.Start();
-                    Setting.T66yDownloadIng = false;
                     if (Setting.T66yDownLoadNowOther == "T66y附加信息未启用")
                     {
                         Thread.Sleep(1000);
-                        Task.Factory.StartNew(OtherDownload);
+                        _ = Task.Factory.StartNew(() => OtherDownload(SaveToDataBase));
                     }
                     /* if (T66yOtherDownloadTask == null)
                      {
@@ -1857,7 +2038,7 @@ namespace SpiderServerInLinux
                 })
                 {
                     if (Setting._GlobalSet.NyaaSocksCheck && Setting.NyaaSocks5Point != 0)
-                        request.Proxy = Socks5ProxyClient.Parse($"localhost:{Setting.NyaaSocks5Point}");
+                        request.Proxy = Socks5ProxyClient.Parse($"{localhost}:{Setting.NyaaSocks5Point}");
                     try
                     {
                         int ErrorCount = 1;
@@ -1877,7 +2058,7 @@ namespace SpiderServerInLinux
                             catch (Exception ex)
                             {
                                 if (Setting._GlobalSet.SocksCheck && Setting.Socks5Point != 0)
-                                    request.Proxy = Socks5ProxyClient.Parse($"localhost:{Setting.Socks5Point}");
+                                    request.Proxy = Socks5ProxyClient.Parse($"{localhost}:{Setting.Socks5Point}");
                                 if (ex.Message.StartsWith("Cannot access a disposed object"))
                                 {
                                     Loger.Instance.LocalInfo($"SSR异常，退出全部下载进程");
@@ -1977,7 +2158,7 @@ namespace SpiderServerInLinux
                         var TempDoc = new HtmlDocument();
                         HttpClient client = new HttpClient();
                         if (Setting._GlobalSet.NyaaSocksCheck && Setting.NyaaSocks5Point != 0)
-                            client = new HttpClient(new ProxyClientHandler<Socks5>(new ProxySettings { Host = "localhost", Port = Setting.NyaaSocks5Point }));
+                            client = new HttpClient(new ProxyClientHandler<Socks5>(new ProxySettings { Host = $"{localhost}", Port = Setting.NyaaSocks5Point }));
                         else
                             client = new HttpClient();
                         TempDoc.Load(client.GetStringAsync($"http://t66y.com/{Url}").Result);
@@ -1989,417 +2170,484 @@ namespace SpiderServerInLinux
         }
 
         /* private static HttpRequest request = new HttpRequest()
- {
+    {
      UserAgent = Http.ChromeUserAgent(),
      ConnectTimeout = 5000,
      KeepAliveTimeout = 10000,
      ReadWriteTimeout = 10000
- };*/
+    };*/
         private List<HttpRequest> RequestList = new List<HttpRequest>();
 
-        public async Task<byte[]> DownloadImgAsync(string url)
+        private bool ImgExist(string img)
         {
-            var TimeCount = new Stopwatch();
-            var TimeList = new List<string>();
-            string ErrorInfo = string.Empty;
-            /*var serviceProvider = new ServiceCollection().AddHttpClient("zhihu", client =>
+            return false;
             {
-                //todo
-            }).AddHttpMessageHandler(c => c.);*/
-            byte[] RetB = null;
-            try
-            {
-                var downurl = new Uri(url);
+                using var db = new LiteDatabase(File.Open(@$"{DataBaseCommand.BaseUri}T66yWeb.db", FileMode.Open, FileAccess.Read, FileShare.ReadWrite));
+                if (db.GetCollection("ImgData").Exists(x => x["Uri"] == img))
+                    return true;
             }
-            catch (Exception ex)
             {
-                url = url.Replace(url.Split(':')[0], "http");
+                using var db = new LiteDatabase(File.Open(@$"{DataBaseCommand.BaseUri}SISWeb.db", FileMode.Open, FileAccess.Read, FileShare.ReadWrite));
+                if (db.GetCollection("ImgData").Exists(x => x["Uri"] == img))
+                    return true;
             }
-
-            for (int i = 0; i < 8; i++)
-            //{
-            //Parallel.For(0, 4, (i, Status) =>
-            {
-                if (i == 0)
-                {
-                    TimeCount.Restart();
-                }
-                else
-                {
-                    TimeList.Add(TimeCount.Elapsed.ToString(@"mm\:ss\:fff"));
-                    TimeCount.Restart();
-                }
-                switch (i)
-                {
-                    //直接下载
-                    case 0:
-                        {
-                            var request = GetRequestFromPool();
-                            try
-                            {
-                                request.Proxy = null;
-                                HttpResponse response = request.Get(url);
-                                var RetS = response.ToString();
-                                Setting._GlobalSet.totalDownloadBytes += response.Ret.Length;
-                                if (response.Ret == null) continue;
-                                Setting.DataCount.D1 += 1;
-                                RetB = response.Ret;
-                                goto Stop;
-                                //ret = response.Ret;
-                                //Status.Stop();
-                            }
-                            catch (Exception ex)
-                            {
-                                ErrorInfo += $"{ex.Message}\r\n";
-                                if (ex.Message == "MovedPermanently")
-                                    try
-                                    {
-                                        if (request.Response.RedirectAddress != null)
-                                        {
-                                            var downurl = new Uri(url);
-                                            if (request.Response.RedirectAddress.Authority != downurl.Authority)
-                                            {
-                                                url = url.Replace(downurl.Authority, request.Response.RedirectAddress.Authority);
-                                            }
-                                            else if (!url.StartsWith("https"))
-                                            {
-                                                url = url.Replace("http", "https");
-                                            }
-                                        }
-                                        HttpResponse response = request.Get(url);
-                                        var RetS = response.ToString();
-                                        Setting._GlobalSet.totalDownloadBytes += response.Ret.Length;
-                                        if (response.Ret == null) continue;
-                                        Setting.DataCount.D1 += 1;
-                                        RetB = response.Ret;
-                                        goto Stop;
-                                    }
-                                    catch (Exception ex2)
-                                    {
-                                        ErrorInfo += $"{ex2.Message}\r\n";
-                                    }
-                                request.Dispose();
-                            }
-                        }
-                        break;
-                    //Nyaa代理1088下载
-                    case 1:
-                        {
-                            var request = GetRequestFromPool();
-
-                            try
-                            {
-                                request.Proxy = Socks5ProxyClient.Parse($"localhost:{Setting.NyaaSocks5Point}");
-                                HttpResponse response = request.Get(url);
-                                var RetS = response.ToString();
-                                Setting._GlobalSet.totalDownloadBytes += response.Ret.Length;
-                                if (response.Ret == null) continue;
-                                Setting.DataCount.D0 += 1;
-                                RetB = response.Ret;
-                                goto Stop;
-                                //ret = response.Ret;
-                                //Status.Stop();
-                            }
-                            catch (Exception ex)
-                            {
-                                ErrorInfo += $"{ex.Message}\r\n";
-                                if (ex.Message == "MovedPermanently")
-                                    try
-                                    {
-                                        if (request.Response.RedirectAddress != null)
-                                        {
-                                            var downurl = new Uri(url);
-                                            if (request.Response.RedirectAddress.Authority != downurl.Authority)
-                                            {
-                                                url = url.Replace(downurl.Authority, request.Response.RedirectAddress.Authority);
-                                            }
-                                            else if (!url.StartsWith("https"))
-                                            {
-                                                url = url.Replace("http", "https");
-                                            }
-                                        }
-                                        HttpResponse response = request.Get(url);
-                                        var RetS = response.ToString();
-                                        Setting._GlobalSet.totalDownloadBytes += response.Ret.Length;
-                                        if (response.Ret == null) continue;
-                                        Setting.DataCount.D0 += 1;
-                                        RetB = response.Ret;
-                                        goto Stop;
-                                    }
-                                    catch (Exception ex2)
-                                    {
-                                        ErrorInfo += $"{ex2.Message}\r\n";
-                                        if (ex2.Message == "NotFound")
-                                            goto Stop;
-                                    }
-                                request.Dispose();
-                            }
-                        }
-                        break;
-                    //7070代理下载
-                    case 2:
-                        {
-                            var request = GetRequestFromPool();
-                            try
-                            {
-                                request.Proxy = Socks5ProxyClient.Parse($"localhost:{Setting.Socks5Point}");
-                                HttpResponse response = request.Get(url);
-                                var RetS = response.ToString();
-                                Setting._GlobalSet.totalDownloadBytes += response.Ret.Length;
-                                if (response.Ret == null) continue;
-                                Setting.DataCount.D2 += 1;
-                                RetB = response.Ret;
-                                goto Stop;
-                                //ret = response.Ret;
-                                //Status.Stop();
-                            }
-                            catch (Exception ex)
-                            {
-                                ErrorInfo += $"{ex.Message}\r\n";
-                                if (ex.Message == "NotFound")
-                                    goto Stop;
-                                if (ex.Message == "MovedPermanently")
-                                    try
-                                    {
-                                        if (request.Response.RedirectAddress != null)
-                                        {
-                                            var downurl = new Uri(url);
-                                            if (request.Response.RedirectAddress.Authority != downurl.Authority)
-                                            {
-                                                url = url.Replace(downurl.Authority, request.Response.RedirectAddress.Authority);
-                                            }
-                                            else if (!url.StartsWith("https"))
-                                            {
-                                                url = url.Replace("http", "https");
-                                            }
-                                        }
-                                        HttpResponse response = request.Get(url);
-                                        var RetS = response.ToString();
-                                        Setting._GlobalSet.totalDownloadBytes += response.Ret.Length;
-                                        if (response.Ret == null) continue;
-                                        Setting.DataCount.D2 += 1;
-                                        RetB = response.Ret;
-                                        goto Stop;
-                                    }
-                                    catch (Exception ex2)
-                                    {
-                                        ErrorInfo += $"{ex2.Message}\r\n";
-                                        if (ex2.Message == "NotFound")
-                                            goto Stop;
-                                    }
-                                request.Dispose();
-                            }
-                        }
-                        break;
-                    //BetterHttpClient直接下载
-                    case 3:
-                        {
-                            using var Download = new BetterHttpClient.HttpClient();
-                            try
-                            {
-                                var RET = Download.DownloadDataTaskAsync(url).Result;
-                                Setting._GlobalSet.totalDownloadBytes += RET.Length;
-                                if (RET == null) continue;
-                                Setting.DataCount.D3 += 1;
-
-                                RetB = RET;
-                                goto Stop;
-
-                                //ret = RET;
-                                //Status.Stop();
-                            }
-                            catch (Exception ex)
-                            {
-                                ErrorInfo += $"{ex.Message}\r\n";
-                            }
-                        }
-                        break;
-                    //BetterHttpClient代理下载
-                    case 4:
-                        {
-                            using var Download = new BetterHttpClient.HttpClient(new BetterHttpClient.Proxy("localhost", 1088));
-                            try
-                            {
-                                Download.Proxy.ProxyType = BetterHttpClient.ProxyTypeEnum.Socks;
-                                var RET = Download.DownloadDataTaskAsync(url).Result;
-                                Setting._GlobalSet.totalDownloadBytes += RET.Length;
-                                if (RET == null) continue;
-                                Setting.DataCount.D3 += 1;
-
-                                RetB = RET;
-                                goto Stop;
-
-                                //ret = RET;
-                                //Status.Stop();
-                            }
-                            catch (Exception ex)
-                            {
-                                ErrorInfo += $"{ex.Message}\r\n";
-                            }
-                        }
-                        break;
-                    //HttpClient直接下载
-                    case 5:
-                        {
-                            using HttpClient Download = new HttpClient();
-
-                            try
-                            {
-                                Download.Timeout = new TimeSpan(0, 0, 10);
-                                var RET = Download.GetByteArrayAsync(url).Result;
-                                Setting._GlobalSet.totalDownloadBytes += RET.Length;
-                                if (RET == null) continue;
-                                Setting.DataCount.D3 += 1;
-
-                                RetB = RET;
-                                goto Stop;
-
-                                //ret = RET;
-                                //Status.Stop();
-                            }
-                            catch (Exception ex)
-                            {
-                                ErrorInfo += $"{ex.Message}\r\n";
-                            }
-                        }
-                        break;
-                    //HttpClient代理下载
-                    case 6:
-                        {
-                            // Setting.T66yDownLoadNowOther = $"第{PageCount}页{TempData.Date}-{TempData.id}\r\n下载第{ImgList.Count
-                            // + 1}张图片第{i}次";
-                            using HttpClient Download = new HttpClient(new ProxyClientHandler<Socks5>(new ProxySettings { Host = "localhost", Port = Setting.NyaaSocks5Point }));
-
-                            try
-                            {
-                                Download.Timeout = new TimeSpan(0, 0, 10);
-                                var RET = Download.GetByteArrayAsync(url).Result;
-                                Setting._GlobalSet.totalDownloadBytes += RET.Length;
-                                if (RET == null) continue;
-                                Setting.DataCount.D3 += 1;
-                                RetB = RET;
-                                goto Stop;
-                                //ret = RET;
-                                //Status.Stop();
-                            }
-                            catch (Exception ex)
-                            {
-                                ErrorInfo += $"{ex.Message}\r\n";
-                            }
-                        }
-                        break;
-                    //Socks5ProxyClient代理下载
-                    case 7:
-                        {
-                            try
-                            {
-                                using var socks5ProxyClient = new Proxy.Client.Socks5ProxyClient("localhost", 1088);
-                                {
-                                    var response = socks5ProxyClient.GetAsync(url).Result;
-                                    if (response.StatusCode == System.Net.HttpStatusCode.OK)
-                                    {
-                                        Setting.DataCount.D3 += 1;
-                                        RetB = response.Bin;
-                                        goto Stop;
-                                    }
-                                }
-                            }
-                            catch (Exception ex)
-                            {
-                                ErrorInfo += $"{ex.Message}\r\n";
-                                //Loger.Instance.LocalInfo($"下载错误{ex.Message}|{ex.StackTrace}");
-                            }
-                        }
-                        break;
-                    //HttpClient 切换代理下载
-                    case 8:
-                        {
-                            break;
-                            using HttpClient Download = new HttpClient(new ProxyClientHandler<Socks5>(new ProxySettings { Host = "localhost", Port = Setting.NyaaSocks5Point == 1088 ? Setting.Socks5Point : 1088 }));
-
-                            try
-                            {
-                                Download.Timeout = new TimeSpan(0, 0, 10);
-                                var RET = Download.GetByteArrayAsync(url).Result;
-                                Setting._GlobalSet.totalDownloadBytes += RET.Length;
-                                if (RET == null) continue;
-                                Setting.DataCount.D2 += 1;
-
-                                RetB = RET;
-                                goto Stop;
-                                //ret = RET;
-                                //Status.Stop();
-                            }
-                            catch (Exception ex)
-                            {
-                                ErrorInfo += $"{ex.Message}\r\n";
-                            }
-                        }
-                        break;
-                }
-            }
-        //});
-        Stop:
-            TimeCount.Stop();
-            TimeList.Add(TimeCount.Elapsed.ToString(@"mm\:ss\:fff"));
-            var SB = new StringBuilder();
-            SB.Append($"{url}\t");
-            for (int i = 0; i < TimeList.Count; i++)
-            {
-                SB.Append($"{i}|{TimeList[i]}\t");
-            }
-            TimeList.Clear();
-            File.AppendAllLines("TimeList.txt", new[] { SB.ToString() });
-            GC.Collect();
-            if (RetB != null)
-            {
-                if (RetB.Length > 1024)
-                {
-                    using var mem = new MemoryStream(RetB);
-                    try
-                    {
-                        Image img = Image.FromStream(mem);
-                        if (img.RawFormat.Equals(ImageFormat.Gif))
-                        {
-                            img.Dispose();
-                            return RetB;
-                        }
-                        else
-                        {
-                            RetB = Compress(img, 75).ToArray();
-                            img.Dispose();
-                            return RetB;
-                        }
-                    }
-                    catch (Exception)
-                    {
-                        return RetB;
-                    }
-                }
-            }
-            return Encoding.Default.GetBytes(ErrorInfo);
-            HttpRequest GetRequestFromPool()
-            {
-                var request = RequestList.FirstOrDefault(x => !x.Busy);
-                if (request == null)
-                {
-                    request = new HttpRequest()
-                    {
-                        UserAgent = Http.ChromeUserAgent(),
-                        ConnectTimeout = 5000,
-                        KeepAliveTimeout = 10000,
-                        ReadWriteTimeout = 10000
-                    };
-                    RequestList.Add(request);
-                }
-                Setting.HttpConnectCount = RequestList.Count;
-                return request;
-            }
+            return false;
         }
 
-        private MemoryStream Compress(Image srcBitmap, long level)
+        public byte[] DownloadImgAsync(string url)
         {
-            var destStream = new MemoryStream();
+            byte[] RetB = null;
+            Task.Factory.StartNew(() =>
+          {
+              var TimeCount = new Stopwatch();
+              var TimeList = new List<string>();
+              string ErrorInfo = string.Empty;
+              /*var serviceProvider = new ServiceCollection().AddHttpClient("zhihu", client =>
+              {
+                  //todo
+              }).AddHttpMessageHandler(c => c.);*/
+              try
+              {
+                  var downurl = new Uri(url);
+              }
+              catch (Exception ex)
+              {
+                  url = url.Replace(url.Split(':')[0], "http");
+              }
+              for (int i = 0; i < 8; i++)
+              //{
+              //Parallel.For(0, 4, (i, Status) =>
+              {
+                  if (i == 0)
+                  {
+                      TimeCount.Restart();
+                  }
+                  else
+                  {
+                      TimeList.Add(TimeCount.Elapsed.ToString(@"mm\:ss\:fff"));
+                      TimeCount.Restart();
+                  }
+                  switch (i)
+                  {
+                      //直接下载
+                      case 0:
+                          {
+                              var request = GetRequestFromPool();
+                              try
+                              {
+                                  request.Proxy = null;
+                                  HttpResponse response = request.Get(url);
+                                  var RetS = response.ToString();
+                                  Setting._GlobalSet.totalDownloadBytes += response.Ret.Length;
+                                  if (response.Ret == null) continue;
+                                  Setting.DataCount.D1 += 1;
+                                  RetB = response.Ret;
+                                  goto Stop;
+                                  //ret = response.Ret;
+                                  //Status.Stop();
+                              }
+                              catch (Exception ex)
+                              {
+                                  ErrorInfo += $"{ex.Message}\r\n";
+                                  if (ex.Message == "MovedPermanently")
+                                      try
+                                      {
+                                          if (request.Response.RedirectAddress != null)
+                                          {
+                                              var downurl = new Uri(url);
+                                              if (request.Response.RedirectAddress.Authority != downurl.Authority)
+                                              {
+                                                  url = url.Replace(downurl.Authority, request.Response.RedirectAddress.Authority);
+                                              }
+                                              else if (!url.StartsWith("https"))
+                                              {
+                                                  url = url.Replace("http", "https");
+                                              }
+                                          }
+                                          HttpResponse response = request.Get(url);
+                                          var RetS = response.ToString();
+                                          Setting._GlobalSet.totalDownloadBytes += response.Ret.Length;
+                                          if (response.Ret == null) continue;
+                                          Setting.DataCount.D1 += 1;
+                                          RetB = response.Ret;
+                                          goto Stop;
+                                      }
+                                      catch (Exception ex2)
+                                      {
+                                          ErrorInfo += $"{ex2.Message}\r\n";
+                                      }
+                                  request.Dispose();
+                              }
+                          }
+                          break;
+                      //Nyaa代理1088下载
+                      case 1:
+                          {
+                              var request = GetRequestFromPool();
+
+                              try
+                              {
+                                  request.Proxy = Socks5ProxyClient.Parse($"{localhost}:{Setting.NyaaSocks5Point}");
+                                  HttpResponse response = request.Get(url);
+                                  var RetS = response.ToString();
+                                  Setting._GlobalSet.totalDownloadBytes += response.Ret.Length;
+                                  if (response.Ret == null) continue;
+                                  Setting.DataCount.D0 += 1;
+                                  RetB = response.Ret;
+                                  goto Stop;
+                                  //ret = response.Ret;
+                                  //Status.Stop();
+                              }
+                              catch (Exception ex)
+                              {
+                                  ErrorInfo += $"{ex.Message}\r\n";
+                                  if (ex.Message == "MovedPermanently")
+                                      try
+                                      {
+                                          if (request.Response.RedirectAddress != null)
+                                          {
+                                              var downurl = new Uri(url);
+                                              if (request.Response.RedirectAddress.Authority != downurl.Authority)
+                                              {
+                                                  url = url.Replace(downurl.Authority, request.Response.RedirectAddress.Authority);
+                                              }
+                                              else if (!url.StartsWith("https"))
+                                              {
+                                                  url = url.Replace("http", "https");
+                                              }
+                                          }
+                                          HttpResponse response = request.Get(url);
+                                          var RetS = response.ToString();
+                                          Setting._GlobalSet.totalDownloadBytes += response.Ret.Length;
+                                          if (response.Ret == null) continue;
+                                          Setting.DataCount.D0 += 1;
+                                          RetB = response.Ret;
+                                          goto Stop;
+                                      }
+                                      catch (Exception ex2)
+                                      {
+                                          ErrorInfo += $"{ex2.Message}\r\n";
+                                          if (ex2.Message == "NotFound")
+                                              goto Stop;
+                                      }
+                                  request.Dispose();
+                              }
+                          }
+                          break;
+                      //7070代理下载
+                      case 2:
+                          {
+                              var request = GetRequestFromPool();
+                              try
+                              {
+                                  request.Proxy = Socks5ProxyClient.Parse($"{localhost}:{Setting.Socks5Point}");
+                                  HttpResponse response = request.Get(url);
+                                  var RetS = response.ToString();
+                                  Setting._GlobalSet.totalDownloadBytes += response.Ret.Length;
+                                  if (response.Ret == null) continue;
+                                  Setting.DataCount.D2 += 1;
+                                  RetB = response.Ret;
+                                  goto Stop;
+                                  //ret = response.Ret;
+                                  //Status.Stop();
+                              }
+                              catch (Exception ex)
+                              {
+                                  ErrorInfo += $"{ex.Message}\r\n";
+                                  if (ex.Message == "NotFound")
+                                      goto Stop;
+                                  if (ex.Message == "MovedPermanently")
+                                      try
+                                      {
+                                          if (request.Response.RedirectAddress != null)
+                                          {
+                                              var downurl = new Uri(url);
+                                              if (request.Response.RedirectAddress.Authority != downurl.Authority)
+                                              {
+                                                  url = url.Replace(downurl.Authority, request.Response.RedirectAddress.Authority);
+                                              }
+                                              else if (!url.StartsWith("https"))
+                                              {
+                                                  url = url.Replace("http", "https");
+                                              }
+                                          }
+                                          HttpResponse response = request.Get(url);
+                                          var RetS = response.ToString();
+                                          Setting._GlobalSet.totalDownloadBytes += response.Ret.Length;
+                                          if (response.Ret == null) continue;
+                                          Setting.DataCount.D2 += 1;
+                                          RetB = response.Ret;
+                                          goto Stop;
+                                      }
+                                      catch (Exception ex2)
+                                      {
+                                          ErrorInfo += $"{ex2.Message}\r\n";
+                                          if (ex2.Message == "NotFound")
+                                              goto Stop;
+                                      }
+                                  request.Dispose();
+                              }
+
+                              if (TimeCount.Elapsed > TimeSpan.FromSeconds(10))
+                              {
+                                  goto Stop;
+                              }
+                          }
+                          break;
+                      //BetterHttpClient直接下载
+                      case 3:
+                          {
+                              using var Download = new BetterHttpClient.HttpClient();
+                              try
+                              {
+                                  var RET = Download.DownloadDataTaskAsync(url).Result;
+                                  Setting._GlobalSet.totalDownloadBytes += RET.Length;
+                                  if (RET == null) continue;
+                                  Setting.DataCount.D3 += 1;
+
+                                  RetB = RET;
+                                  goto Stop;
+
+                                  //ret = RET;
+                                  //Status.Stop();
+                              }
+                              catch (Exception ex)
+                              {
+                                  ErrorInfo += $"{ex.Message}\r\n";
+                              }
+                          }
+                          break;
+                      //BetterHttpClient代理下载
+                      case 4:
+                          {
+                              using var Download = new BetterHttpClient.HttpClient(new BetterHttpClient.Proxy($"{localhost}", 1088));
+                              try
+                              {
+                                  Download.Proxy.ProxyType = BetterHttpClient.ProxyTypeEnum.Socks;
+                                  var RET = Download.DownloadDataTaskAsync(url).Result;
+                                  Setting._GlobalSet.totalDownloadBytes += RET.Length;
+                                  if (RET == null) continue;
+                                  Setting.DataCount.D3 += 1;
+
+                                  RetB = RET;
+                                  goto Stop;
+
+                                  //ret = RET;
+                                  //Status.Stop();
+                              }
+                              catch (Exception ex)
+                              {
+                                  ErrorInfo += $"{ex.Message}\r\n";
+                              }
+                          }
+                          break;
+                      //HttpClient直接下载
+                      case 5:
+                          {
+                              using HttpClient Download = new HttpClient();
+
+                              try
+                              {
+                                  Download.Timeout = new TimeSpan(0, 0, 10);
+                                  var RET = Download.GetByteArrayAsync(url).Result;
+                                  Setting._GlobalSet.totalDownloadBytes += RET.Length;
+                                  if (RET == null) continue;
+                                  Setting.DataCount.D3 += 1;
+
+                                  RetB = RET;
+                                  goto Stop;
+
+                                  //ret = RET;
+                                  //Status.Stop();
+                              }
+                              catch (Exception ex)
+                              {
+                                  ErrorInfo += $"{ex.Message}\r\n";
+                              }
+                          }
+                          break;
+                      //HttpClient代理下载
+                      case 6:
+                          {
+                              // Setting.T66yDownLoadNowOther = $"第{PageCount}页{TempData.Date}-{TempData.id}\r\n下载第{ImgList.Count
+                              // + 1}张图片第{i}次";
+                              using HttpClient Download = new HttpClient(new ProxyClientHandler<Socks5>(new ProxySettings { Host = $"{localhost}", Port = Setting.NyaaSocks5Point }));
+
+                              try
+                              {
+                                  Download.Timeout = new TimeSpan(0, 0, 10);
+                                  var RET = Download.GetByteArrayAsync(url).Result;
+                                  Setting._GlobalSet.totalDownloadBytes += RET.Length;
+                                  if (RET == null) continue;
+                                  Setting.DataCount.D3 += 1;
+                                  RetB = RET;
+                                  goto Stop;
+                                  //ret = RET;
+                                  //Status.Stop();
+                              }
+                              catch (Exception ex)
+                              {
+                                  ErrorInfo += $"{ex.Message}\r\n";
+                              }
+                          }
+                          break;
+                      //Socks5ProxyClient代理下载
+                      case 7:
+                          {
+                              try
+                              {
+                                  using var socks5ProxyClient = new Proxy.Client.Socks5ProxyClient($"{localhost}", 1088);
+                                  {
+                                      var response = socks5ProxyClient.GetAsync(url).Result;
+                                      if (response.StatusCode == System.Net.HttpStatusCode.OK)
+                                      {
+                                          Setting.DataCount.D3 += 1;
+                                          RetB = response.Bin;
+                                          goto Stop;
+                                      }
+                                  }
+                              }
+                              catch (Exception ex)
+                              {
+                                  ErrorInfo += $"{ex.Message}\r\n";
+                                  //Loger.Instance.LocalInfo($"下载错误{ex.Message}|{ex.StackTrace}");
+                              }
+                          }
+                          break;
+                      //HttpClient 切换代理下载
+                      case 8:
+                          {
+                              break;
+                              using HttpClient Download = new HttpClient(new ProxyClientHandler<Socks5>(new ProxySettings { Host = $"{localhost}", Port = Setting.NyaaSocks5Point == 1088 ? Setting.Socks5Point : 1088 }));
+
+                              try
+                              {
+                                  Download.Timeout = new TimeSpan(0, 0, 10);
+                                  var RET = Download.GetByteArrayAsync(url).Result;
+                                  Setting._GlobalSet.totalDownloadBytes += RET.Length;
+                                  if (RET == null) continue;
+                                  Setting.DataCount.D2 += 1;
+
+                                  RetB = RET;
+                                  goto Stop;
+                                  //ret = RET;
+                                  //Status.Stop();
+                              }
+                              catch (Exception ex)
+                              {
+                                  ErrorInfo += $"{ex.Message}\r\n";
+                              }
+                          }
+                          break;
+                  }
+              }
+          //});
+          Stop:
+              TimeCount.Stop();
+              TimeList.Add(TimeCount.Elapsed.ToString(@"mm\:ss\:fff"));
+              var SB = new StringBuilder();
+              SB.Append($"{url}\t");
+              for (int i = 0; i < TimeList.Count; i++)
+              {
+                  SB.Append($"{i}|{TimeList[i]}\t");
+              }
+              if (RetB != null)
+              {
+                  SB.Append($"\t{HumanReadableFilesize((double)RetB.Length)}");
+              }
+              TimeList.Clear();
+              File.AppendAllLines("TimeList.txt", new[] { SB.ToString() });
+              GC.Collect();
+              if (RetB != null)
+              {
+                  if (RetB.Length > 1024)
+                  {
+                      //using var mem = new MemoryStream(RetB);
+                      //try
+                      //{
+                      //    Image img = Image.FromStream(mem);
+                      //    if (img.RawFormat.Equals(ImageFormat.Gif))
+                      //    {
+                      //        img.Dispose();
+                      //        return RetB;
+                      //    }
+                      //    else
+                      //    {
+                      //        RetB = Compress(img, 75).ToArray();
+                      //        img.Dispose();
+                      //        return RetB;
+                      //    }
+                      //}
+                      //catch (Exception)
+                      //{
+                      //    return RetB;
+                      //}
+                      return RetB;
+                  }
+              }
+              return Encoding.Default.GetBytes(ErrorInfo);
+              HttpRequest GetRequestFromPool()
+              {
+                  var request = RequestList.FirstOrDefault(x => !x.Busy);
+                  if (request == null)
+                  {
+                      request = new HttpRequest()
+                      {
+                          UserAgent = Http.ChromeUserAgent(),
+                          ConnectTimeout = 5000,
+                          KeepAliveTimeout = 10000,
+                          ReadWriteTimeout = 10000,
+                      };
+                      RequestList.Add(request);
+                  }
+                  if (RequestList.Count > 2)
+                  {
+                      for (int i = 2; i < RequestList.Count; i++)
+                      {
+                          if (!RequestList[i].Busy)
+                          {
+                              RequestList[i].Close();
+                              RequestList[i].Dispose();
+                          }
+                          RequestList.RemoveAt(i);
+                      }
+                      GC.Collect();
+                  }
+                  Setting.HttpConnectCount = RequestList.Count;
+                  return request;
+              }
+              string HumanReadableFilesize(double size)
+              {
+                  var units = new[] { "B", "KB", "MB", "GB", "TB", "PB" };
+                  double mod = 1024.0;
+                  var DoubleCount = new List<double>();
+                  while (size >= mod)
+                  {
+                      size /= mod;
+                      DoubleCount.Add(size);
+                  }
+                  var Ret = "";
+                  for (int j = DoubleCount.Count; j > 0; j--)
+                  {
+                      if (j == DoubleCount.Count)
+                      {
+                          Ret += $"{Math.Floor(DoubleCount[j - 1])}{units[j]}";
+                      }
+                      else
+                      {
+                          Ret += $"{Math.Floor(DoubleCount[j - 1] - (Math.Floor(DoubleCount[j]) * 1024))}{units[j]}";
+                      }
+                  }
+                  return Ret;
+              }
+          }
+          ).Wait(1000 * 60);
+            return RetB;
+        }
+
+        private byte[] Compress(Image srcBitmap, long level)
+        {
+            using var destStream = new MemoryStream();
             ImageCodecInfo myImageCodecInfo;
             System.Drawing.Imaging.Encoder myEncoder;
             EncoderParameter myEncoderParameter;
@@ -2436,7 +2684,7 @@ namespace SpiderServerInLinux
                 }
                 return null;
             }
-            return destStream;
+            return destStream.ToArray();
         }
 
         private Task GetNyaaNewData()
@@ -2764,7 +3012,7 @@ namespace SpiderServerInLinux
                         var ContinueCount = 0;
                         using (var request = new HttpRequest())
                         {
-                            if (Setting._GlobalSet.SocksCheck) request.Proxy = Socks5ProxyClient.Parse($"localhost:{Setting.Socks5Point}");
+                            if (Setting._GlobalSet.SocksCheck) request.Proxy = Socks5ProxyClient.Parse($"{localhost}:{Setting.Socks5Point}");
                             foreach (var item in SaveData.GetConsumingEnumerable())
                             {
                                 if (item == null) continue;
@@ -2774,13 +3022,15 @@ namespace SpiderServerInLinux
                                     using (var db = new LiteDatabase(@$"{DataBaseCommand.BaseUri}Jav.db"))
                                     {
                                         var JavDB = db.GetCollection<JavInfo>("JavDB");
-                                        if (JavDB.Exists(x => x.id == item.Item2.id))
+                                        var Search = item.Item2.id;
+                                        if (JavDB.Exists(x => x.id == Search))
                                         {
                                             Interlocked.Increment(ref ContinueCount);
                                             db.Dispose();
                                             if (ContinueCount > 30)
                                             {
                                                 ContinueCount = 0;
+                                                Loger.Instance.LocalInfo($"检测到Jav下载完毕，退出下载进程");
                                                 break;
                                             }
                                             continue;
@@ -2790,82 +3040,87 @@ namespace SpiderServerInLinux
                                             ContinueCount = 0;
                                         }
                                     }
-                                    request.UserAgent = Http.ChromeUserAgent();
-                                    try
-                                    {
-                                        HttpResponse response = request.Get(item.Item2.ImgUrl);
-                                        if (!string.IsNullOrEmpty(response.ToString()))
-                                        {
-                                            NewSize += response.Ret.Length;
-                                            item.Item2.Image = response.Ret;
-                                        }
-                                    }
-                                    catch (Exception)
-                                    {
-                                        if (Setting._GlobalSet.SocksCheck) request.Proxy = Socks5ProxyClient.Parse($"localhost:{Setting.Socks5Point}");
-                                        try
-                                        {
-                                            HttpResponse response = request.Get(item.Item2.ImgUrlError);
-                                            if (!string.IsNullOrEmpty(response.ToString()))
-                                            {
-                                                NewSize += response.Ret.Length;
-                                                item.Item2.Image = response.Ret;
-                                            }
-                                        }
-                                        catch (Exception)
-                                        {
-                                        }
-                                    }
-                                    try
-                                    {
-                                        if (item.Item2.Image != null)
-                                            if (item.Item2.Image.Length != 0)
-                                            {
-                                                // var ImageComp = Compress(Bitmap.FromStream(new
-                                                // MemoryStream(item.Item2.Image)), 75).ToArray();
-                                                var ImageComp = item.Item2.Image;
-                                                if (ImageComp.Length < item.Item2.Image.Length)
-                                                    item.Item2.Image = ImageComp;
-                                            }
-                                    }
-                                    catch (Exception)
-                                    {
-                                    }
+                                    item.Item2.Image = DownloadImgAsync(item.Item2.ImgUrl);
+                                    /* request.UserAgent = Http.ChromeUserAgent();
+                                     try
+                                     {
+                                         HttpResponse response = request.Get(item.Item2.ImgUrl);
+                                         if (!string.IsNullOrEmpty(response.ToString()))
+                                         {
+                                             NewSize += response.Ret.Length;
+                                             item.Item2.Image = response.Ret;
+                                         }
+                                     }
+                                     catch (Exception)
+                                     {
+                                         if (Setting._GlobalSet.SocksCheck) request.Proxy = Socks5ProxyClient.Parse($"{localhost}:{Setting.Socks5Point}");
+                                         try
+                                         {
+                                             HttpResponse response = request.Get(item.Item2.ImgUrlError);
+                                             if (!string.IsNullOrEmpty(response.ToString()))
+                                             {
+                                                 NewSize += response.Ret.Length;
+                                                 item.Item2.Image = response.Ret;
+                                             }
+                                         }
+                                         catch (Exception)
+                                         {
+                                         }
+                                     }
+                                     try
+                                     {
+                                         if (item.Item2.Image != null)
+                                             if (item.Item2.Image.Length != 0)
+                                             {
+                                                 // var ImageComp = Compress(Bitmap.FromStream(new
+                                                 // MemoryStream(item.Item2.Image)), 75).ToArray();
+                                                 var ImageComp = item.Item2.Image;
+                                                 if (ImageComp.Length < item.Item2.Image.Length)
+                                                     item.Item2.Image = ImageComp;
+                                             }
+                                     }
+                                     catch (Exception)
+                                     {
+                                     }*/
 
                                     if (NewDate != item.Item2.Date)
                                     {
+                                        if (item.Item2.Date == "00-01-01")
+                                        {
+                                            item.Item2.Date = NewDate;
+                                        }
                                         Loger.Instance.LocalInfo($"当前保存Jav下载日期{item.Item2.Date}");
                                         NewDate = item.Item2.Date;
-                                        if (DataBaseCommand.GetOrSaveWebInfoFromJav(item.Item2.Date))
-                                        {
-                                            var TempDate = DateTime.ParseExact(item.Item2.Date, "yy-MM-dd", CultureInfo.InvariantCulture);
-                                            if (TempDate.ToString("yy-MM-dd") == DateTime.Now.ToString("yy-MM-dd")) goto Skip;
-                                            var DateCount = -1;
-                                            do
-                                            {
-                                                Interlocked.Decrement(ref DateCount);
-                                                if (DateCount == -10)
-                                                {
-                                                    break;
-                                                }
-                                            } while (DataBaseCommand.GetWebInfoFromJav(TempDate.AddDays(DateCount).ToString("yy-MM-dd")));
-                                            if (DateCount == -10)
-                                            {
-                                                Loger.Instance.LocalInfo($"检测到Jav下载完毕，退出下载进程");
-                                                break;
-                                            }
-                                            else
-                                            {
-                                                Loger.Instance.LocalInfo($"检测到Jav|{TempDate.AddDays(DateCount):yy-MM-dd}未下载完成，继续下载任务");
-                                            }
-                                        }
+                                        /*  if (DataBaseCommand.GetOrSaveWebInfoFromJav(item.Item2.Date))
+                                          {
+                                              var TempDate = DateTime.ParseExact(item.Item2.Date, "yy-MM-dd", CultureInfo.InvariantCulture);
+                                              if (TempDate.ToString("yy-MM-dd") == DateTime.Now.ToString("yy-MM-dd")) goto Skip;
+                                              var DateCount = -1;
+                                              do
+                                              {
+                                                  Interlocked.Decrement(ref DateCount);
+                                                  if (DateCount == -100)
+                                                  {
+                                                      break;
+                                                  }
+                                              } while (DataBaseCommand.GetWebInfoFromJav(TempDate.AddDays(DateCount).ToString("yy-MM-dd")));
+                                              if (DateCount == -100)
+                                              {
+                                                  Loger.Instance.LocalInfo($"检测到Jav下载完毕，退出下载进程");
+                                                  break;
+                                              }
+                                              else
+                                              {
+                                                  Loger.Instance.LocalInfo($"检测到Jav|{TempDate.AddDays(DateCount):yy-MM-dd}未下载完成，继续下载任务");
+                                              }
+                                          }*/
                                         /* if (NewDate == "19-09-01")
                                          {
                                              Loger.Instance.LocalInfo($"记录时间到达，退出下载进程");
                                              break;
                                          }*/
                                     }
-                                Skip:
+                                    // Skip:
                                     DataBaseCommand.SaveToJavDataBaseOneObject(item.Item2);
                                 }
                                 catch (Exception ex)
@@ -2914,7 +3169,7 @@ namespace SpiderServerInLinux
                                         }
                                     }
                                     request.UserAgent = Http.ChromeUserAgent();
-                                    if (Setting._GlobalSet.SocksCheck) request.Proxy = Socks5ProxyClient.Parse($"localhost:{Setting.Socks5Point}");
+                                    if (Setting._GlobalSet.SocksCheck) request.Proxy = Socks5ProxyClient.Parse($"{localhost}:{Setting.Socks5Point}");
                                     try
                                     {
                                         HttpResponse response = request.Get(item.Item2.ImgUrl);
@@ -2976,7 +3231,12 @@ namespace SpiderServerInLinux
                                 //TempData.id = temp.SelectSingleNode("div/div/div[2]/div/h5/a").InnerText.Replace("\n", "");
                                 TempData.id = temp.SelectSingleNode("div/div/div[2]/div/h5/a").Attributes["href"].Value.Replace(@"/torrent/", "");
                                 TempData.Size = temp.SelectSingleNode("div/div/div[2]/div/h5/span").InnerText;
-                                TempData.Date = $"{DateTime.Parse(temp.SelectSingleNode("div/div/div[2]/div/p[1]/a").Attributes["href"].Value.Substring(1)):yy-MM-dd}";
+                                var Date = temp.SelectSingleNode("div/div/div[2]/div/p[1]/a").Attributes["href"].Value.Substring(1);
+                                if (Date.StartsWith("date"))
+                                {
+                                    Date = Date.Replace("date/", "");
+                                }
+                                TempData.Date = $"{DateTime.Parse(Date):yy-MM-dd}";
                                 var tags = new List<string>();
                                 try
                                 {
@@ -2999,16 +3259,27 @@ namespace SpiderServerInLinux
                                 var Actress = new List<string>();
                                 try
                                 {
-                                    foreach (var Tags in temp.SelectNodes(@"//div[@class='panel']/a"))
-                                    //foreach (var Tags in temp.SelectNodes(@"div/div/div[2]/div/div[2]"))
+                                    var F1 = temp.SelectNodes(@"//div[@class='panel']/a");
+                                    if (F1 == null)
+                                        F1 = temp.SelectNodes(@"/div[1]/div[1]/div[1]/div[2]/div[1]/div[2]/a");
+                                    if (F1 != null)
                                     {
-                                        Actress.Add(Tags.InnerText.Replace("\n", ""));
+                                        foreach (var Tags in temp.SelectNodes(@"//div[@class='panel']/a"))
+                                        //foreach (var Tags in temp.SelectNodes(@"div/div/div[2]/div/div[2]"))
+                                        {
+                                            Actress.Add(Tags.InnerText.Replace("\n", ""));
+                                        }
+                                    }
+                                    else
+                                    {
+                                        //Loger.Instance.LocalInfo($"Jav人名解析失败");
+                                        File.WriteAllText($"错误{DateTime.Now:mm-dd}.html", Page.Item2);
                                     }
                                 }
                                 catch (NullReferenceException) { }
                                 catch (Exception)
                                 {
-                                    Loger.Instance.LocalInfo($"Jav人名解析失败");
+                                    //Loger.Instance.LocalInfo($"Jav人名解析失败");
                                     File.WriteAllText($"错误{DateTime.Now:mm-dd}.html", Page.Item2);
                                 }
                                 TempData.Actress = Actress.ToArray();
@@ -3082,7 +3353,6 @@ namespace SpiderServerInLinux
         private Task GetMiMiData()
         {
             long NewSize = 0;
-
             MiMiDownloadCancel = new CancellationTokenSource();
             return Task.Run(() =>
             {
@@ -3131,8 +3401,13 @@ namespace SpiderServerInLinux
                                 if (DataBaseCommand.SaveToMiMiDataTablet(tempData, false))
                                 {
                                     var Date = DateTime.Parse(tempData[3]).ToString("yyyy-MM-dd");
+                                    var db = new LiteDatabase(File.Open(@$"{DataBaseCommand.BaseUri}MiMi.db", FileMode.Open, FileAccess.Read, FileShare.ReadWrite));
+                                    var Find = db.GetCollection<MiMiAiData>("MiMiDB").Exists(x => x.Date == Date);
+                                    db.Dispose();
+                                    if (Find) continue;
                                     Setting.MiMiDay = Date;
                                     var rtemp = DownLoadNew(_Uri: $"http://{new Uri(Setting._GlobalSet.MiMiAiAddress).Host}/{tempData[0]}");
+
                                     DataBaseCommand.GetWebInfoFromMiMi(tempData[0]);
                                     if (rtemp != null)
                                     {
@@ -3187,15 +3462,15 @@ namespace SpiderServerInLinux
                                         var DownloadData = DownLoadNew(Index: -3, _Uri: Child.Attributes["href"].Value, Mode: true);
                                         if (!string.IsNullOrEmpty(DownloadData.Item1))
                                         {
-                                            DataBaseCommand.SaveToMiMiDataErrorUnit(new[]{
-                                                Temp.Date,
-                                                Index.ToString(),
-                                                Temp.InfoList.Count.ToString(),
-                                                "torrent",
-                                                Child.Attributes["href"].Value,
-                                                DownloadData.Item1,
-                                                bool.FalseString
-                                            });
+                                            DataBaseCommand.SaveToMiMiDataErrorUnit(new[] {
+                                            Temp.Date,
+                                            Index.ToString(),
+                                            Temp.InfoList.Count.ToString(),
+                                            "torrent",
+                                            Child.Attributes["href"].Value,
+                                            DownloadData.Item1,
+                                            bool.FalseString
+                                        });
                                             Temp.InfoList.Add(new MiMiAiData.BasicData() { Type = "torrent", info = Child.Attributes["href"].Value });
                                         }
                                         else
@@ -3233,14 +3508,14 @@ namespace SpiderServerInLinux
                                         {
                                             DataBaseCommand.SaveToMiMiDataErrorUnit(new[]
                                             {
-                                                Temp.Date,
-                                                Index.ToString(),
-                                                Temp.InfoList.Count.ToString(),
-                                                "img",
-                                                Child.Attributes["src"].Value,
-                                                DownloadData.Item1,
-                                                bool.FalseString
-                                            });
+                                            Temp.Date,
+                                            Index.ToString(),
+                                            Temp.InfoList.Count.ToString(),
+                                            "img",
+                                            Child.Attributes["src"].Value,
+                                            DownloadData.Item1,
+                                            bool.FalseString
+                                        });
                                             Temp.InfoList.Add(new MiMiAiData.BasicData() { Type = "img", info = Child.Attributes["src"].Value });
                                         }
                                         else
@@ -3275,7 +3550,7 @@ namespace SpiderServerInLinux
                         CharacterSet = Encoding.GetEncoding("GBK")
                     })
                     {
-                        if (Setting._GlobalSet.SocksCheck) request.Proxy = Socks5ProxyClient.Parse($"localhost:{Setting.Socks5Point}");
+                        if (Setting._GlobalSet.SocksCheck) request.Proxy = Socks5ProxyClient.Parse($"{localhost}:{Setting.Socks5Point}");
                         try
                         {
                             if (_Uri.StartsWith("images")) return null;
@@ -3294,7 +3569,7 @@ namespace SpiderServerInLinux
                                     }
                                     catch (Exception ex)
                                     {
-                                        if (Setting._GlobalSet.SocksCheck) request.Proxy = Socks5ProxyClient.Parse($"localhost:{Setting.Socks5Point}");
+                                        if (Setting._GlobalSet.SocksCheck) request.Proxy = Socks5ProxyClient.Parse($"{localhost}:{Setting.Socks5Point}");
 
                                         if (request.Response.RedirectAddress != null)
                                         {
@@ -3352,8 +3627,10 @@ namespace SpiderServerInLinux
                                                     {
                                                         if (_PostData.Ret.Length != 0)
                                                         {
-                                                            var ImageComp = Compress(Bitmap.FromStream(new MemoryStream(_PostData.Ret)), 75).ToArray();
-                                                            if (ImageComp.Length < _PostData.Ret.Length)
+                                                            var memoryPool = MemoryPool<int>.Shared;
+                                                            memoryPool.Rent();
+                                                            var ImageComp = _PostData.Ret;
+                                                            if (ImageComp.Length <= _PostData.Ret.Length)
                                                                 return new Tuple<string, byte[]>("", ImageComp);
                                                         }
                                                     }
@@ -3566,7 +3843,7 @@ namespace SpiderServerInLinux
                       CharacterSet = Encoding.GetEncoding("GBK")
                   })
                   {
-                      if (Setting._GlobalSet.SocksCheck) request.Proxy = Socks5ProxyClient.Parse($"localhost:{Setting.Socks5Point}");
+                      if (Setting._GlobalSet.SocksCheck) request.Proxy = Socks5ProxyClient.Parse($"{localhost}:{Setting.Socks5Point}");
                       var ErrorCount = 0;
                       while (!MiMiDownloadCancel.Token.IsCancellationRequested)
                       {
@@ -3656,7 +3933,7 @@ namespace SpiderServerInLinux
                       CharacterSet = Encoding.GetEncoding("GBK")
                   })
                   {
-                      if (Setting._GlobalSet.SocksCheck) request.Proxy = Socks5ProxyClient.Parse($"localhost:{Setting.Socks5Point}");
+                      if (Setting._GlobalSet.SocksCheck) request.Proxy = Socks5ProxyClient.Parse($"{localhost}:{Setting.Socks5Point}");
                       while (!MiMiDownloadCancel.Token.IsCancellationRequested)
                       {
                           var UnitInfo = DataBaseCommand.GetDataFromMiMi("UnitInfo") as MiMiAiData;
@@ -3767,9 +4044,9 @@ namespace SpiderServerInLinux
                       int ErrorCount = 0;
                       if (NyaaSocks)
                       {
-                          if (Setting._GlobalSet.NyaaSocksCheck) request.Proxy = Socks5ProxyClient.Parse($"localhost:{Setting.NyaaSocks5Point}");
+                          if (Setting._GlobalSet.NyaaSocksCheck) request.Proxy = Socks5ProxyClient.Parse($"{localhost}:{Setting.NyaaSocks5Point}");
                       }
-                      else if (Setting._GlobalSet.SocksCheck) request.Proxy = Socks5ProxyClient.Parse($"localhost:{Setting.Socks5Point}");
+                      else if (Setting._GlobalSet.SocksCheck) request.Proxy = Socks5ProxyClient.Parse($"{localhost}:{Setting.Socks5Point}");
                       while (!token.Token.IsCancellationRequested)
                       {
                           if (downloadCollect.Count > 3)
@@ -3820,9 +4097,9 @@ namespace SpiderServerInLinux
                               }
                               if (NyaaSocks)
                               {
-                                  if (Setting._GlobalSet.NyaaSocksCheck) request.Proxy = Socks5ProxyClient.Parse($"localhost:{Setting.NyaaSocks5Point}");
+                                  if (Setting._GlobalSet.NyaaSocksCheck) request.Proxy = Socks5ProxyClient.Parse($"{localhost}:{Setting.NyaaSocks5Point}");
                               }
-                              else if (Setting._GlobalSet.SocksCheck) request.Proxy = Socks5ProxyClient.Parse($"localhost:{Setting.Socks5Point}");
+                              else if (Setting._GlobalSet.SocksCheck) request.Proxy = Socks5ProxyClient.Parse($"{localhost}:{Setting.Socks5Point}");
                               Interlocked.Increment(ref ErrorCount);
                               if (new Uri(Address).Host == new Uri(Setting.NyaaAddress).Host)
                               {
@@ -3876,6 +4153,97 @@ namespace SpiderServerInLinux
               {
                   Loger.Instance.LocalInfo($"接收到退出信号，已经退出{new Uri(Address).Authority}的下载进程");
               });
+        }
+
+        private Task DownloadLoopDirect(string Address, int LastPageIndex, BlockingCollection<Tuple<int, string>> downloadCollect, CancellationTokenSource token, bool CheckMode = false, bool NyaaSocks = false)
+        {
+            return Task.Factory.StartNew(() =>
+            {
+                using (var request = new HttpRequest()
+                {
+                    UserAgent = Http.ChromeUserAgent(),
+                    ConnectTimeout = 20000,
+                })
+                {
+                    Setting.JavPageCount = downloadCollect.Count;
+                    int ErrorCount = 0;
+
+                    while (!token.Token.IsCancellationRequested)
+                    {
+                        if (downloadCollect.Count > 3)
+                        {
+                            Thread.Sleep(1000);
+                            continue;
+                        }
+                        if (CheckMode)
+                        {
+                            if (DataBaseCommand.GetNyaaCheckPoint(LastPageIndex))
+                            {
+                                Interlocked.Increment(ref LastPageIndex);
+                                continue;
+                            }
+                        }
+                        var downurl = new Uri($"{Address}{LastPageIndex}");
+                        try
+                        {
+                            var time = new Random().Next(2000, 10000);
+                            for (var i = time; i > 0; i -= 1000)
+                            {
+                                if (token.Token.IsCancellationRequested)
+                                {
+                                    break;
+                                }
+                                Thread.Sleep(1000);
+                            }
+                            HttpResponse response = request.Get(downurl);
+                            downloadCollect.Add(new Tuple<int, string>(LastPageIndex, response.ToString()));
+                            Interlocked.Increment(ref LastPageIndex);
+                            ErrorCount = 0;
+                        }
+                        catch (Exception ex)
+                        {
+                            request.Proxy = Socks5ProxyClient.Parse($"{localhost}:{Setting.NyaaSocks5Point}");
+
+                            Interlocked.Increment(ref ErrorCount);
+                            if (new Uri(Address).Host != new Uri(Setting.NyaaAddress).Host)
+                            {
+                                Address = Address.Replace(Address, Setting.NyaaAddress);
+                            }
+                            if (ex.Message == "Forbidden")
+                            {
+                                Loger.Instance.LocalInfo($"检测到Nyaa下载页面超出50,结束下载进程");
+                                break;
+                            }
+
+                            Loger.Instance.LocalInfo($"{ex.Message}");
+                            Loger.Instance.LocalInfo($"下载{downurl.ToString()}失败，计数{ErrorCount}次");
+                            //Loger.Instance.LocalInfo(ex.Message);
+                            var time = new Random().Next(5000, 10000);
+                            for (var i = time; i > 0; i -= 1000)
+                            {
+                                if (token.Token.IsCancellationRequested)
+                                {
+                                    break;
+                                }
+                                Loger.Instance.WaitTime(i / 1000);
+                                Thread.Sleep(1000);
+                            }
+                            if (ErrorCount > 5)
+                            {
+                                ErrorCount = 0;
+                                Loger.Instance.LocalInfo($"下载{downurl.ToString()}失败，退出下载进程");
+
+                                token.Cancel();
+                                break;
+                            }
+                        }
+                    }
+                    downloadCollect.CompleteAdding();
+                }
+            }).ContinueWith(a =>
+            {
+                Loger.Instance.LocalInfo($"接收到退出信号，已经退出{new Uri(Address).Authority}的下载进程");
+            });
         }
 
         public void Dispose()

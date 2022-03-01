@@ -37,6 +37,8 @@ namespace SpiderServerInLinux
                         ModuleCatalog.RegisterModule(new OnlineCheck());
                         ModuleCatalog.RegisterModule(new SetOpera());
                         ModuleCatalog.RegisterModule(new DataOpera());
+                        // ModuleCatalog.RegisterModule(new Image2Webp());
+
                         // _server = new
                         // AsyncWebSocketServer(CheckIfPortInUse(Setting._GlobalSet.ConnectPoint), ModuleCatalog);
                         _server = new AsyncWebSocketServer(Setting._GlobalSet.ConnectPoint, ModuleCatalog);
@@ -401,7 +403,7 @@ namespace SpiderServerInLinux
                                         if (SearchImg != null)
                                         {
                                             Loger.Instance.ServerInfo("主机", $"下载图片{SearchImg.id}中");
-                                            var RET = Setting.DownloadManage.DownloadImgAsync(SearchImg.id).Result;
+                                            var RET = Setting.DownloadManage.DownloadImgAsync(SearchImg.id);
                                             if (RET != null)
                                             {
                                                 SearchImg.img = RET;

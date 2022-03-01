@@ -11,7 +11,7 @@ namespace ShadowsocksR.Encryption
     {
         private delegate IntPtr EncryptFunc();
 
-        private const string DLLNAME = "libeay32";
+        private const string DLLNAME = "libcrypto.so";
         private static Dictionary<string, EncryptFunc> encrypt_func_map;
 
         public static bool isSupport()

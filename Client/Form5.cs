@@ -30,7 +30,7 @@ namespace Client
                         using var db = new LiteDatabase(@"Filename=Z:\publish\Jav.db;Connection=Shared;ReadOnly=True");
 
                         var SISDB = db.GetCollection<JavInfo>("JavDB");
-                        var Findd = SISDB.Find(x => x.Date == v);
+                        var Findd = SISDB.Find(x => x.Date == v).ToList();
                         foreach (var Img in Findd)
                         {
                             this.Invoke(new MethodInvoker(() =>

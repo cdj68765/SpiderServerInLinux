@@ -2,19 +2,22 @@
 
 	<PropertyGroup>
 		<OutputType>Exe</OutputType>
-		<TargetFramework>netcoreapp3.1</TargetFramework>
+		<TargetFramework>net6.0</TargetFramework>
 		<Configurations>Debug;Release;X64</Configurations>
 		<Platforms>AnyCPU;x64;x86</Platforms>
 		<StartupObject></StartupObject>
 		<LangVersion>8.0</LangVersion>
+		<RunPostBuildEvent>OnOutputUpdated</RunPostBuildEvent>
+		<AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+		<DebugType>portable</DebugType>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
-		<Optimize>false</Optimize>
+		<Optimize>True</Optimize>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
-		<Optimize>false</Optimize>
+		<Optimize>False</Optimize>
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 		<DefineConstants>TRACE;Debug</DefineConstants>
 		<GenerateSerializationAssemblies>Auto</GenerateSerializationAssemblies>
@@ -25,30 +28,34 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-	  <Compile Remove="Code.cs" />
-	  <Compile Remove="DownNyaaLoop.cs" />
-	  <Compile Remove="HandlerHtml.cs" />
-	  <Compile Remove="NetManage.cs" />
-	  <Compile Remove="ShowInControl.cs" />
-	  <Compile Remove="TCPCommand.cs" />
-	  <Compile Remove="WebClientEx.cs" />
-	  <Compile Remove="WebPageGet.cs" />
+		<Compile Remove="Code.cs" />
+		<Compile Remove="DownNyaaLoop.cs" />
+		<Compile Remove="HandlerHtml.cs" />
+		<Compile Remove="Image2Webp.cs" />
+		<Compile Remove="NetManage.cs" />
+		<Compile Remove="ShowInControl.cs" />
+		<Compile Remove="TCPCommand.cs" />
+		<Compile Remove="WebClientEx.cs" />
+		<Compile Remove="WebPageGet.cs" />
 	</ItemGroup>
 
 	<ItemGroup>
-	  <None Remove="Cowboy.WebSockets.dll" />
-	  <None Remove="dll.zip" />
-	  <None Remove="DownloadManage 2021-02-27备份更改数据读取模式.zip" />
+		<None Remove="Cowboy.WebSockets.dll" />
+		<None Remove="dll.zip" />
+		<None Remove="DownloadManage 2021-02-27备份更改数据读取模式.zip" />
+		<None Remove="DownloadManage 2021-11-09 更改数据库为V5.zip" />
+		<None Remove="Image2Webp.zip" />
 	</ItemGroup>
 
 	<ItemGroup>
-	  <None Include="DownNyaaLoop.cs" />
-	  <None Include="HandlerHtml.cs" />
-	  <None Include="TCPCommand.cs" />
-	  <None Include="WebClientEx.cs">
-	    <SubType>Component</SubType>
-	  </None>
-	  <None Include="WebPageGet.cs" />
+		<None Include="DownNyaaLoop.cs" />
+		<None Include="HandlerHtml.cs" />
+		<None Include="Image2Webp.cs" />
+		<None Include="TCPCommand.cs" />
+		<None Include="WebClientEx.cs">
+			<SubType>Component</SubType>
+		</None>
+		<None Include="WebPageGet.cs" />
 	</ItemGroup>
 
 	<ItemGroup>
@@ -58,27 +65,29 @@
 	<ItemGroup>
 		<PackageReference Include="CoreZipCode" Version="1.1.2" />
 		<PackageReference Include="HtmlAgilityPack" Version="1.11.26" />
-		<PackageReference Include="LiteDB" Version="4.1.4" />
 		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="5.0.1" />
+		<PackageReference Include="Microsoft.Extensions.Hosting" Version="5.0.0" />
 		<PackageReference Include="Microsoft.Extensions.Http" Version="5.0.0" />
-		<PackageReference Include="System.Drawing.Common" Version="5.0.0" />
+		<PackageReference Include="ServiceWire" Version="5.3.4" />
+		<PackageReference Include="System.Drawing.Common" Version="5.0.2" />
 		<PackageReference Include="System.IO.FileSystem" Version="4.3.0" />
 		<PackageReference Include="System.Text.Encoding.CodePages" Version="4.7.1" />
 	</ItemGroup>
 
 	<ItemGroup>
 		<ProjectReference Include="..\Cowboy.WebSockets\Cowboy.WebSockets.csproj" />
+		<ProjectReference Include="..\WebpInter\WebpInter.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>
-	  <Resource Include="Code.cs" />
-	  <Resource Include="Cowboy.WebSockets.dll" />
-	  <None Include="ShowInControl.cs" />
+		<Resource Include="Code.cs" />
+		<Resource Include="Cowboy.WebSockets.dll" />
+		<None Include="ShowInControl.cs" />
 	</ItemGroup>
 
 	<ItemGroup>
 		<Compile Update="DataBaseCommand.cs">
-		  <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
 		</Compile>
 	</ItemGroup>
 
@@ -96,4 +105,8 @@
 			<Private>true</Private>
 		</Reference>
 	</ItemGroup>
+
+	<Target Name="PostBuild" AfterTargets="PostBuildEvent">
+	  <Exec Command="copy / y $(TargetDir)$(SolutionName).dll &quot;Y:\net5v5\&quot;&#xD;&#xA;copy / y $(TargetDir)$(SolutionName).pdb &quot;Y:\net5v5\&quot;" />
+	</Target>
 </Project>

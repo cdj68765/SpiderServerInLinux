@@ -43,6 +43,9 @@ namespace SpiderServerInLinux
         internal static string T66yDownLoadNow;
         internal static string T66yDownLoadNowOther;
         internal static string T66yDownLoadOldOther;
+        internal static BlockingCollection<WebpImage> SaveImgOpera = new BlockingCollection<WebpImage>(5);
+
+        internal static bool SISDownloadIng = false;
         internal static bool T66yDownloadIng = false;
 
         internal static ShadowsocksRController SSR;
@@ -63,6 +66,7 @@ namespace SpiderServerInLinux
 
         internal static bool CheckOnline(bool ssr = false)
         {
+            return true;
             try
             {
                 using (var request = new HttpRequest())
@@ -70,7 +74,7 @@ namespace SpiderServerInLinux
                     Thread.Sleep(1000);
                     request.ConnectTimeout = 1000;
                     request.UserAgent = Http.ChromeUserAgent();
-                    if (ssr) request.Proxy = Socks5ProxyClient.Parse($"127.0.0.1:{Setting.Socks5Point}");
+                    if (ssr) request.Proxy = Socks5ProxyClient.Parse($"192.168.2.116:{Setting.Socks5Point}");
                     HttpResponse response = request.Get(@"https://www.google.co.jp/");
                     //HttpResponse response = request.Get(@"https://www.141jav.com/new");
                     if (response.StatusCode == HttpStatusCode.OK)
@@ -341,6 +345,7 @@ namespace SpiderServerInLinux
         private string _MiMiAiAddress = "http://www.mmroad.com/forumdisplay.php?fid=55&page=";
         private string _T66yAddress = "http://t66y.com/thread0806.php?fid=25&search=&page=";
 
+        private Dictionary<string, int> _SSRList = new Dictionary<string, int>();
         private string _ssr_url = "";
         private string _ssr4Nyaa = "";
 
@@ -362,32 +367,74 @@ namespace SpiderServerInLinux
         private bool _JavFin = false;
         private bool _MiMiFin = false;
         private bool _AutoRun = false;
-        internal string NyaaAddress { get { return _NyaaAddress; } set { _NyaaAddress = value; Save(); } }
-        internal string JavAddress { get { return _JavAddress; } set { _JavAddress = value; Save(); } }
-        internal string T66yAddress { get { return _T66yAddress; } set { _T66yAddress = value; Save(); } }
-        internal string MiMiAiAddress { get { return _MiMiAiAddress; } set { _MiMiAiAddress = value; Save(); } }
 
-        internal string ssr_url { get { return _ssr_url; } set { _ssr_url = value; Save(); } }
-        internal string ssr4Nyaa { get { return _ssr4Nyaa; } set { _ssr4Nyaa = value; Save(); } }
-        internal int SISPageIndex { get { return _SISPageIndex; } set { _SISPageIndex = value; Save(); } }
-        internal int SISSkip { get { return _SISSkip; } set { _SISSkip = value; Save(); } }
+        internal string NyaaAddress
+        { get { return _NyaaAddress; } set { _NyaaAddress = value; Save(); } }
 
-        internal int NyaaLastPageIndex { get { return _NyaaLastPageIndex; } set { _NyaaLastPageIndex = value; Save(); } }
-        internal int JavLastPageIndex { get { return _JavLastPageIndex; } set { _JavLastPageIndex = value; Save(); } }
-        internal int ConnectPoint { get { return _ConnectPoint; } set { _ConnectPoint = value; Save(); } }
-        internal int MiMiAiPageIndex { get { return _MiMiAiPageIndex; } set { _MiMiAiPageIndex = value; Save(); } }
-        internal int MiMiAiStoryPageIndex { get { return _MiMiAiStoryPageIndex; } set { _MiMiAiStoryPageIndex = value; Save(); } }
-        internal int T66yPageIndex { get { return _T66yPageIndex; } set { _T66yPageIndex = value; Save(); } }
+        internal string JavAddress
+        { get { return _JavAddress; } set { _JavAddress = value; Save(); } }
 
-        internal bool SocksCheck { get { return _SocksCheck; } set { _SocksCheck = value; Save(); } }
-        internal bool NyaaSocksCheck { get { return _NyaaSocksCheck; } set { _NyaaSocksCheck = value; Save(); } }
+        internal string T66yAddress
+        { get { return _T66yAddress; } set { _T66yAddress = value; Save(); } }
 
-        internal bool NyaaFin { get { return _NyaaFin; } set { _NyaaFin = value; Save(); } }
-        internal bool JavFin { get { return _JavFin; } set { _JavFin = value; Save(); } }
-        internal bool MiMiFin { get { return _MiMiFin; } set { _MiMiFin = value; Save(); } }
-        internal bool AutoRun { get { return _AutoRun; } set { _AutoRun = value; Save(); } }
-        internal long totalUploadBytes { get { return _totalUploadBytes; } set { _totalUploadBytes = value; Save(); } }
-        internal long totalDownloadBytes { get { return _totalDownloadBytes; } set { _totalDownloadBytes = value; Save(); } }
+        internal string MiMiAiAddress
+        { get { return _MiMiAiAddress; } set { _MiMiAiAddress = value; Save(); } }
+
+        internal Dictionary<string, int> SSRList => _SSRList;
+
+        internal string ssr_url
+        { get { return _ssr_url; } set { _ssr_url = value; Save(); } }
+
+        internal string ssr4Nyaa
+        { get { return _ssr4Nyaa; } set { _ssr4Nyaa = value; Save(); } }
+
+        internal int SISPageIndex
+        { get { return _SISPageIndex; } set { _SISPageIndex = value; Save(); } }
+
+        internal int SISSkip
+        { get { return _SISSkip; } set { _SISSkip = value; Save(); } }
+
+        internal int NyaaLastPageIndex
+        { get { return _NyaaLastPageIndex; } set { _NyaaLastPageIndex = value; Save(); } }
+
+        internal int JavLastPageIndex
+        { get { return _JavLastPageIndex; } set { _JavLastPageIndex = value; Save(); } }
+
+        internal int ConnectPoint
+        { get { return _ConnectPoint; } set { _ConnectPoint = value; Save(); } }
+
+        internal int MiMiAiPageIndex
+        { get { return _MiMiAiPageIndex; } set { _MiMiAiPageIndex = value; Save(); } }
+
+        internal int MiMiAiStoryPageIndex
+        { get { return _MiMiAiStoryPageIndex; } set { _MiMiAiStoryPageIndex = value; Save(); } }
+
+        internal int T66yPageIndex
+        { get { return _T66yPageIndex; } set { _T66yPageIndex = value; Save(); } }
+
+        internal bool SocksCheck
+        { get { return _SocksCheck; } set { _SocksCheck = value; Save(); } }
+
+        internal bool NyaaSocksCheck
+        { get { return _NyaaSocksCheck; } set { _NyaaSocksCheck = value; Save(); } }
+
+        internal bool NyaaFin
+        { get { return _NyaaFin; } set { _NyaaFin = value; Save(); } }
+
+        internal bool JavFin
+        { get { return _JavFin; } set { _JavFin = value; Save(); } }
+
+        internal bool MiMiFin
+        { get { return _MiMiFin; } set { _MiMiFin = value; Save(); } }
+
+        internal bool AutoRun
+        { get { return _AutoRun; } set { _AutoRun = value; Save(); } }
+
+        internal long totalUploadBytes
+        { get { return _totalUploadBytes; } set { _totalUploadBytes = value; Save(); } }
+
+        internal long totalDownloadBytes
+        { get { return _totalDownloadBytes; } set { _totalDownloadBytes = value; Save(); } }
 
         [OnDeserialized]
         private void OnDeserialized(StreamingContext context)
@@ -398,15 +445,17 @@ namespace SpiderServerInLinux
             if (string.IsNullOrEmpty(_ssr_url)) _ssr_url = "";*/
             if (string.IsNullOrEmpty(_T66yAddress)) _T66yAddress = "http://t66y.com/thread0806.php?fid=25&search=&page=";
             if (string.IsNullOrEmpty(_ssr_url)) _ssr_url = "ssr://MTUzLjEwMS41Ny4zNTo1ODQ1NDphdXRoX2FlczEyOF9zaGExOmNoYWNoYTIwLWlldGY6cGxhaW46VFdsNmRXaHZNVEF4TUROSVN3Lz9vYmZzcGFyYW09WWpkbU9UQXhOemc1TG0xcFkzSnZjMjltZEM1amIyMCZwcm90b3BhcmFtPU1UYzRPVG95WVRGMllWayZyZW1hcmtzPVV5M2x1TGpsdDU3b2dhX3BnSm90NXBlbDVweXM1cDJ4NUxxc0lFTm9iMjl3WVEmZ3JvdXA9NDRHQzQ0S0U0NEtCJnVkcHBvcnQ9NzIwOTA2JnVvdD0xMTUwOTg1Ng";
+            if (_SSRList == null) _SSRList = new Dictionary<string, int>();
         }
 
         internal GlobalSet()
         {
         }
 
-        static internal GlobalSet Open()
+        internal static GlobalSet Open()
         {
-            using var db = new LiteDatabase($"{new FileInfo(Process.GetCurrentProcess().MainModule.FileName).DirectoryName}/GlobalSet.db");
+            var LibAddress = $"{new FileInfo(Process.GetCurrentProcess().MainModule.FileName).DirectoryName}{Path.DirectorySeparatorChar}GlobalSet.db";
+            using var db = new LiteDatabase(LibAddress);
             if (!db.CollectionExists("GlobalSet"))
             {
                 Loger.Instance.LocalInfo($"未找到配置文件，正在新建");
@@ -419,7 +468,6 @@ namespace SpiderServerInLinux
                     ["_id"] = 0,
                     ["Data"] = stream.ToArray()
                 });
-
                 return globalSet;
             }
             else
@@ -662,7 +710,7 @@ namespace SpiderServerInLinux
     [Serializable]
     internal class SISImgData : T66yImgData
     {
-        new public byte[] img
+        public new byte[] img
         {
             get { return base.img; }
             set
@@ -704,6 +752,62 @@ namespace SpiderServerInLinux
                          }*/
                     }
                 }
+            }
+        }
+    }
+
+    public class OriImage
+    {
+        public string id { get; set; }
+        public string From { get; set; }
+
+        public string Date { get; set; }
+        public string Hash { get; set; }
+        public byte[] img { get; set; }
+        public List<int> FromList { get; set; }
+        public bool Status { get; set; }
+    }
+
+    internal class WebpImage
+    {
+        public string id { get; set; }
+
+        public string Date { get; set; }
+        public string Hash { get; set; }
+
+        public byte[] img { get; set; }
+        public List<int> FromList { get; set; }
+        public bool Status { get; set; }
+        public string Type { get; set; }
+        public string From { get; set; }
+
+        public byte[] Send()
+        {
+            using (MemoryStream stream = new MemoryStream())
+            {
+                BinaryFormatter Formatter = new BinaryFormatter();
+                Formatter.Serialize(stream, this);
+                return stream.ToArray();
+            }
+        }
+
+        public static WebpImage ToClass(byte[] data)
+        {
+            using var stream = new MemoryStream(data);
+            IFormatter Fileformatter = new BinaryFormatter();
+            Fileformatter.Binder = new UBinder();
+            return Fileformatter.Deserialize(stream) as WebpImage;
+        }
+
+        public class UBinder : SerializationBinder
+        {
+            public override Type BindToType(string assemblyName, string typeName)
+            {
+                if (typeName.EndsWith("WebpImage"))
+                {
+                    return typeof(WebpImage);
+                }
+                return Assembly.GetExecutingAssembly().GetType(typeName);
             }
         }
     }

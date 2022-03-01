@@ -1,0 +1,26 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net6.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+	  <ServerGarbageCollection>true</ServerGarbageCollection>
+	  <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
+	  <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
+    <Exec Command="copy / y $(TargetDir)WebdServer.dll &quot;Y:\WebdServer\&quot;&#xD;&#xA;copy / y $(TargetDir)WebdServer.pdb &quot;Y:\WebdServer\&quot;" />
+  </Target>
+
+  <ItemGroup>
+    <PackageReference Include="ServiceWire" Version="5.3.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Cowboy.WebSockets\Cowboy.WebSockets.csproj" />
+    <ProjectReference Include="..\WebpInter\WebpInter.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
+using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Linq;
@@ -206,6 +207,7 @@ namespace Client
 
         internal void UpdateUI()
         {
+            label15.Text = $"{Process.GetCurrentProcess().WorkingSet64 / 1024 / 1024}MB";
             if (listBox1.Items.Count != Class1.OnlineOpera.LocalInfo.Count)
             {
                 listBox1.Items.Clear();
@@ -360,7 +362,7 @@ namespace Client
         {
             if (Connect)
             {
-                _server.Connect2SetAsync("StartSIS");
+                _server.Connect2SetAsync("StartJav");
             }
         }
 

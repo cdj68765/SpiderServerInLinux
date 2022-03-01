@@ -1,0 +1,14 @@
+﻿<Weavers xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="FodyWeavers.xsd">
+	<Costura>
+		<Unmanaged32Assemblies>
+			libwebp
+			libwebpdecoder
+			libwebpdemux
+		</Unmanaged32Assemblies>
+		<Unmanaged64Assemblies>
+			libwebpdecoder
+			libwebp
+			libwebpdemux
+		</Unmanaged64Assemblies>
+	</Costura>
+</Weavers>

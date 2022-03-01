@@ -109,14 +109,14 @@ namespace ShadowsocksR.Controller
             }
             // _config.localPort = 7071;
             Loger.Instance.ServerInfo("SSR", $"SSR控制器建立，内部端口{_config.localPort}");
-            SocksPort = _config.localPort;
+            SocksPort = 1088;
             var Config = new Server(Setting._GlobalSet.ssr_url, "");
             if (!string.IsNullOrEmpty(Config.remarks)) Loger.Instance.ServerInfo("SSR", $"SSR服务器名称，{Config.remarks}");
             Config.server = GetIp(Config.server);
             Loger.Instance.ServerInfo("SSR", $"SSR地址解析完毕，IP:{Config.server}");
             _config.configs.Add(Config);
             // Config.SetServerSpeedLog(new ServerSpeedLog(Setting._GlobalSet.totalUploadBytes, Setting._GlobalSet.totalDownloadBytes));
-            Reload();
+            //Reload();
             /* if (Setting.CheckOnline())
                  Loger.Instance.ServerInfo("SSR", $"SSR工作正常");
              else
@@ -161,7 +161,7 @@ namespace ShadowsocksR.Controller
                     request.ConnectTimeout = 1000;
                     request.UserAgent = Http.ChromeUserAgent();
                     if (Port == -1)
-                        request.Proxy = Socks5ProxyClient.Parse($"127.0.0.1:{_config.localPort}");
+                        request.Proxy = Socks5ProxyClient.Parse($"192.168.2.116:1088");
                     else
                         request.Proxy = Socks5ProxyClient.Parse($"127.0.0.1:{Port}");
 

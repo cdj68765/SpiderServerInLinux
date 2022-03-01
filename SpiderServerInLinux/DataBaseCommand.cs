@@ -1,18 +1,21 @@
-﻿using System;
+﻿using LiteDB;
+using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using LiteDB;
 
 namespace SpiderServerInLinux
 {
     internal class DataBaseCommand
     {
-        internal static string BaseUri = @"/media/sda1/publish/";
+        //internal static string BaseUri = Setting.Platform ? @"Z:\publish\" : @"/media/sda1/publish/";
+        internal static string BaseUri = Setting.Platform ? @"Z:\publish\" : @"/root/publish/";
+
+        internal static string ImageUri = Setting.Platform ? @"Z:\publish\" : @"/media/sda1/";
 
         internal static void InitDataBase()
         {
@@ -111,20 +114,22 @@ namespace SpiderServerInLinux
                         T66yDB.EnsureIndex(x => x.Title);
                         T66yDB.EnsureIndex(x => x.Uri);
                         T66yDB.EnsureIndex(x => x.Date);
+                        T66yDB.EnsureIndex(x => x.Status);
+
                         Loger.Instance.LocalInfo("创建T66y数据库成功");
                     }
                     else
                     {
                         Loger.Instance.LocalInfo("打开T66y数据库正常");
                     }
-                    if (!db.CollectionExists("ImgData"))
-                    {
-                        var T66yDB = db.GetCollection<T66yImgData>("ImgData");
-                        T66yDB.EnsureIndex(x => x.Status);
-                        T66yDB.EnsureIndex(x => x.Hash);
-                        T66yDB.EnsureIndex(x => x.id);
-                        T66yDB.EnsureIndex(x => x.Date);
-                    }
+                    //if (!db.CollectionExists("ImgData"))
+                    //{
+                    //    var T66yDB = db.GetCollection<T66yImgData>("ImgData");
+                    //    T66yDB.EnsureIndex(x => x.Status);
+                    //    T66yDB.EnsureIndex(x => x.Hash);
+                    //    T66yDB.EnsureIndex(x => x.id);
+                    //    T66yDB.EnsureIndex(x => x.Date);
+                    //}
                 }
             }
             void InitSISDataBase()
@@ -138,20 +143,22 @@ namespace SpiderServerInLinux
                         SISDB.EnsureIndex(x => x.Title);
                         SISDB.EnsureIndex(x => x.Uri);
                         SISDB.EnsureIndex(x => x.Date);
+                        SISDB.EnsureIndex(x => x.Status);
+
                         Loger.Instance.LocalInfo("创建SIS数据库成功");
                     }
                     else
                     {
                         Loger.Instance.LocalInfo("打开SIS数据库正常");
                     }
-                    if (!db.CollectionExists("ImgData"))
-                    {
-                        var SISDB = db.GetCollection<SISImgData>("ImgData");
-                        SISDB.EnsureIndex(x => x.Status);
-                        SISDB.EnsureIndex(x => x.Hash);
-                        SISDB.EnsureIndex(x => x.id);
-                        SISDB.EnsureIndex(x => x.Date);
-                    }
+                    //if (!db.CollectionExists("ImgData"))
+                    //{
+                    //    var SISDB = db.GetCollection<SISImgData>("ImgData");
+                    //    SISDB.EnsureIndex(x => x.Status);
+                    //    SISDB.EnsureIndex(x => x.Hash);
+                    //    SISDB.EnsureIndex(x => x.id);
+                    //    SISDB.EnsureIndex(x => x.Date);
+                    //}
                 }
             }
             InitNyaaDataBase();
@@ -370,7 +377,7 @@ namespace SpiderServerInLinux
         {
             // var T66yDB = db.GetCollection<T66yData>("T66yData"); var T66yDB = db.GetCollection<T66yImgData>("ImgData");
             //using (var db = new LiteDatabase(@$"{BaseUri}T66y.db"))
-            using (var db = new LiteDatabase("Filename=T66y.db;Connection=Shared;ReadOnly=True"))
+            using (var db = new LiteDatabase($"Filename={BaseUri}T66y.db;Connection=Shared;ReadOnly=True"))
             {
                 //var db = Setting.T66yDB;
 
@@ -621,8 +628,9 @@ namespace SpiderServerInLinux
 
         internal static dynamic GetDataFromT66y(string Code = "", string search = "")
         {
+            using var db = new LiteDatabase(File.Open(@$"{DataBaseCommand.BaseUri}T66y.db", FileMode.Open, FileAccess.Read, FileShare.ReadWrite));
+
             //using (var db = new LiteDatabase(@$"{BaseUri}T66y.db"))
-            using (var db = new LiteDatabase("Filename=T66y.db;Connection=Shared;ReadOnly=True"))
             {
                 //var db = Setting.T66yDB;
 
@@ -631,12 +639,14 @@ namespace SpiderServerInLinux
                     case "CheckT66yExists":
                         {
                             var T66yDb = db.GetCollection<T66yData>("T66yData");
-                            return T66yDb.Exists(x => x.id == int.Parse(search));
+                            var Search = int.Parse(search);
+                            return T66yDb.Exists(x => x.id == Search);
                         }
-                        break;
 
                     case "img":
                         {
+                            //using var db = new LiteDatabase($@"{BaseUri}T66yWeb.db");
+
                             var T66yImgDb = db.GetCollection<T66yImgData>("ImgData");
                             if (!string.IsNullOrEmpty(search))
                             {
@@ -680,7 +690,8 @@ namespace SpiderServerInLinux
                     case "CheckSISExists":
                         {
                             var Db = db.GetCollection<SISData>("SISData");
-                            return Db.Exists(x => x.id == int.Parse(search));
+                            var Search = int.Parse(search);
+                            return Db.Exists(x => x.id == Search);
                         }
                         break;
 
@@ -1008,7 +1019,8 @@ namespace SpiderServerInLinux
             using (var db = new LiteDatabase(@$"{BaseUri}MiMi.db"))
             {
                 var _Table = db.GetCollection("WebPage");
-                if (!_Table.Exists(X => X["Uri"] == tempData[0]))//以链接检查是否存在，不存在则进入
+                var Search = tempData[0];
+                if (!_Table.Exists(x => x["Uri"] == Search))//以链接检查是否存在，不存在则进入
                 {
                     if (UseSave)
                     {
@@ -1123,44 +1135,63 @@ namespace SpiderServerInLinux
             using (var db = new LiteDatabase(@$"{BaseUri}T66y.db"))
             {
                 //var db = Setting.T66yDB;
-
-                var T66yDb = db.GetCollection<T66yData>(Collection);
-                if (UnitData != null)
+                try
                 {
-                    try
-                    {
-                        Fin = T66yDb.Upsert(UnitData);
-                    }
-                    catch (Exception ex)
-                    {
-                        Loger.Instance.LocalInfo($"T66y数据库添加失败{ex.Message}");
+                back:
+                    var T66yDb = db.GetCollection<T66yData>(Collection);
 
-                        Fin = false;
-                        // return T66yDb.Update(UnitData);
+                    if (UnitData != null)
+                    {
+                        try
+                        {
+                            Fin = T66yDb.Upsert(UnitData);
+                        }
+                        catch (Exception ex)
+                        {
+                            if (Collection != "unknown")
+                            {
+                                Collection = "unknown";
+                                goto back;
+                            }
+                            Loger.Instance.LocalInfo($"T66y数据库添加失败{ex.Message}");
+                            Fin = false;
+                            // return T66yDb.Update(UnitData);
+                        }
+                    }
+                    else
+                    {
+                        try
+                        {
+                            T66yDb.InsertBulk(Data);
+                            Fin = true;
+                        }
+                        catch (LiteException e)
+                        {
+                            Loger.Instance.LocalInfo("集群添加失败，转入单独添加");
+                            foreach (var VARIABLE in Data)
+                            {
+                                try
+                                {
+                                    Fin = T66yDb.Upsert(VARIABLE);
+                                }
+                                catch (LiteException ex)
+                                {
+                                    Loger.Instance.LocalInfo($"单独添加失败失败原因{ex.Message}");
+                                }
+                            }
+                            Fin = false;
+                        }
                     }
                 }
-                else
+                catch (Exception)
                 {
                     try
                     {
-                        T66yDb.InsertBulk(Data);
-                        Fin = true;
+                        var T66yDb = db.GetCollection<T66yData>("Other");
+                        Fin = T66yDb.Upsert(UnitData);
                     }
-                    catch (LiteException e)
+                    catch (Exception)
                     {
-                        Loger.Instance.LocalInfo("集群添加失败，转入单独添加");
-                        foreach (var VARIABLE in Data)
-                        {
-                            try
-                            {
-                                Fin = T66yDb.Upsert(VARIABLE);
-                            }
-                            catch (LiteException ex)
-                            {
-                                Loger.Instance.LocalInfo($"单独添加失败失败原因{ex.Message}");
-                            }
-                        }
-                        Fin = false;
                     }
                 }
             }
@@ -1168,58 +1199,185 @@ namespace SpiderServerInLinux
             return Fin;
         }
 
+        public enum ImageType
+        {
+            Unknown,
+            JPEG,
+            PNG,
+            GIF,
+            BMP,
+            TIFF,
+        }
+
+        internal static ImageType GetFileImageTypeFromHeader(byte[] headerBytes)
+        {
+            if (headerBytes == null) return ImageType.Unknown;
+            //JPEG:
+            if (headerBytes[0] == 0xFF &&//FF D8
+                headerBytes[1] == 0xD8 &&
+                (
+                 (headerBytes[6] == 0x4A &&//'JFIF'
+                  headerBytes[7] == 0x46 &&
+                  headerBytes[8] == 0x49 &&
+                  headerBytes[9] == 0x46)
+                  ||
+                 (headerBytes[6] == 0x45 &&//'EXIF'
+                  headerBytes[7] == 0x78 &&
+                  headerBytes[8] == 0x69 &&
+                  headerBytes[9] == 0x66)
+                ) &&
+                headerBytes[10] == 00)
+            {
+                return ImageType.JPEG;
+            }
+            //PNG
+            if (headerBytes[0] == 0x89 && //89 50 4E 47 0D 0A 1A 0A
+                headerBytes[1] == 0x50 &&
+                headerBytes[2] == 0x4E &&
+                headerBytes[3] == 0x47 &&
+                headerBytes[4] == 0x0D &&
+                headerBytes[5] == 0x0A &&
+                headerBytes[6] == 0x1A &&
+                headerBytes[7] == 0x0A)
+            {
+                return ImageType.PNG;
+            }
+            //GIF
+            if (headerBytes[0] == 0x47 &&//'GIF'
+                headerBytes[1] == 0x49 &&
+                headerBytes[2] == 0x46)
+            {
+                return ImageType.GIF;
+            }
+            //BMP
+            if (headerBytes[0] == 0x42 &&//42 4D
+                headerBytes[1] == 0x4D)
+            {
+                return ImageType.BMP;
+            }
+            //TIFF
+            if ((headerBytes[0] == 0x49 &&//49 49 2A 00
+                 headerBytes[1] == 0x49 &&
+                 headerBytes[2] == 0x2A &&
+                 headerBytes[3] == 0x00)
+                 ||
+                (headerBytes[0] == 0x4D &&//4D 4D 00 2A
+                 headerBytes[1] == 0x4D &&
+                 headerBytes[2] == 0x00 &&
+                 headerBytes[3] == 0x2A))
+            {
+                return ImageType.TIFF;
+            }
+
+            return ImageType.Unknown;
+        }
+
         internal static bool SaveToT66yDataUnit(ICollection<T66yImgData> Data = null, T66yImgData UnitData = null, bool Update = false)
         {
-            T66yWriteIng = true;
-            var Fin = false;
-
-            using (var db = new LiteDatabase(@$"{BaseUri}T66y.db"))
+            void CreateAndAdd(T66yImgData t66YImgData)
             {
-                //var db = Setting.T66yDB;
-                var T66yDb = db.GetCollection<T66yImgData>("ImgData");
-                if (UnitData != null)
-                {
-                    /* if (Update)
-                     {
-                         T66yDb.Delete(x => x.id == UnitData.id);
-                         T66yDb.Insert(UnitData);
-                         var FO = T66yDb.FindOne(x => x.id == UnitData.id);
-                         db.Dispose();
-                     }
-                     else*/
-
-                    Fin = T66yDb.Upsert(UnitData);
-                }
+                var Date = string.Empty;
+                if (DateTime.TryParse(t66YImgData.Date, out DateTime date))
+                    Date = date.ToString("yyyy-MM-dd");
                 else
+                    Date = "1970-01-01";
+                var ImageT = GetFileImageTypeFromHeader(t66YImgData.img);
+                if (ImageT != ImageType.Unknown)
                 {
-                    try
+                    var Add = new WebpImage()
                     {
-                        if (Data == null)
-                        {
-                            return false;
-                        }
-                        T66yDb.InsertBulk(Data);
-                        Fin = true;
-                    }
-                    catch (LiteException e)
-                    {
-                        //Loger.Instance.LocalInfo($"集群添加失败，转入单独添加，失败原因{e.Message}");
-                        foreach (var VARIABLE in Data)
-                        {
-                            try
-                            {
-                                Fin = T66yDb.Upsert(VARIABLE);
-                            }
-                            catch (LiteException ex)
-                            {
-                                Loger.Instance.LocalInfo($"单独添加失败，失败原因{ex.Message}");
-                            }
-                        }
-                        Fin = false;
-                    }
+                        Date = Date,
+                        From = "T66y",
+                        FromList = t66YImgData.FromList,
+                        Hash = t66YImgData.Hash,
+                        id = t66YImgData.id,
+                        img = t66YImgData.img,
+                        Status = false,
+                        Type = ImageT.ToString()
+                    };
+
+                    Setting.SaveImgOpera.Add(Add);
+                    using var T66yWeb = new LiteDatabase($@"{BaseUri}T66yWeb.db");
+                    var T66yWebTemp = T66yWeb.GetCollection("ImgData");
+                    T66yWebTemp.Upsert(new BsonDocument() { { "Uri", UnitData.id }, { "Status", "True" } });
+                    T66yWeb.Dispose();
                 }
             }
-            T66yWriteIng = false;
+            var Fin = false;
+            try
+            {
+                T66yWriteIng = true;
+                {
+                    //var db = Setting.T66yDB;
+                    if (UnitData != null)
+                    {
+                        /* if (Update)
+                         {
+                             T66yDb.Delete(x => x.id == UnitData.id);
+                             T66yDb.Insert(UnitData);
+                             var FO = T66yDb.FindOne(x => x.id == UnitData.id);
+                             db.Dispose();
+                         }
+                         else*/
+                        if (UnitData.img.Length > 1024)
+                            CreateAndAdd(UnitData);
+                        else
+                        {
+                            using var db = new LiteDatabase(@$"{BaseUri}T66y.db");
+                            var T66yDb = db.GetCollection<T66yImgData>("ImgData");
+                            Fin = T66yDb.Upsert(UnitData);
+                            db.Dispose();
+                        }
+                    }
+                    else
+                    {
+                        try
+                        {
+                            if (Data == null)
+                            {
+                                return false;
+                            }
+                            foreach (var item in Data)
+                            {
+                                using var db = new LiteDatabase(@$"{BaseUri}T66y.db");
+                                var T66yDb = db.GetCollection<T66yImgData>("ImgData");
+                                Fin = T66yDb.Upsert(item);
+                                db.Dispose();
+                                using var T66yWeb = new LiteDatabase($@"{BaseUri}T66yWeb.db");
+                                var T66yWebTemp = T66yWeb.GetCollection("ImgData");
+                                T66yWebTemp.Upsert(new BsonDocument() { { "Uri", item.id }, { "Status", "True" } });
+                                T66yWeb.Dispose();
+                            }
+
+                            Fin = true;
+                        }
+                        catch (LiteException e)
+                        {
+                            //Loger.Instance.LocalInfo($"集群添加失败，转入单独添加，失败原因{e.Message}");
+                            //foreach (var VARIABLE in Data)
+                            //{
+                            //    try
+                            //    {
+                            //        Fin = T66yDb.Upsert(VARIABLE);
+                            //    }
+                            //    catch (LiteException ex)
+                            //    {
+                            //        Loger.Instance.LocalInfo($"单独添加失败，失败原因{ex.Message}");
+                            //    }
+                            //}
+                            Fin = false;
+                        }
+                    }
+                }
+                T66yWriteIng = false;
+            }
+            catch (Exception)
+            {
+            }
+            finally
+            {
+                GC.Collect();
+            }
             return Fin;
         }
 
@@ -1242,8 +1400,61 @@ namespace SpiderServerInLinux
 
                     case "img":
                         {
-                            var STSDB = db.GetCollection<SISImgData>("ImgData");
-                            Ret = STSDB.Upsert(UnitData);
+                            if (UnitData.img != null)
+                            {
+                                if (UnitData.img.Length > 1024)
+                                {
+                                    var Date = string.Empty;
+                                    if (DateTime.TryParse(UnitData.Date, out DateTime date))
+                                        Date = date.ToString("yyyy-MM-dd");
+                                    else
+                                        Date = "1970-01-01";
+                                    ImageType ImageT = GetFileImageTypeFromHeader(UnitData.img);
+                                    if (ImageT != ImageType.Unknown)
+                                    {
+                                        var Add = new WebpImage()
+                                        {
+                                            Date = Date,
+                                            From = "SIS",
+                                            FromList = UnitData.FromList,
+                                            Hash = UnitData.Hash,
+                                            id = UnitData.id,
+                                            img = UnitData.img,
+                                            Status = false,
+                                            Type = ImageT.ToString()
+                                        };
+                                        Setting.SaveImgOpera.Add(Add);
+                                    }
+                                }
+                                else
+                                {
+                                    try
+                                    {
+                                        var STSDB = db.GetCollection<SISImgData>("ImgData");
+                                        Ret = STSDB.Upsert(UnitData);
+                                    }
+                                    catch (Exception)
+                                    {
+                                    }
+                                }
+                                using var SISWeb = new LiteDatabase($@"{BaseUri}SISWeb.db");
+                                var SISWebTemp = SISWeb.GetCollection("ImgData");
+                                SISWebTemp.Upsert(new BsonDocument() { { "Uri", UnitData.id }, { "Status", "True" } });
+                                SISWeb.Dispose();
+                                //if (!SISWeb.CollectionExists("ImgData"))
+                                //{
+                                //    var Temp = SISWeb.GetCollection("SISWeb");
+                                //    Temp.EnsureIndex(x => x["Uri"]);
+                                //    Temp.EnsureIndex(x => x["Status"]);
+                                //}
+                                //using var T66yWeb = new LiteDatabase(@"T66yWeb.db");
+                                //if (!T66yWeb.CollectionExists("ImgData"))
+                                //{
+                                //    var Temp = SISWeb.GetCollection("SISWeb");
+                                //    Temp.EnsureIndex(x => x["Uri"]);
+                                //    Temp.EnsureIndex(x => x["Status"]);
+                                //}
+                            }
                         }
                         break;
                 }

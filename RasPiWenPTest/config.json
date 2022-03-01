@@ -1,0 +1,220 @@
+{
+    "log": {
+        "access": "/var/log/v2ray/access.log",
+        "error": "/var/log/v2ray/error.log",
+        "loglevel": "warning"
+    },
+    "inbounds": [
+        {
+            "port": 12345,
+            "protocol": "dokodemo-door",
+            "settings": {
+                "network": "tcp,udp",
+                "followRedirect": true
+            },
+            "sniffing": {
+                "enabled": true,
+                "destOverride": [
+                    "http",
+                    "tls"
+                ]
+            },
+            "streamSettings": {
+                "sockopt": {
+                    "tproxy": "tproxy"
+                }
+            },
+            "tag": "transparent"
+        },
+        {
+            "port": 1088,
+            "protocol": "socks",
+            "settings": {
+                "auth": "noauth"
+            },
+            "sniffing": {
+                "enabled": true,
+                "destOverride": [
+                    "http",
+                    "tls"
+                ]
+            }
+        }
+    ],
+    "outbounds": [
+        {
+            "mux": {
+                "enabled": true
+            },
+            "protocol": "vmess",
+            "settings": {
+                "vnext": [
+                    {
+                        "address": "104.19.45.117",
+                        "port": 443,
+                        "users": [
+                            {
+                                "id": "3b5e258e-8c5e-45d3-b7d2-02c8f5fc0bb2",
+                                "alterId": 64,
+                                "security": "auto",
+                                "level": 0
+                            }
+                        ]
+                    }
+                ]
+            },
+            "streamSettings": {
+                "network": "ws",
+                "security": "tls",
+                "wsSettings": {
+                    "path": "/",
+                    "headers": {
+                        "Host": "cdnde.irteyz.today"
+                    }
+                },
+                "tlsSettings": {
+                    "serverName": "cdnde.irteyz.today",
+                    "allowInsecure": false
+                },
+                "sockopt": {
+                    "mark": 255
+                }
+            },
+            "tag": "proxy"
+        },
+        {
+            "protocol": "freedom",
+            "settings": {
+                "domainStrategy": "UseIP"
+            },
+            "streamSettings": {
+                "sockopt": {
+                    "mark": 255
+                }
+            },
+            "tag": "direct"
+        },
+        {
+            "protocol": "blackhole",
+            "settings": {
+                "response": {
+                    "type": "http"
+                }
+            },
+            "tag": "block"
+        },
+        {
+            "protocol": "dns",
+            "streamSettings": {
+                "sockopt": {
+                    "mark": 255
+                }
+            },
+            "tag": "dns-out"
+        }
+    ],
+    "dns": {
+        "servers": [
+            "8.8.8.8",
+            {
+                "address": "223.5.5.5",
+                "port": 53,
+                "domains": [
+                    "ntp.org",
+                    "geosite:speedtest",
+                    "usdll2.jjyun.ren",
+                    "usgia.jjyun.ren",
+                    "1.transit.t.qjnodeip.xyz"
+                ]
+            }
+        ]
+    },
+    "routing": {
+        "domainStrategy": "IPOnDemand",
+        "rules": [
+            {
+                "type": "field",
+                "inboundTag": [
+                    "transparent"
+                ],
+                "port": 53,
+                "network": "udp",
+                "outboundTag": "dns-out"
+            },
+            {
+                "type": "field",
+                "inboundTag": [
+                    "transparent"
+                ],
+                "port": 123,
+                "network": "udp",
+                "outboundTag": "direct"
+            },
+            {
+                "type": "field",
+                "protocol": [
+                    "bittorrent"
+                ],
+                "outboundTag": "direct"
+            },
+            {
+                "type": "field",
+                "ip": [
+                    "geoip:private"
+                ],
+                "outboundTag": "direct"
+            },
+            {
+                "type": "field",
+                "ip": [
+                    "223.5.5.5"
+                ],
+                "outboundTag": "direct"
+            },
+            {
+                "type": "field",
+                "ip": [
+                    "8.8.8.8"
+                ],
+                "outboundTag": "proxy"
+            },
+            {
+                "type": "field",
+                "domain": [
+                    "geosite:category-ads-all"
+                ],
+                "outboundTag": "block"
+            },
+            {
+                "type": "field",
+                "domain": [
+                    "usdll2.jjyun.ren",
+                    "usgia.jjyun.ren",
+                    "1.transit.t.qjnodeip.xyz"
+                ],
+                "outboundTag": "direct"
+            },
+            {
+                "type": "field",
+                "ip": [
+                    "128.14.157.112",
+                    "104.16.252.108",
+                    "120.232.173.88",
+                    "104.19.97.32",
+                    "104.19.29.137",
+                    "104.19.45.117",
+                    "104.18.110.152",
+                    "104.17.151.233",
+                    "45.58.145.213",
+                    "23.225.33.22",
+                    "1.1.1.1",
+                    "154.84.1.25",
+                    "154.84.1.58",
+                    "120.240.86.53",
+                    "46.182.107.108"
+                ],
+                "outboundTag": "direct"
+            }
+        ]
+    }
+}

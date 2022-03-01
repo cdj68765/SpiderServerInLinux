@@ -30,7 +30,10 @@ namespace Client
                         using var db = new LiteDatabase(@"Filename=Z:\publish\SIS.db;Connection=Shared;ReadOnly=True");
 
                         var SISDB = db.GetCollection<SISImgData>("ImgData");
+                        // var SIS = db.GetCollection<SISData>("SISData");
+
                         var Findd = SISDB.Find(x => x.Date == v);
+
                         foreach (var Img in Findd)
                         {
                             this.Invoke(new MethodInvoker(() =>
@@ -54,6 +57,25 @@ namespace Client
                     }
                 }
             });
+        }
+
+        [Serializable]
+        internal class T66yData
+        {
+            public int id { get; set; }
+            public string Title { get; set; }
+            public string Uri { get; set; }
+            public string Date { get; set; }
+            public string HtmlData { get; set; }
+            public List<string> MainList { get; set; }
+            public List<string> QuoteList { get; set; }
+            public bool Status { get; set; }
+        }
+
+        [Serializable]
+        internal class SISData : T66yData
+        {
+            public string Type { get; set; }
         }
 
         [Serializable]

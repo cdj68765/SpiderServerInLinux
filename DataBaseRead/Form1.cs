@@ -10,6 +10,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using MetroFramework;
+
 namespace DataBaseRead
 {
     public partial class Form1 : MetroFramework.Forms.MetroForm

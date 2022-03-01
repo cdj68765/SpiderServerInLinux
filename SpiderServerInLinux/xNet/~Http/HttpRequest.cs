@@ -1623,9 +1623,10 @@ namespace xNet
 
                 ClearRequestData();
                 Busy = false;
+
+
             }
         }
-
         #endregion Raw
 
         #region Добавление временных данных запроса
@@ -2285,8 +2286,8 @@ namespace xNet
         #region Методы (закрытые)
 
         private void Init()
-        {
-            KeepAlive = true;
+        { 
+             KeepAlive = true;
             AllowAutoRedirect = true;
             EnableEncodingContent = true;
 
